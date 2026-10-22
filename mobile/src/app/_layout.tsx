@@ -49,7 +49,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemeProvider value={theme}>
       <StatusBar style="dark" />
-      <SQLiteProvider databaseName="saultimate.db" onInit={init}>
+      <SQLiteProvider databaseName="sa-ultimate.db" onInit={init}>
         <Stack
           screenOptions={{
             headerTitleStyle: { fontFamily: font.bold, fontSize: 18 },

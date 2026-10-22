@@ -30,7 +30,7 @@ const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL,
     deleted_at TEXT
   );
-  CREATE INDEX person_name ON person(first_name, last_name);
+  CREATE INDEX idx_person_name ON person(first_name, last_name);
 
   CREATE TABLE team (
     id TEXT PRIMARY KEY NOT NULL,
@@ -69,8 +69,8 @@ const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL,
     deleted_at TEXT
   );
-  CREATE INDEX membership_team ON membership(team_id);
-  CREATE INDEX membership_person ON membership(person_id);
+  CREATE INDEX idx_membership_team ON membership(team_id);
+  CREATE INDEX idx_membership_person ON membership(person_id);
 
   CREATE TABLE venue (
     id TEXT PRIMARY KEY NOT NULL,
@@ -137,7 +137,7 @@ const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL,
     deleted_at TEXT
   );
-  CREATE INDEX game_event ON game(event_id);
+  CREATE INDEX idx_game_event ON game(event_id);
 
   CREATE TABLE game_player (
     id TEXT PRIMARY KEY NOT NULL,
@@ -192,7 +192,7 @@ const MIGRATIONS: string[] = [
     device_id TEXT,
     voided_at TEXT
   );
-  CREATE INDEX game_event_game ON game_event(game_id, seq);
+  CREATE INDEX idx_game_event_game ON game_event(game_id, seq);
 
   CREATE TABLE saved_line (
     id TEXT PRIMARY KEY NOT NULL,
