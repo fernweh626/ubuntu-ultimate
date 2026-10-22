@@ -12,6 +12,7 @@ import {
   listFollows,
   listGamesForPerson,
   listPeople,
+  joinTeam,
   listTeams,
   personLog,
   myRoles,
@@ -20,7 +21,6 @@ import {
   setMeId,
   setMembershipRole,
   setTestLevel,
-  getTestLevel,
   type MyRole,
 } from '@/db/repo';
 import type { Gender } from '@/db/types';
@@ -60,7 +60,6 @@ export default function Me() {
     const items = (await personLog(d, me.id)).filter((e) => new Date(e.date) >= monday);
     return { count: items.length, minutes: items.reduce((a, e) => a + e.minutes, 0) };
   }, [me?.id]);
-  const testLevel = useData(getTestLevel) ?? 'player';
   const following = useData(async (d) => {
     const [follows, teams, events] = await Promise.all([listFollows(d), listTeams(d), listEvents(d)]);
     return follows
@@ -73,6 +72,8 @@ export default function Me() {
   }) ?? [];
   const totals = useData(async (d) => (me ? playerTotals(await loadFinishedGames(d, await listGamesForPerson(d, me.id))).get(me.id) ?? null : null), [me?.id]);
   const [roleFor, setRoleFor] = useState<MyRole | null>(null);
+  const [staffPicker, setStaffPicker] = useState(false);
+  const allTeams = useData(listTeams) ?? [];
 
   if (me === undefined) return <Screen edges={[]}>{null}</Screen>;
   if (!me) return <WhoAreYou />;
@@ -171,11 +172,24 @@ export default function Me() {
           </View>
           <T v="label">Try a level on this phone</T>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            {(['player', 'scorekeeper', 'coordinator', 'admin'] as const).map((l) => (
-              <Choice key={l} label={LEVEL_LABEL[l]} selected={testLevel === l} onPress={() => setTestLevel(db, l)} style={{ paddingHorizontal: 14 }} />
+            {(['player', 'scorekeeper', 'staff', 'coordinator', 'admin'] as const).map((l) => (
+              <Choice
+                key={l}
+                label={LEVEL_LABEL[l]}
+                selected={level === l}
+                onPress={async () => {
+                  if (l === 'staff') return setStaffPicker(true);
+                  // Player and scorekeeper rank below team staff, so drop any staff roles to really be them.
+                  if (l === 'player' || l === 'scorekeeper') {
+                    for (const r of staffOn) await setMembershipRole(db, me.id, r.team_id, 'player');
+                  }
+                  await setTestLevel(db, l);
+                }}
+                style={{ paddingHorizontal: 14 }}
+              />
             ))}
           </View>
-          <T v="small">Team staff comes from your role on a team (captain, coach…), given by staff, a coordinator or an admin.</T>
+          <T v="small">Team staff makes you captain of a team you pick. In real use, staff roles are given by that team’s staff, a coordinator or an admin.</T>
           <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
             <T v="smallStrong" style={{ color: colors.warnInk }}>
               Not enforced yet
@@ -209,6 +223,27 @@ export default function Me() {
 
         <Button label="Not you? Switch player" kind="ghost" onPress={() => setMeId(db, null)} />
       </Screen>
+
+      <Sheet visible={staffPicker} onClose={() => setStaffPicker(false)} title="Be team staff for…">
+        <T v="small">You’ll be captain of this team (and join it if you’re not on it).</T>
+        {[...allTeams]
+          .sort((a, b) => Number(!roles.some((r) => r.team_id === b.id)) - Number(!roles.some((r) => r.team_id === a.id)) || a.name.localeCompare(b.name))
+          .map((t) => (
+            <Choice
+              key={t.id}
+              label={t.name}
+              sublabel={roles.some((r) => r.team_id === t.id) ? 'Your team' : undefined}
+              dot={t.primary_color ?? undefined}
+              onPress={async () => {
+                if (!roles.some((r) => r.team_id === t.id)) await joinTeam(db, me.id, t.id, 'core', me.preferred_number);
+                await setMembershipRole(db, me.id, t.id, 'captain');
+                await setTestLevel(db, 'player');
+                setStaffPicker(false);
+              }}
+              style={{ alignItems: 'flex-start' }}
+            />
+          ))}
+      </Sheet>
 
       <Sheet visible={!!roleFor} onClose={() => setRoleFor(null)} title={roleFor ? `Your role in ${roleFor.team_name}` : ''}>
         {roleFor && access && canSetTeamRole(access.level, access.staffTeamIds, roleFor.team_id, 'captain') ? (
