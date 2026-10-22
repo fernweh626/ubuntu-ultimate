@@ -71,6 +71,19 @@ export function ratioForPoint(pointNumber: number, first: 'M' | 'W' | null): 'M'
   return Math.floor(pointNumber / 2) % 2 === 0 ? first : other;
 }
 
+/**
+ * Where a point sits in its ABBA block: 1 = first of the pair, 2 = second (the ratio switches after it).
+ * Point 1 stands alone, so it's a 1. Shown as F1, F2, M1, M2.
+ */
+export function ratioSlot(pointNumber: number): 1 | 2 {
+  return pointNumber === 1 || pointNumber % 2 === 0 ? 1 : 2;
+}
+
+export function ratioCode(ratio: string | null, pointNumber: number) {
+  if (ratio !== 'W' && ratio !== 'M') return '';
+  return `${ratio === 'W' ? 'F' : 'M'}${ratioSlot(pointNumber)}`;
+}
+
 export function ratioLabel(ratio: 'M' | 'W' | null) {
   if (ratio === 'W') return '4 women · 3 men';
   if (ratio === 'M') return '4 men · 3 women';

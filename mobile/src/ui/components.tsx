@@ -19,6 +19,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { maskDmy } from '@/domain/format';
+import { ratioCode, ratioSlot } from '@/domain/rules';
 
 import { colors, DEFAULT_TEAM_COLOR, font, radius, space, TOUCH } from './theme';
 
@@ -230,24 +231,26 @@ export function Chip({
 }
 
 /**
- * ABBA ratio for a point: which gender has four on the line. Icon + words, never colour alone.
+ * ABBA ratio for a point as F1/F2/M1/M2 (purple for female, blue for male). Icon + words, never colour alone.
  * `compact` is for tight rows (point-by-point log); the full badge is for scoring screens.
  */
-export function RatioBadge({ ratio, compact, onDark }: { ratio: string | null; compact?: boolean; onDark?: boolean }) {
+export function RatioBadge({ ratio, point, compact, onDark }: { ratio: string | null; point: number; compact?: boolean; onDark?: boolean }) {
   if (ratio !== 'W' && ratio !== 'M') return null;
   const women = ratio === 'W';
+  const code = ratioCode(ratio, point);
+  const slot = ratioSlot(point);
   const bg = women ? '#F3E8FB' : '#E3ECFA';
   const fg = women ? '#6B2C91' : '#1D3F8F';
   return (
     <View
-      accessibilityLabel={women ? 'Women’s point: four women, three men' : 'Men’s point: four men, three women'}
+      accessibilityLabel={`${code}: ${women ? 'female' : 'male'} point ${slot}, ${women ? 'four women, three men' : 'four men, three women'}`}
       style={[
         styles.chip,
         { backgroundColor: onDark ? fg : bg, gap: 6, paddingVertical: compact ? 2 : 6, paddingHorizontal: compact ? 8 : 12 },
       ]}>
       <Icon name={women ? 'gender-female' : 'gender-male'} size={compact ? 14 : 20} color={onDark ? '#fff' : fg} />
       <RNText style={{ fontFamily: font.bold, fontSize: compact ? 12 : 15, color: onDark ? '#fff' : fg }}>
-        {compact ? (women ? '4W' : '4M') : women ? 'Women’s point · 4W 3M' : 'Men’s point · 4M 3W'}
+        {compact ? code : `${code} · ${women ? 'female' : 'male'} point ${slot}${slot === 2 ? ' · switches next' : ''}`}
       </RNText>
     </View>
   );

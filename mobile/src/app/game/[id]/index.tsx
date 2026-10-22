@@ -27,6 +27,7 @@ import type { GameEventType, Person, PullOutcome, Team } from '@/db/types';
 import { deriveState, fitness, lineFor, otherTeam, type GameData } from '@/domain/engine';
 import { clock, shortName } from '@/domain/format';
 import { fetchWeather } from '@/domain/weather';
+import { BreakClock } from '@/ui/break-clock';
 import { Button, Chip, Choice, Icon, IconButton, RatioBadge, Sheet, T } from '@/ui/components';
 import { colors, DEFAULT_TEAM_COLOR, font, space } from '@/ui/theme';
 
@@ -239,7 +240,7 @@ export default function ScoreGame() {
       </View>
       {point.ratio && !gameOverPending ? (
         <View style={{ alignItems: 'center', marginTop: space.sm }}>
-          <RatioBadge ratio={point.ratio} onDark />
+          <RatioBadge ratio={point.ratio} point={point.number} onDark />
         </View>
       ) : null}
     </View>
@@ -248,11 +249,6 @@ export default function ScoreGame() {
   /* ---------------- Between points ---------------- */
   const prev = state.previousPoint && state.previousPoint.scored_at && !gameOverPending ? state.previousPoint : gameOverPending ? point : null;
   const prevScore = prev ? data.events.find((e) => e.point_id === prev.id && (e.type === 'score' || e.type === 'callahan') && !e.voided_at) : null;
-  const halftimeNow = prev ? data.events.some((e) => e.point_id === prev.id && e.type === 'halftime' && !e.voided_at) : false;
-  const preTimeouts = data.events.filter((e) => e.point_id === point.id && e.type === 'timeout' && !e.voided_at).length;
-  const pullLimit = state.rules.pullWithinSeconds + preTimeouts * state.rules.timeoutSeconds + (halftimeNow ? state.rules.halftimeMinutes * 60 : 0);
-  const sinceScore = prev?.scored_at ? (now - Date.parse(prev.scored_at)) / 1000 : null;
-  const remaining = sinceScore == null ? null : pullLimit - sinceScore;
 
   const between = (
     <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg, paddingBottom: 140 }}>
@@ -263,20 +259,8 @@ export default function ScoreGame() {
           <Button label="End game & see report" kind="primary" icon="flag-checkered" big onPress={() => finish('target')} />
         </View>
       ) : (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <View>
-            <T v="label">{halftimeNow ? 'Halftime · pull due in' : prev ? 'Pull due in' : 'First point'}</T>
-            <T
-              style={{
-                fontFamily: font.display,
-                fontSize: 56,
-                lineHeight: 60,
-                color: remaining != null && remaining < 0 ? colors.danger : colors.ink,
-              }}>
-              {remaining == null ? 'Ready' : remaining >= 0 ? clock(remaining) : `+${clock(-remaining)}`}
-            </T>
-            {remaining != null && remaining < 0 ? <T v="small" style={{ color: colors.danger }}>Pull is late</T> : null}
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <T v="label">{prev ? `Point ${point.number} next` : 'First point · ready when you are'}</T>
           <Button label="Timeout" icon="timer-pause-outline" onPress={() => setTimeoutSheet(true)} />
         </View>
       )}
@@ -304,7 +288,7 @@ export default function ScoreGame() {
           <View style={{ gap: space.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <T v="label">Point {point.number} lines</T>
-              <RatioBadge ratio={point.ratio} compact />
+              <RatioBadge ratio={point.ratio} point={point.number} compact />
             </View>
             {[ta, tb].map((t) => {
               const line = lineFor(data, point.id, t.id);
@@ -325,7 +309,7 @@ export default function ScoreGame() {
                         {!tracksPlayers(t.id)
                           ? 'Not tracking players for this team'
                           : line.length
-                            ? `${line.length} on · ${w}W ${m}M${tired ? ` · ${tired} tiring` : ''}`
+                            ? `${line.length} on · ${w}F ${m}M${tired ? ` · ${tired} tiring` : ''}`
                             : 'No line yet'}
                       </T>
                     </View>
@@ -437,6 +421,7 @@ export default function ScoreGame() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top', 'bottom']}>
       <View style={{ backgroundColor: colors.night }}>{header}</View>
+      <BreakClock data={data} state={state} teamName={(tid) => team(tid).name} />
       {state.phase === 'inpoint' ? inPoint : between}
 
       <View style={{ flexDirection: 'row', gap: space.sm, padding: space.lg, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border }}>

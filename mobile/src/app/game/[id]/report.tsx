@@ -8,9 +8,11 @@ import { peopleById } from '@/db/reports';
 import { END_REASONS, reflectionsFor, statusLog, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
 import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, timeOfDay } from '@/domain/format';
 import { STATUS_REASONS } from '@/domain/fixtures';
+import { deriveState } from '@/domain/engine';
 import { computeGameStats, type TeamGameStats } from '@/domain/stats';
 import { weatherLine, type Weather } from '@/domain/weather';
 import { Bars, ScoreProgression } from '@/ui/charts';
+import { BreakClock } from '@/ui/break-clock';
 import { Button, Card, Chip, Field, Icon, IconButton, RatioBadge, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
@@ -110,7 +112,7 @@ export default function GameReport() {
           headerRight: () => <IconButton icon="dots-vertical" label="More" onPress={() => setMenu(true)} />,
         }}
       />
-      <Screen edges={[]}>
+      <Screen edges={[]} header={!final ? <BreakClock data={data} state={deriveState(data)} teamName={(tid) => (tid === ta.id ? ta.name : tb.name)} /> : undefined}>
         <Card style={{ backgroundColor: colors.night, borderColor: colors.night }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -289,7 +291,7 @@ export default function GameReport() {
                     <T style={{ fontFamily: font.display, fontSize: 22, width: 52 }}>
                       {t.scoreA}–{t.scoreB}
                     </T>
-                    <RatioBadge ratio={t.point.ratio} compact />
+                    <RatioBadge ratio={t.point.ratio} point={t.point.number} compact />
                     <View style={{ flex: 1 }}>
                       <T v="smallStrong" numberOfLines={1}>
                         {t.callahan ? `Callahan · ${name(t.scorerId)}` : t.scorerId ? `${name(t.scorerId)}${t.assistId ? ` from ${name(t.assistId)}` : ''}` : scorer.name}

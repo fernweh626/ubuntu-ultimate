@@ -202,3 +202,49 @@ export function fitness(data: GameData, teamId: string, now = Date.now()): Map<s
   }
   return result;
 }
+
+export type BreakKind = 'timeout' | 'halftime' | 'between';
+export type BreakSegment = { kind: BreakKind; endsAt: number };
+
+/**
+ * The stoppage running right now, as countdown segments in order (halftime then "pull due", say).
+ * Worked out from events alone, so every phone following the game shows the same clock.
+ */
+export function breakClock(data: GameData, state: LiveState): { teamId: string | null; segments: BreakSegment[] } | null {
+  const { game } = data;
+  const point = state.point;
+  if (game.status !== 'live' || !point || point.scored_at) return null;
+  const rules = state.rules;
+  const last = state.lastEvent;
+  const timeout = last?.type === 'timeout' && last.point_id === point.id ? last : null;
+
+  if (state.phase === 'inpoint') {
+    if (!timeout) return null;
+    return { teamId: timeout.team_id, segments: [{ kind: 'timeout', endsAt: Date.parse(timeout.recorded_at) + rules.timeoutSeconds * 1000 }] };
+  }
+
+  const prev = state.previousPoint;
+  if (!prev?.scored_at) return null;
+  const scoredAt = Date.parse(prev.scored_at);
+  const events = live(data.events);
+  const half = events.some((e) => e.point_id === prev.id && e.type === 'halftime');
+  const timeouts = events.filter((e) => e.point_id === point.id && e.type === 'timeout').length;
+  const halfEnds = scoredAt + (half ? rules.halftimeMinutes * 60_000 : 0);
+  const pullDue = halfEnds + (rules.pullWithinSeconds + timeouts * rules.timeoutSeconds) * 1000;
+  if (timeout) return { teamId: timeout.team_id, segments: [{ kind: 'timeout', endsAt: pullDue }] };
+  return {
+    teamId: null,
+    segments: half
+      ? [
+          { kind: 'halftime', endsAt: halfEnds },
+          { kind: 'between', endsAt: pullDue },
+        ]
+      : [{ kind: 'between', endsAt: pullDue }],
+  };
+}
+
+/** The segment showing at `now`: the first that hasn't ended, else the last (running over time). */
+export function currentSegment(segments: BreakSegment[], now: number) {
+  const seg = segments.find((s) => now < s.endsAt) ?? segments[segments.length - 1];
+  return { ...seg, remaining: (seg.endsAt - now) / 1000 };
+}

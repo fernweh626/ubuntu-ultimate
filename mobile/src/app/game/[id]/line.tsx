@@ -9,6 +9,8 @@ import { addGamePlayer, getPerson, getTeam, loadGameData, recentLoad, saveLine, 
 import type { GamePlayer } from '@/db/types';
 import { deriveState, fitness, lineFor, type Fitness } from '@/domain/engine';
 import { shortName } from '@/domain/format';
+import { ratioCode } from '@/domain/rules';
+import { BreakClock } from '@/ui/break-clock';
 import { Button, Choice, Field, Footer, Icon, RatioBadge, Screen, Sheet, T } from '@/ui/components';
 import { QuickAddPlayer } from '@/ui/quick-add-player';
 import { colors, space } from '@/ui/theme';
@@ -27,11 +29,12 @@ export default function LineBuilder() {
       const data = await loadGameData(d, id);
       if (!data) return null;
       const team = await getTeam(d, teamId);
+      const other = await getTeam(d, data.game.team_a_id === teamId ? data.game.team_b_id : data.game.team_a_id);
       const people = await peopleById(d, data.players.map((p) => p.person_id));
       const lines = await savedLines(d, teamId);
       // Heavy sessions in the last day and a half (from reflections) count towards fatigue too.
       const recent = await recentLoad(d, data.players.filter((p) => p.team_id === teamId).map((p) => p.person_id));
-      return { data, team: team!, people, lines, recent };
+      return { data, team: team!, people, lines, recent, other };
     },
     [id, teamId],
   );
@@ -50,7 +53,7 @@ export default function LineBuilder() {
   if (!bundle || !data || !point) return <Screen edges={[]}>{null}</Screen>;
   const chosen = edited ?? lineFor(data, point.id, teamId);
 
-  const { team, people, lines } = bundle;
+  const { team, people, lines, other } = bundle;
   const onO = point.offense_team_id === teamId;
   const squad = data.players.filter((p) => p.team_id === teamId);
   const person = (pid: string) => people.get(pid);
@@ -95,7 +98,7 @@ export default function LineBuilder() {
 
   async function save() {
     if (chosen.length !== LINE_SIZE || !ratioOk) {
-      const problem = chosen.length !== LINE_SIZE ? `${chosen.length} players picked (usually 7).` : `Ratio is ${w}W ${m}M; this point needs ${need!.W}W ${need!.M}M.`;
+      const problem = chosen.length !== LINE_SIZE ? `${chosen.length} players picked (usually 7).` : `Ratio is ${w}F ${m}M; this ${ratioCode(point!.ratio, point!.number)} point needs ${need!.W}F ${need!.M}M.`;
       Alert.alert('Use this line anyway?', problem, [
         { text: 'Fix it', style: 'cancel' },
         { text: 'Use it', onPress: commit },
@@ -199,18 +202,19 @@ export default function LineBuilder() {
       <Stack.Screen options={{ title: `${team.name} · point ${point.number}` }} />
       <Screen
         edges={[]}
+        header={state ? <BreakClock data={data} state={state} teamName={(tid) => (tid === team.id ? team.name : other?.name ?? '')} /> : undefined}
         footer={
           <Footer>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <T v="bodyStrong" style={{ color: ratioOk && chosen.length === LINE_SIZE ? colors.brandDark : colors.warnInk }}>
-                {chosen.length}/7 · {w}W {m}M{need ? ` (need ${need.W}W ${need.M}M)` : ''}
+                {chosen.length}/7 · {w}F {m}M{need ? ` (need ${need.W}F ${need.M}M)` : ''}
               </T>
               <Button label="Save as…" kind="ghost" onPress={() => setSaving(true)} style={{ minHeight: 36, paddingHorizontal: 0 }} />
             </View>
             <Button label="Confirm line" kind="primary" big onPress={save} />
           </Footer>
         }>
-        <RatioBadge ratio={point.ratio} />
+        <RatioBadge ratio={point.ratio} point={point.number} />
         <T v="small">
           {onO ? 'Receiving — on offence.' : 'Pulling — on defence.'} Tap to add or remove. Long-press a player to mark them tired or injured.
         </T>
