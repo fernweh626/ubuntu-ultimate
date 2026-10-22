@@ -6,7 +6,8 @@ import { Alert, View } from 'react-native';
 import { REGIONS } from '@/content/hub';
 import { useData } from '@/db/live';
 import { eventTeams, getEvent, listTeams, saveEvent, type EventInput } from '@/db/repo';
-import { Button, Choice, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
+import { Button, Choice, DateField, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
+import { dmyToIso, isoToDmy } from '@/domain/format';
 import { colors, space } from '@/ui/theme';
 
 const POOLS = ['A', 'B', 'C', 'D'];
@@ -17,12 +18,16 @@ export default function EventEdit() {
   const teams = useData(listTeams) ?? [];
   const [f, setF] = useState<EventInput>({ name: '', kind: 'tournament', level: 'regional', division: 'mixed', region: 'western', teams: [] });
   const [usePools, setUsePools] = useState(false);
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
 
   useEffect(() => {
     if (!id) return;
     Promise.all([getEvent(db, id), eventTeams(db, id)]).then(([e, ts]) => {
       if (!e) return;
       setF({ ...e, teams: ts.map((t) => ({ teamId: t.id, pool: t.pool })) });
+      setStart(isoToDmy(e.start_date));
+      setEnd(isoToDmy(e.end_date));
       setUsePools(ts.some((t) => t.pool));
     });
   }, [db, id]);
@@ -39,10 +44,10 @@ export default function EventEdit() {
 
   async function save() {
     if (!f.name.trim()) return Alert.alert('Give it a name');
-    for (const d of [f.start_date, f.end_date]) {
-      if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) return Alert.alert('Dates should look like 2026-10-02');
-    }
-    const newId = await saveEvent(db, { ...f, id, teams: f.teams.map((t) => ({ ...t, pool: usePools ? t.pool : null })) });
+    const start_date = start ? dmyToIso(start) : null;
+    const end_date = end ? dmyToIso(end) : null;
+    if ((start && !start_date) || (end && !end_date)) return Alert.alert('Check the dates', 'Use dd/mm/yyyy, for example 02/10/2026.');
+    const newId = await saveEvent(db, { ...f, start_date, end_date, id, teams: f.teams.map((t) => ({ ...t, pool: usePools ? t.pool : null })) });
     if (id) router.back();
     else router.replace(`/event/${newId}`);
   }
@@ -95,10 +100,10 @@ export default function EventEdit() {
         <Field label="Location" value={f.location ?? ''} onChangeText={(v) => set('location', v || null)} />
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
-            <Field label="Starts" value={f.start_date ?? ''} onChangeText={(v) => set('start_date', v || null)} placeholder="2026-10-02" keyboardType="numbers-and-punctuation" />
+            <DateField label="Starts" value={start} onChangeText={setStart} />
           </View>
           <View style={{ flex: 1 }}>
-            <Field label="Ends" value={f.end_date ?? ''} onChangeText={(v) => set('end_date', v || null)} placeholder="2026-10-04" keyboardType="numbers-and-punctuation" />
+            <DateField label="Ends" value={end} onChangeText={setEnd} />
           </View>
         </View>
 

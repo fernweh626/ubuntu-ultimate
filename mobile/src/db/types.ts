@@ -17,6 +17,7 @@ export type Person = {
   preferred_number: string | null;
   position: Position | null;
   is_placeholder: number;
+  photo_uri: string | null;
 };
 
 export type Team = {
@@ -28,6 +29,7 @@ export type Team = {
   city: string | null;
   primary_color: string | null;
   secondary_color: string | null;
+  logo_uri: string | null;
   contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;

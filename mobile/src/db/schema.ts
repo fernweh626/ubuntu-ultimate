@@ -267,6 +267,10 @@ const MIGRATIONS: string[] = [
     deleted_at TEXT
   );
   `,
+  // v2: profile photos (teams already have logo_uri)
+  `
+  ALTER TABLE person ADD COLUMN photo_uri TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

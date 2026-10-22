@@ -6,6 +6,7 @@ import { getMe } from '@/db/repo';
 import { initials, shortName } from '@/domain/format';
 
 import { Icon } from './components';
+import { Avatar } from './photo';
 import { colors, font } from './theme';
 
 /** Top-right account shortcut on every main tab: your initials, or a person icon until you've said who you are. */
@@ -28,7 +29,9 @@ export function MeButton() {
         borderColor: colors.border,
         opacity: pressed ? 0.75 : 1,
       })}>
-      {me ? (
+      {me?.photo_uri ? (
+        <Avatar uri={me.photo_uri} name={shortName(me)} size={44} />
+      ) : me ? (
         <Text style={{ fontFamily: font.bold, fontSize: 16, color: '#fff' }}>{initials(`${me.first_name} ${me.last_name}`)}</Text>
       ) : (
         <Icon name="account-outline" color={colors.ink} />

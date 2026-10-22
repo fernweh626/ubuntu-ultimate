@@ -34,7 +34,7 @@ export const uuid = () => randomUUID();
 /** Person columns safe to load into screens: email is never selected. */
 export const personCols = (alias = '') => {
   const a = alias ? `${alias}.` : '';
-  return `${a}id, ${a}first_name, ${a}last_name, ${a}nickname, NULL AS email, ${a}birth_date, ${a}gender, ${a}preferred_number, ${a}position, ${a}is_placeholder`;
+  return `${a}id, ${a}first_name, ${a}last_name, ${a}nickname, NULL AS email, ${a}birth_date, ${a}gender, ${a}preferred_number, ${a}position, ${a}is_placeholder, ${a}photo_uri`;
 };
 export const now = () => new Date().toISOString();
 
@@ -180,13 +180,21 @@ export type PersonForEdit = Omit<Person, 'email' | 'birth_date'> & { has_email: 
 export async function getPersonForEdit(db: SQLiteDatabase, id: string): Promise<PersonForEdit | null> {
   const row = await db.getFirstAsync<PersonForEdit & { birth_date: string | null }>(
     `SELECT id, first_name, last_name, nickname, gender, preferred_number, position, is_placeholder,
-            email IS NOT NULL AS has_email, birth_date
+            photo_uri, email IS NOT NULL AS has_email, birth_date
        FROM person WHERE id = ?`,
     id,
   );
   if (!row) return null;
   const { birth_date, ...rest } = row;
   return { ...rest, is_minor: birth_date ? (isMinor(birth_date) ? 1 : 0) : null };
+}
+
+export function setPersonPhoto(db: SQLiteDatabase, id: string, uri: string | null) {
+  return write(db, () => db.runAsync(`UPDATE person SET photo_uri = ?, updated_at = ? WHERE id = ?`, uri, now(), id));
+}
+
+export function setTeamLogo(db: SQLiteDatabase, id: string, uri: string | null) {
+  return write(db, () => db.runAsync(`UPDATE team SET logo_uri = ?, updated_at = ? WHERE id = ?`, uri, now(), id));
 }
 
 export function clearPrivateField(db: SQLiteDatabase, id: string, field: 'email' | 'birth_date') {

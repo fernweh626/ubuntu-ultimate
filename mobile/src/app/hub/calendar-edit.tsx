@@ -6,7 +6,8 @@ import { Alert, Linking, View } from 'react-native';
 import { REGIONS } from '@/content/hub';
 import { deleteCalendarEntry, getCalendarEntry, saveCalendarEntry } from '@/db/repo';
 import type { CalendarEntry } from '@/db/types';
-import { Button, Choice, Field, Footer, Screen, Section, T } from '@/ui/components';
+import { Button, Choice, DateField, Field, Footer, Screen, Section, T } from '@/ui/components';
+import { dmyToIso, isoToDmy } from '@/domain/format';
 import { space } from '@/ui/theme';
 
 type Form = Omit<CalendarEntry, 'id'>;
@@ -28,23 +29,32 @@ const EMPTY: Form = {
 const LEVELS = ['international', 'national', 'regional', 'league', 'social'];
 const KINDS = ['tournament', 'league', 'hat', 'camp', 'other'];
 
-const isDate = (s: string | null) => !s || /^\d{4}-\d{2}-\d{2}$/.test(s);
 
 export default function CalendarEdit() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const db = useSQLiteContext();
   const [f, setF] = useState<Form>(EMPTY);
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
 
   useEffect(() => {
-    if (id) getCalendarEntry(db, id).then((c) => c && setF(c));
+    if (!id) return;
+    getCalendarEntry(db, id).then((c) => {
+      if (!c) return;
+      setF(c);
+      setStart(isoToDmy(c.start_date));
+      setEnd(isoToDmy(c.end_date));
+    });
   }, [db, id]);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((x) => ({ ...x, [k]: v }));
 
   async function save() {
     if (!f.name.trim()) return Alert.alert('Add a name');
-    if (!isDate(f.start_date) || !isDate(f.end_date)) return Alert.alert('Dates should look like 2026-12-04');
-    await saveCalendarEntry(db, { ...f, status: f.start_date ? 'confirmed' : 'tbc', id });
+    const start_date = start ? dmyToIso(start) : null;
+    const end_date = end ? dmyToIso(end) : null;
+    if ((start && !start_date) || (end && !end_date)) return Alert.alert('Check the dates', 'Use dd/mm/yyyy, for example 04/12/2026.');
+    await saveCalendarEntry(db, { ...f, start_date, end_date, status: start_date ? 'confirmed' : 'tbc', id });
     router.back();
   }
 
@@ -90,13 +100,13 @@ export default function CalendarEdit() {
         </Section>
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
-            <Field label="Starts" value={f.start_date ?? ''} onChangeText={(v) => set('start_date', v || null)} placeholder="2026-12-04" keyboardType="numbers-and-punctuation" />
+            <DateField label="Starts" value={start} onChangeText={setStart} />
           </View>
           <View style={{ flex: 1 }}>
-            <Field label="Ends" value={f.end_date ?? ''} onChangeText={(v) => set('end_date', v || null)} placeholder="2026-12-06" keyboardType="numbers-and-punctuation" />
+            <DateField label="Ends" value={end} onChangeText={setEnd} />
           </View>
         </View>
-        {!f.start_date ? (
+        {!start ? (
           <Field label="Roughly when (until dates are set)" value={f.month_hint ?? ''} onChangeText={(v) => set('month_hint', v || null)} placeholder="e.g. October" />
         ) : null}
         <Section title="Region">

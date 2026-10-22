@@ -1,15 +1,16 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
 import { getPerson, joinTeam, leaveTeam, listGamesForPerson, listTeams, personHistory } from '@/db/repo';
-import { displayName, initials, shortDate } from '@/domain/format';
+import { displayName, shortDate } from '@/domain/format';
 import { Button, Card, Chip, Choice, IconButton, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
-import { colors, font, space } from '@/ui/theme';
+import { Avatar } from '@/ui/photo';
+import { space } from '@/ui/theme';
 
 const POS = { handler: 'Handler', cutter: 'Cutter', hybrid: 'Hybrid' } as const;
 const KIND = { core: 'Core', guest: 'Guest', mercenary: 'Mercenary' } as const;
@@ -77,9 +78,9 @@ export default function PlayerProfile() {
       />
       <Screen edges={[]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
-          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.brandTint, alignItems: 'center', justifyContent: 'center' }}>
-            <T style={{ fontFamily: font.bold, fontSize: 26, color: colors.brandDark }}>{initials(name)}</T>
-          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Edit player" onPress={() => router.push({ pathname: '/player/edit', params: { id } })}>
+            <Avatar uri={person.photo_uri} name={name} size={72} tone="tint" />
+          </Pressable>
           <View style={{ flex: 1 }}>
             <T v="heading">{name}</T>
             <T v="small">

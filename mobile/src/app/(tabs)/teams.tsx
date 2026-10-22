@@ -5,8 +5,9 @@ import { ScrollView, TextInput, View } from 'react-native';
 import { REGIONS, regionName } from '@/content/hub';
 import { useData } from '@/db/live';
 import { listTeams } from '@/db/repo';
-import { Button, Choice, EmptyState, Icon, PageTitle, Row, Screen, Section, TeamSwatch } from '@/ui/components';
+import { Button, Choice, EmptyState, Icon, PageTitle, Row, Screen, Section } from '@/ui/components';
 import { MeButton } from '@/ui/me-button';
+import { TeamLogo } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
 export default function Teams() {
@@ -68,7 +69,7 @@ export default function Teams() {
                     key={t.id}
                     title={t.name}
                     subtitle={[t.city, t.region ? regionName(t.region) : null].filter(Boolean).join(' · ')}
-                    left={<TeamSwatch color={t.primary_color} />}
+                    left={<TeamLogo uri={t.logo_uri} color={t.primary_color} size={32} />}
                     onPress={() => router.push(`/team/${t.id}`)}
                   />
                 ))}

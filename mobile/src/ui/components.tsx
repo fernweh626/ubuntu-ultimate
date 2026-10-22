@@ -18,6 +18,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { maskDmy } from '@/domain/format';
+
 import { colors, DEFAULT_TEAM_COLOR, font, radius, space, TOUCH } from './theme';
 
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -430,6 +432,33 @@ export function Field({
       />
       {hint ? <T v="small">{hint}</T> : null}
     </View>
+  );
+}
+
+/** dd/mm/yyyy text field: digits only, slashes added as you type. Convert with dmyToIso on save. */
+export function DateField({
+  label,
+  value,
+  onChangeText,
+  hint,
+  placeholder = 'dd/mm/yyyy',
+}: {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  hint?: string;
+  placeholder?: string;
+}) {
+  return (
+    <Field
+      label={label}
+      value={value}
+      onChangeText={(t) => onChangeText(maskDmy(t))}
+      placeholder={placeholder}
+      keyboardType="number-pad"
+      maxLength={10}
+      hint={hint}
+    />
   );
 }
 

@@ -1,13 +1,14 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
-import { clearPrivateField, getPersonForEdit, savePerson, type PersonForEdit, type PersonInput } from '@/db/repo';
+import { clearPrivateField, getPersonForEdit, savePerson, setPersonPhoto, type PersonForEdit, type PersonInput } from '@/db/repo';
 import type { Gender, Position } from '@/db/types';
-import { isMinor } from '@/domain/format';
-import { Button, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
-import { space } from '@/ui/theme';
+import { dmyToIso, isMinor } from '@/domain/format';
+import { Button, DateField, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
+import { Avatar, deletePhoto, PhotoSheet } from '@/ui/photo';
+import { colors, space } from '@/ui/theme';
 
 export default function PlayerEdit() {
   const { id, teamId } = useLocalSearchParams<{ id?: string; teamId?: string }>();
@@ -17,13 +18,17 @@ export default function PlayerEdit() {
   const [addAnother, setAddAnother] = useState(false);
   // What is on file for email/birth date. The values themselves never come back to the screen.
   const [onFile, setOnFile] = useState<Pick<PersonForEdit, 'has_email' | 'is_minor'> | null>(null);
+  const [dob, setDob] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoSheet, setPhotoSheet] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     getPersonForEdit(db, id).then((p) => {
       if (!p) return;
-      const { has_email, is_minor, ...rest } = p;
+      const { has_email, is_minor, photo_uri, ...rest } = p;
       setF({ ...rest, email: null, birth_date: null });
+      setPhoto(photo_uri);
       setOnFile({ has_email, is_minor });
     });
   }, [db, id]);
@@ -46,10 +51,14 @@ export default function PlayerEdit() {
 
   async function save(another: boolean) {
     if (!f.first_name.trim()) return Alert.alert('Add a first name');
-    if (f.birth_date && !/^\d{4}-\d{2}-\d{2}$/.test(f.birth_date)) return Alert.alert('Birth date should look like 2001-06-30');
-    await savePerson(db, { ...f, id }, teamId && !id ? { teamId, kind, jersey: f.preferred_number ?? null } : undefined);
+    const birth = dob ? dmyToIso(dob) : null;
+    if (dob && !birth) return Alert.alert('Check the birth date', 'Use dd/mm/yyyy, for example 30/06/2001.');
+    const savedId = await savePerson(db, { ...f, birth_date: birth, id }, teamId && !id ? { teamId, kind, jersey: f.preferred_number ?? null } : undefined);
+    if (!id && photo) await setPersonPhoto(db, savedId, photo);
     if (another) {
       setF({ first_name: '', last_name: '', gender: f.gender, position: null });
+      setDob('');
+      setPhoto(null);
       setAddAnother(true);
       return;
     }
@@ -70,6 +79,16 @@ export default function PlayerEdit() {
           </Footer>
         }>
         {addAnother ? <T v="small">Saved. Add the next player, or tap Save when you’re done.</T> : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={photo ? 'Change photo' : 'Add a photo'}
+          onPress={() => setPhotoSheet(true)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
+          <Avatar uri={photo} name={`${f.first_name || '?'} ${f.last_name}`} size={72} tone="tint" />
+          <T v="bodyStrong" style={{ color: colors.brand }}>
+            {photo ? 'Change photo' : 'Add a photo'}
+          </T>
+        </Pressable>
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <Field label="First name" value={f.first_name} onChangeText={(v) => set('first_name', v)} autoFocus={!id} />
@@ -121,14 +140,13 @@ export default function PlayerEdit() {
             />
           </Section>
         ) : null}
-        <Field
+        <DateField
           label={onFile?.is_minor != null ? 'Birth date (on file — type to replace)' : 'Birth date (optional)'}
-          value={f.birth_date ?? ''}
-          onChangeText={(v) => set('birth_date', v || null)}
-          placeholder={onFile?.is_minor != null ? (onFile.is_minor ? 'On file · under 18' : 'On file · 18 or older') : '2001-06-30'}
-          keyboardType="numbers-and-punctuation"
+          value={dob}
+          onChangeText={setDob}
+          placeholder={onFile?.is_minor != null ? (onFile.is_minor ? 'On file · under 18' : 'On file · 18 or older') : 'dd/mm/yyyy'}
           hint={
-            isMinor(f.birth_date) || (!f.birth_date && onFile?.is_minor)
+            isMinor(dmyToIso(dob)) || (!dob && onFile?.is_minor)
               ? 'Under 18: shown publicly as first name and surname initial only.'
               : 'Used for age divisions. Nobody can read it back — only the age group is shown.'
           }
@@ -145,6 +163,26 @@ export default function PlayerEdit() {
         />
         {onFile?.has_email ? <Button label="Remove email" kind="ghost" onPress={() => clear('email')} style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }} /> : null}
       </Screen>
+      <PhotoSheet
+        visible={photoSheet}
+        onClose={() => setPhotoSheet(false)}
+        title="Profile photo"
+        hasPhoto={!!photo}
+        fileName={`person-${id ?? 'new'}`}
+        note="Photos are kept on this phone for now and appear on your profile and team rosters."
+        onPicked={async (uri) => {
+          if (id) {
+            deletePhoto(photo);
+            await setPersonPhoto(db, id, uri);
+          }
+          setPhoto(uri);
+        }}
+        onRemove={async () => {
+          deletePhoto(photo);
+          if (id) await setPersonPhoto(db, id, null);
+          setPhoto(null);
+        }}
+      />
     </>
   );
 }

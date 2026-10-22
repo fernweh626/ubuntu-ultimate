@@ -1,14 +1,16 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Alert, Linking, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Linking, Pressable, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
 import { loadFinishedGames, teamAggregate } from '@/db/reports';
-import { deleteTeam, getTeam, listGamesForTeam, roster, savedLines } from '@/db/repo';
+import { deleteTeam, getTeam, listGamesForTeam, roster, savedLines, setTeamLogo } from '@/db/repo';
 import { displayName, pct, round1 } from '@/domain/format';
-import { Button, Card, Chip, EmptyState, IconButton, Row, Screen, Section, StatTile, T, TeamSwatch } from '@/ui/components';
+import { Button, Card, Chip, EmptyState, Icon, IconButton, Row, Screen, Section, StatTile, T } from '@/ui/components';
 import { FormDots, GameCard } from '@/ui/game-bits';
+import { Avatar, deletePhoto, PhotoSheet, TeamLogo } from '@/ui/photo';
 import { colors, space } from '@/ui/theme';
 
 const KIND_LABEL = { core: 'Core', guest: 'Guest', mercenary: 'Mercenary' } as const;
@@ -28,6 +30,7 @@ export default function TeamPage() {
   const lines = useData((d) => savedLines(d, id), [id]);
   const games = useData((d) => listGamesForTeam(d, id), [id]);
   const loaded = useData(async (d) => loadFinishedGames(d, await listGamesForTeam(d, id)), [id]);
+  const [logoSheet, setLogoSheet] = useState(false);
 
   if (!team) return <Screen edges={[]}>{null}</Screen>;
   const agg = loaded ? teamAggregate(id, loaded) : null;
@@ -62,7 +65,14 @@ export default function TeamPage() {
       />
       <Screen edges={[]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-          <TeamSwatch color={team.primary_color} size="lg" />
+          <Pressable accessibilityRole="button" accessibilityLabel={team.logo_uri ? 'Change logo' : 'Add a logo'} onPress={() => setLogoSheet(true)}>
+            <TeamLogo uri={team.logo_uri} color={team.primary_color} size={56} />
+            {!team.logo_uri ? (
+              <View style={{ position: 'absolute', right: -4, bottom: -4, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                <Icon name="camera-plus-outline" size={16} />
+              </View>
+            ) : null}
+          </Pressable>
           <View style={{ flex: 1 }}>
             <T v="heading">{team.name}</T>
             <T v="small">{[team.city, team.region ? regionName(team.region) : null].filter(Boolean).join(' · ')}</T>
@@ -138,6 +148,7 @@ export default function TeamPage() {
                   title={`${displayName(p)}${p.jersey_number ? `  #${p.jersey_number}` : ''}`}
                   subtitle={[p.gender === 'W' ? 'Woman' : p.gender === 'M' ? 'Man' : null, p.position ? POS[p.position] : null].filter(Boolean).join(' · ')}
                   right={p.membership_kind !== 'core' ? <Chip label={KIND_LABEL[p.membership_kind]} tone="warn" /> : undefined}
+                  left={<Avatar uri={p.photo_uri} name={displayName(p)} size={36} tone="tint" />}
                   onPress={() => router.push(`/player/${p.id}`)}
                 />
               ))}
@@ -176,6 +187,21 @@ export default function TeamPage() {
           {games && games.length ? games.slice(0, 10).map((g) => <GameCard key={g.id} g={g} />) : <T v="small">No games yet.</T>}
         </Section>
       </Screen>
+      <PhotoSheet
+        visible={logoSheet}
+        onClose={() => setLogoSheet(false)}
+        title="Team logo"
+        hasPhoto={!!team.logo_uri}
+        fileName={`team-${id}`}
+        onPicked={async (uri) => {
+          deletePhoto(team.logo_uri);
+          await setTeamLogo(db, id, uri);
+        }}
+        onRemove={async () => {
+          deletePhoto(team.logo_uri);
+          await setTeamLogo(db, id, null);
+        }}
+      />
     </>
   );
 }

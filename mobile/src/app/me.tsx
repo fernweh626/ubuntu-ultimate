@@ -7,8 +7,9 @@ import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
 import { getMe, listGamesForPerson, listPeople, myRoles, savePerson, setMeId, setMembershipRole, type MyRole } from '@/db/repo';
 import type { Gender } from '@/db/types';
-import { displayName, initials } from '@/domain/format';
+import { displayName } from '@/domain/format';
 import { Button, Card, Chip, Choice, Field, Icon, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
+import { Avatar } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
 const ROLE_LABEL: Record<MyRole['role'], string> = {
@@ -46,9 +47,7 @@ export default function Me() {
       <Stack.Screen options={{ title: 'Me' }} />
       <Screen edges={[]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
-          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' }}>
-            <T style={{ fontFamily: font.bold, fontSize: 26, color: '#fff' }}>{initials(`${me.first_name} ${me.last_name}`)}</T>
-          </View>
+          <Avatar uri={me.photo_uri} name={`${me.first_name} ${me.last_name}`} size={72} />
           <View style={{ flex: 1 }}>
             <T v="heading">{displayName(me)}</T>
             <T v="small">{[me.preferred_number ? `#${me.preferred_number}` : null, me.position ? me.position[0].toUpperCase() + me.position.slice(1) : null].filter(Boolean).join(' · ') || 'Add your number and position'}</T>
