@@ -2,6 +2,7 @@ import { router, type Href } from 'expo-router';
 import { View } from 'react-native';
 
 import { Card, Icon, PageTitle, Screen, T, type IconName } from '@/ui/components';
+import { MeButton } from '@/ui/me-button';
 import { colors, space } from '@/ui/theme';
 
 const TILES: { title: string; body: string; icon: IconName; href: Href }[] = [
@@ -16,7 +17,7 @@ const TILES: { title: string; body: string; icon: IconName; href: Href }[] = [
 export default function Hub() {
   return (
     <Screen>
-      <PageTitle title="Hub" subtitle="Everything about ultimate in South Africa" />
+      <PageTitle title="Hub" subtitle="Everything about ultimate in South Africa" right={<MeButton />} />
       <View style={{ gap: space.sm }}>
         {TILES.map((t) => (
           <Card key={t.title} onPress={() => router.push(t.href)} style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>

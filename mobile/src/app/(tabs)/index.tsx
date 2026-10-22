@@ -6,6 +6,7 @@ import { useData } from '@/db/live';
 import { DAYS_LONG, dateRange, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, Section, Screen, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
+import { MeButton } from '@/ui/me-button';
 import { colors, font, space } from '@/ui/theme';
 
 export default function Home() {
@@ -27,6 +28,7 @@ export default function Home() {
           <T style={{ fontFamily: font.display, fontSize: 30, lineHeight: 34, letterSpacing: 0.5 }}>SA ULTIMATE</T>
           <T v="small">{DAYS_LONG[today]} · built for the South African ultimate community</T>
         </View>
+        <MeButton />
       </View>
 
       {live.length > 0 ? (

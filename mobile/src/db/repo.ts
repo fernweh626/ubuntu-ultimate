@@ -55,6 +55,56 @@ export async function deviceId(db: SQLiteDatabase) {
   return id;
 }
 
+/* ---------------- Me (who is using this phone) ---------------- */
+
+// Until sign-in exists, "me" is just the player this phone's owner picked. Accounts will replace it.
+export async function getMeId(db: SQLiteDatabase) {
+  const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_person_id'`);
+  return row?.value ?? null;
+}
+
+export function setMeId(db: SQLiteDatabase, personId: string | null) {
+  return write(db, async () => {
+    if (personId) {
+      await db.runAsync(
+        `INSERT INTO app_meta (key, value) VALUES ('me_person_id', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        personId,
+      );
+    } else {
+      await db.runAsync(`DELETE FROM app_meta WHERE key = 'me_person_id'`);
+    }
+  });
+}
+
+export async function getMe(db: SQLiteDatabase) {
+  const id = await getMeId(db);
+  return id ? getPerson(db, id) : null;
+}
+
+export type MyRole = { team_id: string; team_name: string; primary_color: string | null; role: RosterEntry['role']; kind: 'core' | 'guest' | 'mercenary' };
+
+export function myRoles(db: SQLiteDatabase, personId: string) {
+  return db.getAllAsync<MyRole>(
+    `SELECT m.team_id, t.name AS team_name, t.primary_color, m.role, m.kind
+       FROM membership m JOIN team t ON t.id = m.team_id
+      WHERE m.person_id = ? AND m.deleted_at IS NULL AND m.end_date IS NULL AND t.deleted_at IS NULL
+      ORDER BY t.name`,
+    personId,
+  );
+}
+
+export function setMembershipRole(db: SQLiteDatabase, personId: string, teamId: string, role: RosterEntry['role']) {
+  return write(db, () =>
+    db.runAsync(
+      `UPDATE membership SET role = ?, updated_at = ? WHERE person_id = ? AND team_id = ? AND end_date IS NULL AND deleted_at IS NULL`,
+      role,
+      now(),
+      personId,
+      teamId,
+    ),
+  );
+}
+
 /* ---------------- Teams & people ---------------- */
 
 export function listTeams(db: SQLiteDatabase) {

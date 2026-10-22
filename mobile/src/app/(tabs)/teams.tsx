@@ -6,6 +6,7 @@ import { REGIONS, regionName } from '@/content/hub';
 import { useData } from '@/db/live';
 import { listTeams } from '@/db/repo';
 import { Button, Choice, EmptyState, Icon, PageTitle, Row, Screen, Section, TeamSwatch } from '@/ui/components';
+import { MeButton } from '@/ui/me-button';
 import { colors, font, space } from '@/ui/theme';
 
 export default function Teams() {
@@ -32,7 +33,12 @@ export default function Teams() {
         <PageTitle
           title="Teams"
           subtitle="Clubs across South Africa, rosters and contacts"
-          right={<Button label="Add" icon="plus" onPress={() => router.push('/team/edit')} />}
+          right={
+            <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
+              <Button label="Add" icon="plus" onPress={() => router.push('/team/edit')} />
+              <MeButton />
+            </View>
+          }
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
           <Icon name="magnify" color={colors.muted} />

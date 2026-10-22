@@ -7,6 +7,7 @@ import { listEvents, listGames } from '@/db/repo';
 import { dateRange } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, PageTitle, Screen, Section, Segmented, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
+import { MeButton } from '@/ui/me-button';
 import { space } from '@/ui/theme';
 
 const KIND_LABEL: Record<string, string> = {
@@ -27,7 +28,7 @@ export default function Play() {
 
   return (
     <Screen>
-      <PageTitle title="Games" subtitle="Score games, run tournaments and leagues" />
+      <PageTitle title="Games" subtitle="Score games, run tournaments and leagues" right={<MeButton />} />
       <Segmented
         value={tab}
         onChange={setTab}
