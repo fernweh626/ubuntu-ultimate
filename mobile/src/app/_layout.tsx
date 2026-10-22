@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { migrate } from '@/db/schema';
 import { seedIfEmpty } from '@/db/seed';
+import { SyncManager } from '@/db/sync-manager';
 import { colors, font } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -50,6 +51,7 @@ export default function RootLayout() {
     <ThemeProvider value={theme}>
       <StatusBar style="dark" />
       <SQLiteProvider databaseName="sa-ultimate.db" onInit={init}>
+        <SyncManager />
         <Stack
           screenOptions={{
             headerTitleStyle: { fontFamily: font.bold, fontSize: 18 },

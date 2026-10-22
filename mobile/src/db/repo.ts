@@ -98,7 +98,7 @@ export function setTestLevel(db: SQLiteDatabase, level: Exclude<Level, 'staff'>)
   );
 }
 
-export type Access = { level: Level; meId: string | null; staffTeamIds: string[] };
+export type Access = { level: Level; meId: string | null; staffTeamIds: string[]; signedIn: boolean };
 
 /**
  * What the person using this phone may do. Local stand-in until accounts: team staff = holds a captain/
@@ -114,9 +114,17 @@ export async function getAccess(db: SQLiteDatabase): Promise<Access> {
       )
     : [];
   const staffTeamIds = staff.map((s) => s.team_id);
-  const test = await getTestLevel(db);
-  const level: Level = staffTeamIds.length && LEVEL_RANK.staff > LEVEL_RANK[test] ? 'staff' : test;
-  return { level, meId, staffTeamIds };
+  const signedIn = !!(await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'signed_in'`));
+  // Signed in: levels come from the server (role_grant, synced). Signed out: the test switch in Me.
+  let granted: Level = 'player';
+  if (signedIn && meId) {
+    const rows = await db.getAllAsync<{ level: Level }>(`SELECT level FROM role_grant WHERE person_id = ?`, meId);
+    for (const r of rows) if (LEVEL_RANK[r.level] > LEVEL_RANK[granted]) granted = r.level;
+  } else {
+    granted = await getTestLevel(db);
+  }
+  const level: Level = staffTeamIds.length && LEVEL_RANK.staff > LEVEL_RANK[granted] ? 'staff' : granted;
+  return { level, meId, staffTeamIds, signedIn };
 }
 
 export type MyRole = { team_id: string; team_name: string; primary_color: string | null; role: RosterEntry['role']; kind: 'core' | 'guest' | 'mercenary' };

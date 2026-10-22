@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { SEED_CLUBS } from '@/content/hub';
 
 import { now, uuid } from './repo';
+import { seedId } from './seed-ids';
 
 const CLUB_COLORS: Record<string, string> = {
   'Chilli Legends': '#BF0000',
@@ -94,12 +95,14 @@ export async function seedIfEmpty(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM team`);
   if ((row?.n ?? 0) > 0) return;
   const ts = now();
+  // Starting data isn't a local change: keep it out of the sync outbox (the server has its own copy).
+  await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sync_pulling', '1')`);
   await db.withTransactionAsync(async () => {
     for (const c of SEED_CLUBS) {
       await db.runAsync(
         `INSERT INTO team (id, name, short_name, kind, region, city, primary_color, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        uuid(),
+        await seedId('team', c.name),
         c.name,
         c.short,
         c.name.startsWith('UCT') || c.name.startsWith('Wits') || c.name.startsWith('Maties') ? 'university' : 'club',
@@ -153,7 +156,7 @@ export async function seedIfEmpty(db: SQLiteDatabase) {
     for (const [name, city, lat, lng] of VENUES) {
       await db.runAsync(
         `INSERT INTO venue (id, name, city, latitude, longitude, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        uuid(),
+        await seedId('venue', name),
         name,
         city,
         lat,
@@ -167,7 +170,7 @@ export async function seedIfEmpty(db: SQLiteDatabase) {
         `INSERT INTO calendar_entry (id, name, kind, level, region, location, start_date, end_date, month_hint, status,
            notes, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        uuid(),
+        await seedId('calendar', c.name),
         c.name,
         c.kind,
         c.level,
@@ -198,4 +201,5 @@ export async function seedIfEmpty(db: SQLiteDatabase) {
       );
     }
   });
+  await db.runAsync(`DELETE FROM app_meta WHERE key = 'sync_pulling'`);
 }

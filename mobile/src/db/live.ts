@@ -6,6 +6,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 let version = 0;
 const listeners = new Set<() => void>();
 
+/** Subscribe to "something was written" (used by background sync). Returns an unsubscribe function. */
+export function onChanged(cb: () => void) {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
+}
+
 export function notifyChanged() {
   version += 1;
   listeners.forEach((l) => l());
