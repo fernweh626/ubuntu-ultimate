@@ -424,7 +424,7 @@ export function Field({
 }: TextInputProps & { label: string; hint?: string }) {
   return (
     <View style={{ gap: 6 }}>
-      <T v="smallStrong">{label}</T>
+      {label ? <T v="smallStrong">{label}</T> : null}
       <TextInput
         placeholderTextColor={colors.faint}
         {...input}

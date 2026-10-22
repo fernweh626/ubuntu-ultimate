@@ -302,6 +302,57 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_game_status_log_game ON game_status_log(game_id);
   `,
+  // v5: practices/pickups as sessions, post-session reflections, shout-outs
+  `
+  CREATE TABLE session (
+    id TEXT PRIMARY KEY NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('practice','pickup','other')),
+    team_id TEXT REFERENCES team(id),
+    title TEXT,
+    started_at TEXT NOT NULL,
+    duration_min INTEGER NOT NULL,
+    venue_id TEXT REFERENCES venue(id),
+    created_by_id TEXT REFERENCES person(id),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+
+  -- One per person per game/session. Load and wellbeing numbers are columns so they can be summed;
+  -- everything else is in answers_json. Visible to the person and to staff of the team only.
+  CREATE TABLE reflection (
+    id TEXT PRIMARY KEY NOT NULL,
+    person_id TEXT NOT NULL REFERENCES person(id),
+    team_id TEXT REFERENCES team(id),
+    game_id TEXT REFERENCES game(id),
+    session_id TEXT REFERENCES session(id),
+    kind TEXT NOT NULL CHECK (kind IN ('game','practice','pickup')),
+    minutes INTEGER,
+    rpe INTEGER CHECK (rpe BETWEEN 1 AND 10),
+    self_rating INTEGER CHECK (self_rating BETWEEN 1 AND 5),
+    playing_time TEXT CHECK (playing_time IN ('too_little','right','too_much')),
+    niggle_area TEXT,
+    niggle_severity TEXT CHECK (niggle_severity IN ('mild','moderate','bad')),
+    answers_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (person_id, game_id),
+    UNIQUE (person_id, session_id)
+  );
+  CREATE INDEX idx_reflection_person ON reflection(person_id, created_at);
+
+  -- Visible to everyone on that team's squad, never public.
+  CREATE TABLE shoutout (
+    id TEXT PRIMARY KEY NOT NULL,
+    from_person_id TEXT NOT NULL REFERENCES person(id),
+    to_person_id TEXT NOT NULL REFERENCES person(id),
+    team_id TEXT REFERENCES team(id),
+    game_id TEXT REFERENCES game(id),
+    session_id TEXT REFERENCES session(id),
+    reason TEXT,
+    created_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

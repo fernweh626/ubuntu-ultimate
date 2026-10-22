@@ -5,13 +5,13 @@ import { Alert, Linking, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
-import { END_REASONS, statusLog, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
+import { END_REASONS, reflectionsFor, statusLog, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
 import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, timeOfDay } from '@/domain/format';
 import { STATUS_REASONS } from '@/domain/fixtures';
 import { computeGameStats, type TeamGameStats } from '@/domain/stats';
 import { weatherLine, type Weather } from '@/domain/weather';
 import { Bars, ScoreProgression } from '@/ui/charts';
-import { Button, Card, Chip, Field, IconButton, RatioBadge, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
+import { Button, Card, Chip, Field, Icon, IconButton, RatioBadge, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
 import { colors, font, space } from '@/ui/theme';
@@ -31,7 +31,7 @@ export default function GameReport() {
         spiritForGame(d, id),
       ]);
       const people = await peopleById(d, data.players.map((p) => p.person_id));
-      return { data, ta: ta!, tb: tb!, event, venue, spirit, people, access: await getAccess(d), log: await statusLog(d, id) };
+      return { data, ta: ta!, tb: tb!, event, venue, spirit, people, access: await getAccess(d), log: await statusLog(d, id), reflections: await reflectionsFor(d, { gameId: id }) };
     },
     [id],
   );
@@ -42,7 +42,10 @@ export default function GameReport() {
   const [menu, setMenu] = useState(false);
 
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
-  const { data, ta, tb, event, venue, spirit, people, access, log } = bundle;
+  const { data, ta, tb, event, venue, spirit, people, access, log, reflections } = bundle;
+  const myGame = access.meId ? data.players.find((p) => p.person_id === access.meId && p.confirmation !== 'removed') : null;
+  const myReflection = access.meId ? reflections.find((r) => r.person_id === access.meId) : null;
+  const staffHere = [ta, tb].filter((t) => access.level === 'admin' || access.staffTeamIds.includes(t.id));
   const forfeit = data.game.forfeit_team_id ? log.find((l) => l.action === 'forfeit') : null;
   const { game } = data;
   const stats = computeGameStats(data);
@@ -167,6 +170,28 @@ export default function GameReport() {
           )}
         </View>
         {!final ? <Button label="Back to scoring" icon="whistle" onPress={() => router.replace(`/game/${id}`)} /> : null}
+        {final && myGame && !data.game.forfeit_team_id ? (
+          <Card onPress={() => router.push({ pathname: '/reflect', params: { gameId: id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, borderColor: myReflection ? colors.border : colors.brand, borderWidth: myReflection ? 1 : 2 }}>
+            <Icon name={myReflection ? 'check-circle' : 'comment-question-outline'} color={colors.brand} />
+            <View style={{ flex: 1 }}>
+              <T v="bodyStrong">{myReflection ? 'You answered — tap to change' : 'How was it for you?'}</T>
+              <T v="small">About a minute. Goes to your team’s staff and your log.</T>
+            </View>
+          </Card>
+        ) : null}
+        {final
+          ? staffHere.map((t) => {
+              const n = reflections.filter((r) => r.team_id === t.id).length;
+              return (
+                <Button
+                  key={t.id}
+                  label={`${t.name} debrief · ${n} repl${n === 1 ? 'y' : 'ies'}`}
+                  icon="clipboard-text-outline"
+                  onPress={() => router.push({ pathname: '/debrief', params: { gameId: id, teamId: t.id } })}
+                />
+              );
+            })
+          : null}
 
         <Section title="Score progression">
           <Card>

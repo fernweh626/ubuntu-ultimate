@@ -5,6 +5,7 @@ import { otherTeam, type GameData } from '@/domain/engine';
 import { byFirstName, isMinor } from '@/domain/format';
 import { LEVEL_RANK, type Level } from '@/domain/permissions';
 import { canPostpone, type StatusReason } from '@/domain/fixtures';
+import type { Answers, NiggleSeverity, PlayingTime, ReflectionKind, ReflectionRow } from '@/domain/reflection';
 import { parseRules, ratioForPoint, type Rules } from '@/domain/rules';
 
 import { notifyChanged } from './live';
@@ -1285,4 +1286,244 @@ export function saveCalendarEntry(db: SQLiteDatabase, c: Omit<CalendarEntry, 'id
 
 export function deleteCalendarEntry(db: SQLiteDatabase, id: string) {
   return write(db, () => db.runAsync(`UPDATE calendar_entry SET deleted_at = ? WHERE id = ?`, now(), id));
+}
+
+/* ---------------- Sessions (practices, pickups) ---------------- */
+
+export type SessionRow = {
+  id: string;
+  kind: 'practice' | 'pickup' | 'other';
+  team_id: string | null;
+  title: string | null;
+  started_at: string;
+  duration_min: number;
+  venue_id: string | null;
+  created_by_id: string | null;
+};
+
+export function createSession(
+  db: SQLiteDatabase,
+  s: { kind: SessionRow['kind']; teamId: string | null; title: string | null; startedAt: string; durationMin: number; venueId: string | null; createdById: string | null },
+) {
+  return write(db, async () => {
+    const id = uuid();
+    const ts = now();
+    await db.runAsync(
+      `INSERT INTO session (id, kind, team_id, title, started_at, duration_min, venue_id, created_by_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      s.kind,
+      s.teamId,
+      s.title,
+      s.startedAt,
+      s.durationMin,
+      s.venueId,
+      s.createdById,
+      ts,
+      ts,
+    );
+    return id;
+  });
+}
+
+export function getSession(db: SQLiteDatabase, id: string) {
+  return db.getFirstAsync<SessionRow>(`SELECT * FROM session WHERE id = ?`, id);
+}
+
+export function sessionsForTeam(db: SQLiteDatabase, teamId: string) {
+  return db.getAllAsync<SessionRow>(`SELECT * FROM session WHERE team_id = ? AND deleted_at IS NULL ORDER BY started_at DESC`, teamId);
+}
+
+/* ---------------- Reflections & shout-outs ---------------- */
+
+export type ReflectionInput = {
+  personId: string;
+  teamId: string | null;
+  gameId: string | null;
+  sessionId: string | null;
+  kind: ReflectionKind;
+  minutes: number | null;
+  rpe: number | null;
+  selfRating: number | null;
+  playingTime: PlayingTime | null;
+  niggleArea: string | null;
+  niggleSeverity: NiggleSeverity | null;
+  answers: Answers;
+};
+
+export function getMyReflection(db: SQLiteDatabase, personId: string, target: { gameId?: string; sessionId?: string }) {
+  return target.gameId
+    ? db.getFirstAsync<ReflectionRow>(`SELECT * FROM reflection WHERE person_id = ? AND game_id = ?`, personId, target.gameId)
+    : db.getFirstAsync<ReflectionRow>(`SELECT * FROM reflection WHERE person_id = ? AND session_id = ?`, personId, target.sessionId!);
+}
+
+export function saveReflection(db: SQLiteDatabase, r: ReflectionInput) {
+  return write(db, async () => {
+    const existing = r.gameId
+      ? await db.getFirstAsync<{ id: string }>(`SELECT id FROM reflection WHERE person_id = ? AND game_id = ?`, r.personId, r.gameId)
+      : await db.getFirstAsync<{ id: string }>(`SELECT id FROM reflection WHERE person_id = ? AND session_id = ?`, r.personId, r.sessionId);
+    const ts = now();
+    const values = [r.teamId, r.minutes, r.rpe, r.selfRating, r.playingTime, r.niggleArea, r.niggleSeverity, JSON.stringify(r.answers)];
+    if (existing) {
+      await db.runAsync(
+        `UPDATE reflection SET team_id = ?, minutes = ?, rpe = ?, self_rating = ?, playing_time = ?, niggle_area = ?,
+           niggle_severity = ?, answers_json = ?, updated_at = ? WHERE id = ?`,
+        ...values,
+        ts,
+        existing.id,
+      );
+      return existing.id;
+    }
+    const id = uuid();
+    await db.runAsync(
+      `INSERT INTO reflection (id, person_id, game_id, session_id, kind, team_id, minutes, rpe, self_rating, playing_time,
+         niggle_area, niggle_severity, answers_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      r.personId,
+      r.gameId,
+      r.sessionId,
+      r.kind,
+      ...values,
+      ts,
+      ts,
+    );
+    return id;
+  });
+}
+
+/** Reflections for a game or session, optionally only one team's (what that team's staff may read). */
+export function reflectionsFor(db: SQLiteDatabase, target: { gameId?: string; sessionId?: string }, teamId?: string) {
+  const col = target.gameId ? 'game_id' : 'session_id';
+  const id = target.gameId ?? target.sessionId!;
+  return teamId
+    ? db.getAllAsync<ReflectionRow>(`SELECT * FROM reflection WHERE ${col} = ? AND team_id = ? ORDER BY created_at`, id, teamId)
+    : db.getAllAsync<ReflectionRow>(`SELECT * FROM reflection WHERE ${col} = ? ORDER BY created_at`, id);
+}
+
+export function saveShoutout(
+  db: SQLiteDatabase,
+  s: { fromId: string; toId: string; teamId: string | null; gameId: string | null; sessionId: string | null; reason: string | null },
+) {
+  return write(db, async () => {
+    // One shout-out per person per game/session: replace any earlier one.
+    await db.runAsync(
+      `DELETE FROM shoutout WHERE from_person_id = ? AND COALESCE(game_id, '') = COALESCE(?, '') AND COALESCE(session_id, '') = COALESCE(?, '')`,
+      s.fromId,
+      s.gameId,
+      s.sessionId,
+    );
+    await db.runAsync(
+      `INSERT INTO shoutout (id, from_person_id, to_person_id, team_id, game_id, session_id, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      uuid(),
+      s.fromId,
+      s.toId,
+      s.teamId,
+      s.gameId,
+      s.sessionId,
+      s.reason,
+      now(),
+    );
+  });
+}
+
+export type ShoutoutRow = { id: string; from_person_id: string; to_person_id: string; reason: string | null; created_at: string; game_id: string | null; session_id: string | null };
+
+export function shoutoutsForTeam(db: SQLiteDatabase, teamId: string, limit = 10) {
+  return db.getAllAsync<ShoutoutRow>(`SELECT * FROM shoutout WHERE team_id = ? ORDER BY created_at DESC LIMIT ?`, teamId, limit);
+}
+
+export function myShoutout(db: SQLiteDatabase, fromId: string, target: { gameId?: string; sessionId?: string }) {
+  return db.getFirstAsync<ShoutoutRow>(
+    `SELECT * FROM shoutout WHERE from_person_id = ? AND COALESCE(game_id, '') = ? AND COALESCE(session_id, '') = ?`,
+    fromId,
+    target.gameId ?? '',
+    target.sessionId ?? '',
+  );
+}
+
+/* ---------------- Personal log ---------------- */
+
+export type LogEntry = {
+  key: string;
+  kind: 'game' | 'practice' | 'pickup' | 'other';
+  date: string;
+  title: string;
+  minutes: number;
+  rpe: number | null;
+  gameId: string | null;
+  sessionId: string | null;
+  reflected: boolean;
+};
+
+/**
+ * Everything someone has played: finished games they were on the line for (minutes = the points they
+ * played), plus practices and pickups they logged.
+ */
+export async function personLog(db: SQLiteDatabase, personId: string): Promise<LogEntry[]> {
+  const games = await db.getAllAsync<{ id: string; date: string; a: string; b: string; seconds: number | null; rpe: number | null; reflected: number }>(
+    `SELECT g.id, COALESCE(g.started_at, g.scheduled_at, g.created_at) AS date, ta.name AS a, tb.name AS b,
+            (SELECT SUM((julianday(p.scored_at) - julianday(p.pulled_at)) * 86400)
+               FROM point p JOIN point_player pp ON pp.point_id = p.id
+              WHERE p.game_id = g.id AND pp.person_id = gp.person_id AND p.pulled_at IS NOT NULL AND p.scored_at IS NOT NULL) AS seconds,
+            r.rpe, r.id IS NOT NULL AS reflected
+       FROM game_player gp
+       JOIN game g ON g.id = gp.game_id
+       JOIN team ta ON ta.id = g.team_a_id
+       JOIN team tb ON tb.id = g.team_b_id
+       LEFT JOIN reflection r ON r.game_id = g.id AND r.person_id = gp.person_id
+      WHERE gp.person_id = ? AND g.status = 'final' AND g.deleted_at IS NULL AND g.forfeit_team_id IS NULL
+        AND gp.confirmation != 'removed'`,
+    personId,
+  );
+  const sessions = await db.getAllAsync<{ id: string; kind: LogEntry['kind']; date: string; title: string | null; team: string | null; minutes: number | null; duration_min: number; rpe: number | null }>(
+    `SELECT s.id, s.kind, s.started_at AS date, s.title, t.name AS team, r.minutes, s.duration_min, r.rpe
+       FROM reflection r JOIN session s ON s.id = r.session_id LEFT JOIN team t ON t.id = s.team_id
+      WHERE r.person_id = ? AND s.deleted_at IS NULL`,
+    personId,
+  );
+  return [
+    ...games
+      .filter((g) => (g.seconds ?? 0) > 0)
+      .map((g) => ({
+        key: `g-${g.id}`,
+        kind: 'game' as const,
+        date: g.date,
+        title: `${g.a} v ${g.b}`,
+        minutes: Math.round((g.seconds ?? 0) / 60),
+        rpe: g.rpe,
+        gameId: g.id,
+        sessionId: null,
+        reflected: !!g.reflected,
+      })),
+    ...sessions.map((s) => ({
+      key: `s-${s.id}`,
+      kind: s.kind,
+      date: s.date,
+      title: s.title || (s.kind === 'practice' ? `${s.team ?? 'Team'} practice` : s.kind === 'pickup' ? 'Pickup' : 'Session'),
+      minutes: s.minutes ?? s.duration_min,
+      rpe: s.rpe,
+      gameId: null,
+      sessionId: s.id,
+      reflected: true,
+    })),
+  ].sort((x, y) => y.date.localeCompare(x.date));
+}
+
+/** Effort × minutes per person from sessions and games they reflected on in the last `hours`. */
+export async function recentLoad(db: SQLiteDatabase, personIds: string[], hours = 36) {
+  if (!personIds.length) return new Map<string, number>();
+  const since = new Date(Date.now() - hours * 3_600_000).toISOString();
+  const rows = await db.getAllAsync<{ person_id: string; load: number }>(
+    `SELECT r.person_id, SUM(r.rpe * COALESCE(r.minutes, s.duration_min, 0)) AS load
+       FROM reflection r
+       LEFT JOIN session s ON s.id = r.session_id
+       LEFT JOIN game g ON g.id = r.game_id
+      WHERE r.person_id IN (${personIds.map(() => '?').join(',')}) AND r.rpe IS NOT NULL
+        AND COALESCE(s.started_at, g.started_at, r.created_at) >= ?
+      GROUP BY r.person_id`,
+    ...personIds,
+    since,
+  );
+  return new Map(rows.map((r) => [r.person_id, r.load ?? 0]));
 }

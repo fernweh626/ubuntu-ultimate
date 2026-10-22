@@ -5,12 +5,13 @@ import { Alert, Linking, Pressable, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
-import { loadFinishedGames, teamAggregate } from '@/db/reports';
-import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, setMembershipRole, setTeamLogo } from '@/db/repo';
-import { displayName, pct, round1 } from '@/domain/format';
+import { loadFinishedGames, peopleById, teamAggregate } from '@/db/reports';
+import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, sessionsForTeam, setMembershipRole, setTeamLogo, shoutoutsForTeam } from '@/db/repo';
+import { displayName, pct, round1, shortDate } from '@/domain/format';
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
+import { LogSessionSheet } from '@/ui/log-session';
 import { FormDots, GameCard } from '@/ui/game-bits';
 import { Avatar, deletePhoto, PhotoSheet, TeamLogo } from '@/ui/photo';
 import { colors, space } from '@/ui/theme';
@@ -36,11 +37,19 @@ export default function TeamPage() {
   const games = useData((d) => listGamesForTeam(d, id), [id]);
   const loaded = useData(async (d) => loadFinishedGames(d, await listGamesForTeam(d, id)), [id]);
   const [logoSheet, setLogoSheet] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const practices = useData((d) => sessionsForTeam(d, id), [id]) ?? [];
+  const shouts = useData(async (d) => {
+    const rows = await shoutoutsForTeam(d, id, 8);
+    return { rows, people: await peopleById(d, rows.flatMap((r) => [r.from_person_id, r.to_person_id])) };
+  }, [id]);
 
   if (!team) return <Screen edges={[]}>{null}</Screen>;
   const agg = loaded ? teamAggregate(id, loaded) : null;
   const canManage = !!access && canSetTeamRole(access.level, access.staffTeamIds, id, 'captain');
   const canDelete = !!access && (access.level === 'admin' || access.level === 'coordinator');
+  const isStaffHere = !!access && (access.level === 'admin' || access.staffTeamIds.includes(id));
+  const onSquad = !!access?.meId && !!players?.some((p) => p.id === access.meId);
   const hasContact = team.contact_name || team.contact_phone || team.contact_email || team.website || team.social;
 
   function remove() {
@@ -207,6 +216,48 @@ export default function TeamPage() {
           )}
         </Section>
 
+        {onSquad || isStaffHere ? (
+          <Section
+            title="Practices"
+            action={isStaffHere && access?.meId ? <Button label="Log a practice" icon="plus" kind="ghost" onPress={() => setLogging(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} /> : undefined}>
+            {practices.length ? (
+              practices.slice(0, 5).map((pr) => (
+                <Card key={pr.id}>
+                  <T v="bodyStrong">{pr.title || 'Practice'}</T>
+                  <T v="small">
+                    {shortDate(pr.started_at)} · {pr.duration_min} min
+                  </T>
+                  <View style={{ flexDirection: 'row', gap: space.sm }}>
+                    {onSquad ? <Button label="How was it?" icon="comment-question-outline" onPress={() => router.push({ pathname: '/reflect', params: { sessionId: pr.id } })} style={{ flex: 1 }} /> : null}
+                    {isStaffHere ? <Button label="Debrief" icon="clipboard-text-outline" onPress={() => router.push({ pathname: '/debrief', params: { sessionId: pr.id, teamId: id } })} style={{ flex: 1 }} /> : null}
+                  </View>
+                </Card>
+              ))
+            ) : (
+              <Card>
+                <T v="small">{isStaffHere ? 'Log a practice and the squad can tell you how it went.' : 'No practices logged yet.'}</T>
+              </Card>
+            )}
+          </Section>
+        ) : null}
+
+        {(onSquad || isStaffHere) && shouts?.rows.length ? (
+          <Section title="Shout-outs">
+            {shouts.rows.map((so) => (
+              <Card key={so.id}>
+                <T v="bodyStrong">
+                  🙌 {shouts.people.get(so.to_person_id) ? displayName(shouts.people.get(so.to_person_id)!) : 'Someone'}
+                </T>
+                {so.reason ? <T>“{so.reason}”</T> : null}
+                <T v="small">
+                  from {shouts.people.get(so.from_person_id) ? displayName(shouts.people.get(so.from_person_id)!) : 'a teammate'} · {shortDate(so.created_at)}
+                </T>
+              </Card>
+            ))}
+            <T v="small">Only this squad sees shout-outs.</T>
+          </Section>
+        ) : null}
+
         <Section title="Games">
           {games && games.length ? games.slice(0, 10).map((g) => <GameCard key={g.id} g={g} />) : <T v="small">No games yet.</T>}
         </Section>
@@ -245,6 +296,9 @@ export default function TeamPage() {
           </>
         )}
       </Sheet>
+      {access?.meId ? (
+        <LogSessionSheet visible={logging} onClose={() => setLogging(false)} meId={access.meId} teams={[{ id, name: team.name }]} fixedTeamId={id} />
+      ) : null}
       <PhotoSheet
         visible={logoSheet}
         onClose={() => setLogoSheet(false)}

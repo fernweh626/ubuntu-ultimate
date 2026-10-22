@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
-import { addGamePlayer, getPerson, getTeam, loadGameData, saveLine, savedLines, setLine, setPlayerStatus } from '@/db/repo';
+import { addGamePlayer, getPerson, getTeam, loadGameData, recentLoad, saveLine, savedLines, setLine, setPlayerStatus } from '@/db/repo';
 import type { GamePlayer } from '@/db/types';
 import { deriveState, fitness, lineFor, type Fitness } from '@/domain/engine';
 import { shortName } from '@/domain/format';
@@ -14,6 +14,8 @@ import { QuickAddPlayer } from '@/ui/quick-add-player';
 import { colors, space } from '@/ui/theme';
 
 const LINE_SIZE = 7;
+// Effort × minutes; e.g. a 90-minute practice at effort 5, or an hour at effort 7.
+const HEAVY_LOAD = 420;
 const DOT = { fresh: colors.brand, tiring: colors.warn, tired: colors.danger } as const;
 const POS = { handler: 'H', cutter: 'C', hybrid: 'Hy' } as const;
 
@@ -27,7 +29,9 @@ export default function LineBuilder() {
       const team = await getTeam(d, teamId);
       const people = await peopleById(d, data.players.map((p) => p.person_id));
       const lines = await savedLines(d, teamId);
-      return { data, team: team!, people, lines };
+      // Heavy sessions in the last day and a half (from reflections) count towards fatigue too.
+      const recent = await recentLoad(d, data.players.filter((p) => p.team_id === teamId).map((p) => p.person_id));
+      return { data, team: team!, people, lines, recent };
     },
     [id, teamId],
   );
@@ -118,7 +122,9 @@ export default function LineBuilder() {
     const p = person(pid);
     if (!p) return null;
     const f = fit.get(pid);
-    const level = gp.status === 'tired' ? 'tired' : f?.level ?? 'fresh';
+    const heavy = (bundle!.recent.get(pid) ?? 0) >= HEAVY_LOAD;
+    const base = f?.level ?? 'fresh';
+    const level = gp.status === 'tired' ? 'tired' : heavy && base === 'fresh' ? 'tiring' : base;
     const injured = gp.status === 'injured';
     const subs = on && level !== 'fresh' ? suggestFor(pid) : [];
     return (
@@ -155,7 +161,7 @@ export default function LineBuilder() {
               {gp.jersey_number ? <T v="small"> #{gp.jersey_number}</T> : null}
             </T>
             <T v="small">
-              {[p.gender, (gp.position ?? p.position) ? POS[(gp.position ?? p.position)!] : null, `${f?.pointsPlayed ?? 0} pts`, f?.consecutive ? `${f.consecutive} in a row` : f?.restedPoints ? `rested ${f.restedPoints}` : null, injured ? 'injured' : gp.status === 'tired' ? 'says tired' : null]
+              {[p.gender, (gp.position ?? p.position) ? POS[(gp.position ?? p.position)!] : null, `${f?.pointsPlayed ?? 0} pts`, f?.consecutive ? `${f.consecutive} in a row` : f?.restedPoints ? `rested ${f.restedPoints}` : null, injured ? 'injured' : gp.status === 'tired' ? 'says tired' : heavy ? 'played hard recently' : null]
                 .filter(Boolean)
                 .join(' · ')}
             </T>

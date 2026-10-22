@@ -13,6 +13,7 @@ import {
   listGamesForPerson,
   listPeople,
   listTeams,
+  personLog,
   myRoles,
   savePerson,
   setFollowing,
@@ -51,6 +52,14 @@ export default function Me() {
   const me = useData(getMe);
   const roles = useData(async (d) => (me ? myRoles(d, me.id) : []), [me?.id]) ?? [];
   const access = useData(getAccess);
+  const week = useData(async (d) => {
+    if (!me) return null;
+    const monday = new Date();
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const items = (await personLog(d, me.id)).filter((e) => new Date(e.date) >= monday);
+    return { count: items.length, minutes: items.reduce((a, e) => a + e.minutes, 0) };
+  }, [me?.id]);
   const testLevel = useData(getTestLevel) ?? 'player';
   const following = useData(async (d) => {
     const [follows, teams, events] = await Promise.all([listFollows(d), listTeams(d), listEvents(d)]);
@@ -89,6 +98,17 @@ export default function Me() {
           <StatTile value={totals?.assists ?? 0} label="Assists" />
           <StatTile value={totals?.intercepts ?? 0} label="Intercepts" />
         </View>
+
+        <Card onPress={() => router.push('/log')} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+          <Icon name="run" color={colors.brand} size={28} />
+          <View style={{ flex: 1 }}>
+            <T v="bodyStrong">My ultimate log</T>
+            <T v="small">
+              {week ? `This week: ${week.count} session${week.count === 1 ? '' : 's'} · ${week.minutes} min` : 'Games, practices and pickups you’ve played'}
+            </T>
+          </View>
+          <Icon name="chevron-right" color={colors.faint} />
+        </Card>
 
         <View style={{ gap: space.sm }}>
           <Button label="My stats & games" icon="chart-box-outline" kind="primary" onPress={() => router.push(`/player/${me.id}`)} />
