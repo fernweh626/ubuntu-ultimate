@@ -1,0 +1,78 @@
+import type { Division } from '@/db/types';
+
+/** The rule settings a game is played under. Stored on each game as JSON so old games keep their rules. */
+export type Rules = {
+  pointTarget: number;
+  halftimeTarget: number;
+  softCapMinutes: number | null;
+  hardCapMinutes: number | null;
+  timeoutsPerTeam: number;
+  timeoutSeconds: number;
+  pullWithinSeconds: number;
+  mixedRatio: boolean;
+  halftimeMinutes: number;
+};
+
+export type RulesPreset = { id: string; name: string; summary: string; rules: Rules };
+
+const WFDF: Rules = {
+  pointTarget: 15,
+  halftimeTarget: 8,
+  softCapMinutes: 90,
+  hardCapMinutes: 100,
+  timeoutsPerTeam: 2,
+  timeoutSeconds: 75,
+  pullWithinSeconds: 75,
+  mixedRatio: true,
+  halftimeMinutes: 7,
+};
+
+export const RULE_PRESETS: RulesPreset[] = [
+  {
+    id: 'wfdf',
+    name: 'Tournament (WFDF)',
+    summary: 'To 15 · half at 8 · caps 90/100 min · 2 timeouts',
+    rules: WFDF,
+  },
+  {
+    id: 'league',
+    name: 'League night',
+    summary: 'To 11 · half at 6 · cap 60 min · 1 timeout',
+    rules: { ...WFDF, pointTarget: 11, halftimeTarget: 6, softCapMinutes: 55, hardCapMinutes: 60, timeoutsPerTeam: 1, halftimeMinutes: 5 },
+  },
+  {
+    id: 'casual',
+    name: 'Scrimmage / pickup',
+    summary: 'To 15 · no caps · no ratio enforcement',
+    rules: { ...WFDF, softCapMinutes: null, hardCapMinutes: null, mixedRatio: false },
+  },
+];
+
+export function rulesFor(presetId: string, division: Division): Rules {
+  const preset = RULE_PRESETS.find((p) => p.id === presetId) ?? RULE_PRESETS[0];
+  return { ...preset.rules, mixedRatio: preset.rules.mixedRatio && division === 'mixed' };
+}
+
+export function parseRules(json: string | null | undefined): Rules {
+  try {
+    return { ...WFDF, ...(json ? JSON.parse(json) : {}) };
+  } catch {
+    return WFDF;
+  }
+}
+
+/**
+ * Mixed ratio rule A (ABBA): point 1 uses the chosen ratio, then the ratio alternates in blocks of two
+ * (A, B, B, A, A, B, B, …). Halftime does not reset the pattern.
+ */
+export function ratioForPoint(pointNumber: number, first: 'M' | 'W' | null): 'M' | 'W' | null {
+  if (!first) return null;
+  const other = first === 'M' ? 'W' : 'M';
+  return Math.floor(pointNumber / 2) % 2 === 0 ? first : other;
+}
+
+export function ratioLabel(ratio: 'M' | 'W' | null) {
+  if (ratio === 'W') return '4 women · 3 men';
+  if (ratio === 'M') return '4 men · 3 women';
+  return '';
+}
