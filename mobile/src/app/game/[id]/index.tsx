@@ -7,7 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
 import {
+  END_REASONS,
   endGame,
+  type EndReason,
   getTeam,
   getVenue,
   loadGameData,
@@ -72,6 +74,8 @@ export default function ScoreGame() {
   const [picker, setPicker] = useState<null | { title: string; teamId: string; onPick: (personId: string | null) => void; ids?: string[] }>(null);
   const [pullSheet, setPullSheet] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [endSheet, setEndSheet] = useState(false);
+  const [endReason, setEndReason] = useState<EndReason>('cap');
   const [timeoutSheet, setTimeoutSheet] = useState(false);
   const [subSheet, setSubSheet] = useState<null | { teamId: string; outId?: string }>(null);
   const weatherTried = useRef(false);
@@ -150,13 +154,14 @@ export default function ScoreGame() {
   function promptEnd() {
     Alert.alert('Game over?', 'A team has reached the target score.', [
       { text: 'Not yet', style: 'cancel' },
-      { text: 'End game', onPress: finish },
+      { text: 'End game', onPress: () => finish('target') },
     ]);
   }
 
-  async function finish() {
+  async function finish(reason: EndReason) {
     const fresh = await loadGameData(db, id);
-    if (fresh) await endGame(db, fresh);
+    if (fresh) await endGame(db, fresh, reason);
+    setEndSheet(false);
     router.replace(`/game/${id}/report`);
   }
 
@@ -220,7 +225,10 @@ export default function ScoreGame() {
           {state.gameStartedAt ? `Game ${clock(elapsedGame)}` : 'Not started'}
           {capNote ? ` · ${capNote}` : ''}
         </T>
-        <IconButton icon="dots-vertical" label="Game menu" color="#fff" onPress={() => setMenu(true)} />
+        <View style={{ flexDirection: 'row' }}>
+          <IconButton icon="flag-checkered" label="End game early" color="#fff" onPress={() => setEndSheet(true)} />
+          <IconButton icon="dots-vertical" label="Game menu" color="#fff" onPress={() => setMenu(true)} />
+        </View>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <TeamHead team={ta} align="left" />
@@ -252,7 +260,7 @@ export default function ScoreGame() {
         <View style={{ backgroundColor: colors.brandTint, borderRadius: 12, padding: space.lg, gap: space.sm }}>
           <T v="title">That’s game!</T>
           <T v="small">Fill in the last goal below, then end the game to see the report.</T>
-          <Button label="End game & see report" kind="primary" icon="flag-checkered" big onPress={finish} />
+          <Button label="End game & see report" kind="primary" icon="flag-checkered" big onPress={() => finish('target')} />
         </View>
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -333,6 +341,7 @@ export default function ScoreGame() {
             })}
           </View>
           {state.stoppageSince ? <Chip label={`Discussion · ${clock((now - Date.parse(state.stoppageSince)) / 1000)}`} tone="warn" /> : null}
+          <Button label="End game early" icon="flag-checkered" kind="danger" onPress={() => setEndSheet(true)} />
         </>
       ) : null}
     </ScrollView>
@@ -533,8 +542,27 @@ export default function ScoreGame() {
         ) : null}
       </Sheet>
 
+      <Sheet visible={endSheet} onClose={() => setEndSheet(false)} title="End game early?">
+        <T v="title">
+          {ta.name} {state.scoreA} – {state.scoreB} {tb.name}
+        </T>
+        <T v="label">Why is it ending?</T>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {(Object.keys(END_REASONS) as EndReason[])
+            .filter((r) => r !== 'target')
+            .map((r) => (
+              <Choice key={r} label={END_REASONS[r]} selected={endReason === r} onPress={() => setEndReason(r)} style={{ paddingHorizontal: 14 }} />
+            ))}
+        </View>
+        {state.phase === 'inpoint' ? (
+          <T v="small">The point in progress isn’t finished, so it won’t count towards holds or breaks. Its turnovers and intercepts still count.</T>
+        ) : null}
+        <Button label={`End game at ${state.scoreA}–${state.scoreB}`} icon="flag-checkered" kind="primary" big onPress={() => finish(endReason)} />
+        <Button label="Keep playing" kind="ghost" onPress={() => setEndSheet(false)} />
+      </Sheet>
+
       <Sheet visible={menu} onClose={() => setMenu(false)} title="Game">
-        <Button label="End game now" icon="flag-checkered" kind="primary" onPress={() => { setMenu(false); Alert.alert('End the game?', `Final score ${state.scoreA}–${state.scoreB}.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'End game', onPress: finish }]); }} />
+        <Button label="End game early" icon="flag-checkered" kind="danger" onPress={() => { setMenu(false); setEndSheet(true); }} />
         <Button label="See live stats" icon="chart-box-outline" onPress={() => { setMenu(false); router.push(`/game/${id}/report`); }} />
         {tracksPlayers(ta.id) ? <Button label={`Edit ${ta.name} line`} icon="account-switch" onPress={() => { setMenu(false); router.push({ pathname: '/game/[id]/line', params: { id, team: ta.id } }); }} /> : null}
         {tracksPlayers(tb.id) ? <Button label={`Edit ${tb.name} line`} icon="account-switch" onPress={() => { setMenu(false); router.push({ pathname: '/game/[id]/line', params: { id, team: tb.id } }); }} /> : null}

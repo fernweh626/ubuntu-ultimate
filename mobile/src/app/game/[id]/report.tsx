@@ -5,7 +5,7 @@ import { Alert, Linking, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
-import { deleteGame, getEvent, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
+import { END_REASONS, deleteGame, type EndReason, getEvent, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
 import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, timeOfDay } from '@/domain/format';
 import { computeGameStats, type TeamGameStats } from '@/domain/stats';
 import { weatherLine, type Weather } from '@/domain/weather';
@@ -49,6 +49,9 @@ export default function GameReport() {
   const weather: Weather | null = game.weather_json ? JSON.parse(game.weather_json) : null;
   const name = (pid: string | null) => (pid && people.get(pid) ? shortName(people.get(pid)!) : 'Unknown');
   const final = game.status === 'final';
+  const endReason = final
+    ? (data.events.find((e) => e.type === 'end' && !e.voided_at)?.value as EndReason | null | undefined)
+    : null;
 
   const rows: { label: string; a: string; b: string }[] = [
     { label: 'Holds', a: `${A.holds}/${A.oPoints}`, b: `${B.holds}/${B.oPoints}` },
@@ -105,7 +108,10 @@ export default function GameReport() {
       <Screen edges={[]}>
         <Card style={{ backgroundColor: colors.night, borderColor: colors.night }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            {final ? <Chip label="Final" tone="dark" /> : <Chip label="LIVE" tone="danger" />}
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              {final ? <Chip label="Final" tone="dark" /> : <Chip label="LIVE" tone="danger" />}
+              {endReason && endReason !== 'target' && END_REASONS[endReason] ? <Chip label={`Ended early · ${END_REASONS[endReason]}`} tone="warn" /> : null}
+            </View>
             <T style={{ fontFamily: font.medium, fontSize: 13, color: colors.nightMuted }}>
               {[event?.name, shortDate(game.started_at ?? game.created_at)].filter(Boolean).join(' · ')}
             </T>

@@ -598,7 +598,17 @@ export function updateScoreNames(
   );
 }
 
-export function endGame(db: SQLiteDatabase, data: GameData) {
+export const END_REASONS = {
+  target: 'Reached the target score',
+  cap: 'Time cap',
+  weather: 'Weather or light',
+  injury: 'Injury',
+  forfeit: 'Forfeit',
+  other: 'Other',
+} as const;
+export type EndReason = keyof typeof END_REASONS;
+
+export function endGame(db: SQLiteDatabase, data: GameData, reason: EndReason = 'target') {
   return write(db, async () => {
     const ts = now();
     // Drop the empty point that was waiting for a pull.
@@ -607,7 +617,7 @@ export function endGame(db: SQLiteDatabase, data: GameData) {
       await db.runAsync(`DELETE FROM point_player WHERE point_id = ?`, p.id);
       await db.runAsync(`DELETE FROM point WHERE id = ?`, p.id);
     }
-    await insertEvent(db, { gameId: data.game.id, pointId: null, type: 'end' });
+    await insertEvent(db, { gameId: data.game.id, pointId: null, type: 'end', value: reason });
     await db.runAsync(`UPDATE game SET status = 'final', ended_at = ?, updated_at = ? WHERE id = ?`, ts, ts, data.game.id);
   });
 }

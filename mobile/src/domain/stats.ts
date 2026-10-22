@@ -147,8 +147,11 @@ export function computeGameStats(data: GameData): GameStats {
     if (!p.pulled_at && !p.scored_at) continue;
     const offense = p.offense_team_id;
     const defense = otherTeam(game, offense);
-    teams[offense].oPoints += 1;
-    teams[defense].dPoints += 1;
+    // Only finished points count towards hold/break rates; a point cut short by ending early doesn't.
+    if (p.scoring_team_id) {
+      teams[offense].oPoints += 1;
+      teams[defense].dPoints += 1;
+    }
 
     for (const l of data.lines.filter((x) => x.point_id === p.id)) {
       const ps = player(l.person_id, l.team_id)!;
