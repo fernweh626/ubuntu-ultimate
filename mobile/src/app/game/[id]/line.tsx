@@ -9,7 +9,7 @@ import { addGamePlayer, getPerson, getTeam, loadGameData, saveLine, savedLines, 
 import type { GamePlayer } from '@/db/types';
 import { deriveState, fitness, lineFor, type Fitness } from '@/domain/engine';
 import { shortName } from '@/domain/format';
-import { Button, Choice, Field, Footer, Icon, Screen, Sheet, T } from '@/ui/components';
+import { Button, Choice, Field, Footer, Icon, RatioBadge, Screen, Sheet, T } from '@/ui/components';
 import { QuickAddPlayer } from '@/ui/quick-add-player';
 import { colors, space } from '@/ui/theme';
 
@@ -204,6 +204,7 @@ export default function LineBuilder() {
             <Button label="Confirm line" kind="primary" big onPress={save} />
           </Footer>
         }>
+        <RatioBadge ratio={point.ratio} />
         <T v="small">
           {onO ? 'Receiving — on offence.' : 'Pulling — on defence.'} Tap to add or remove. Long-press a player to mark them tired or injured.
         </T>

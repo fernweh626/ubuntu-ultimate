@@ -10,7 +10,7 @@ import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, t
 import { computeGameStats, type TeamGameStats } from '@/domain/stats';
 import { weatherLine, type Weather } from '@/domain/weather';
 import { Bars, ScoreProgression } from '@/ui/charts';
-import { Button, Card, Chip, Field, IconButton, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
+import { Button, Card, Chip, Field, IconButton, RatioBadge, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
 import { colors, font, space } from '@/ui/theme';
@@ -242,6 +242,7 @@ export default function GameReport() {
                     <T style={{ fontFamily: font.display, fontSize: 22, width: 52 }}>
                       {t.scoreA}–{t.scoreB}
                     </T>
+                    <RatioBadge ratio={t.point.ratio} compact />
                     <View style={{ flex: 1 }}>
                       <T v="smallStrong" numberOfLines={1}>
                         {t.callahan ? `Callahan · ${name(t.scorerId)}` : t.scorerId ? `${name(t.scorerId)}${t.assistId ? ` from ${name(t.assistId)}` : ''}` : scorer.name}

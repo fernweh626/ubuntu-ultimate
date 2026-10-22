@@ -227,6 +227,30 @@ export function Chip({
   );
 }
 
+/**
+ * ABBA ratio for a point: which gender has four on the line. Icon + words, never colour alone.
+ * `compact` is for tight rows (point-by-point log); the full badge is for scoring screens.
+ */
+export function RatioBadge({ ratio, compact, onDark }: { ratio: string | null; compact?: boolean; onDark?: boolean }) {
+  if (ratio !== 'W' && ratio !== 'M') return null;
+  const women = ratio === 'W';
+  const bg = women ? '#F3E8FB' : '#E3ECFA';
+  const fg = women ? '#6B2C91' : '#1D3F8F';
+  return (
+    <View
+      accessibilityLabel={women ? 'Women’s point: four women, three men' : 'Men’s point: four men, three women'}
+      style={[
+        styles.chip,
+        { backgroundColor: onDark ? fg : bg, gap: 6, paddingVertical: compact ? 2 : 6, paddingHorizontal: compact ? 8 : 12 },
+      ]}>
+      <Icon name={women ? 'gender-female' : 'gender-male'} size={compact ? 14 : 20} color={onDark ? '#fff' : fg} />
+      <RNText style={{ fontFamily: font.bold, fontSize: compact ? 12 : 15, color: onDark ? '#fff' : fg }}>
+        {compact ? (women ? '4W' : '4M') : women ? 'Women’s point · 4W 3M' : 'Men’s point · 4M 3W'}
+      </RNText>
+    </View>
+  );
+}
+
 /** Selectable pill/tile used for choices: segmented controls, player pickers, filters. */
 export function Choice({
   label,

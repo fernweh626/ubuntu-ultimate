@@ -24,9 +24,8 @@ import {
 import type { GameEventType, Person, PullOutcome, Team } from '@/db/types';
 import { deriveState, fitness, lineFor, otherTeam, type GameData } from '@/domain/engine';
 import { clock, shortName } from '@/domain/format';
-import { ratioLabel } from '@/domain/rules';
 import { fetchWeather } from '@/domain/weather';
-import { Button, Chip, Choice, Icon, IconButton, Sheet, T } from '@/ui/components';
+import { Button, Chip, Choice, Icon, IconButton, RatioBadge, Sheet, T } from '@/ui/components';
 import { colors, DEFAULT_TEAM_COLOR, font, space } from '@/ui/theme';
 
 type Bundle = { data: GameData; ta: Team; tb: Team; people: Map<string, Person> };
@@ -230,6 +229,11 @@ export default function ScoreGame() {
         </T>
         <TeamHead team={tb} align="right" />
       </View>
+      {point.ratio && !gameOverPending ? (
+        <View style={{ alignItems: 'center', marginTop: space.sm }}>
+          <RatioBadge ratio={point.ratio} onDark />
+        </View>
+      ) : null}
     </View>
   );
 
@@ -292,7 +296,7 @@ export default function ScoreGame() {
           <View style={{ gap: space.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <T v="label">Point {point.number} lines</T>
-              {point.ratio ? <Chip label={ratioLabel(point.ratio as 'M' | 'W')} tone="warn" /> : null}
+              <RatioBadge ratio={point.ratio} compact />
             </View>
             {[ta, tb].map((t) => {
               const line = lineFor(data, point.id, t.id);
