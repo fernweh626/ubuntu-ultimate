@@ -47,6 +47,7 @@ export const TABLES: TableSpec[] = [
   { name: 'game_status_log', pk: ['id'] },
   { name: 'bracket_slot', pk: ['id'] },
   { name: 'session', pk: ['id'] },
+  { name: 'practice_rsvp', pk: ['id'] },
   { name: 'reflection', pk: ['id'] },
   { name: 'shoutout', pk: ['id'] },
   { name: 'join_request', pk: ['id'] },
@@ -308,6 +309,8 @@ export async function prepareFirstSync(db: SQLiteDatabase) {
       const me = await meta(db, 'me_person_id');
       const drop = people.filter((p) => p !== me);
       await db.runAsync(`DELETE FROM saved_line_member WHERE line_id IN (SELECT id FROM saved_line WHERE team_id IN (${q}))`, ...samples);
+      await db.runAsync(`DELETE FROM practice_rsvp WHERE session_id IN (SELECT id FROM session WHERE team_id IN (${q}))`, ...samples);
+      if (drop.length) await db.runAsync(`DELETE FROM practice_rsvp WHERE person_id IN (${drop.map(() => '?').join(',')})`, ...drop);
       for (const t of ['saved_line', 'membership', 'event_team', 'session']) await db.runAsync(`DELETE FROM ${t} WHERE team_id IN (${q})`, ...samples);
       await db.runAsync(`DELETE FROM follow WHERE kind = 'team' AND target_id IN (${q})`, ...samples);
       if (drop.length) await db.runAsync(`DELETE FROM person WHERE id IN (${drop.map(() => '?').join(',')})`, ...drop);

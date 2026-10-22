@@ -68,6 +68,14 @@ player, or the player taps "I played" (`game_player.confirmation`).
 Until sign-in exists, the phone stores who "me" is and a test level in `app_meta`; team staff comes from
 `membership.role`.
 
+## Practices and who's coming
+
+- `session` (kind `practice`) is scheduled by team staff, once or weekly (`series_id` links the weeks). `cancelled_at` cancels one week or that week onwards; the squad is notified.
+- `practice_rsvp` holds one row per player per practice (`id` = `session_id:person_id`, so two phones answering agree): `going` or `not_going` with an optional reason that only staff see.
+- The squad sees the going list and the F/M split; staff also see who hasn't answered and can answer for someone.
+- After the practice, the usual check-in (`reflection` with `session_id`) and staff debrief hang off the same session.
+- Notifications: "are you coming?" the day before if unanswered, a reminder 2 h before if going, a check-in 30 min after.
+
 ## Fixtures, postponements and forfeits
 
 A scheduled game is a `game` row with `status = 'scheduled'`, a `scheduled_at` (null = date TBC), a field

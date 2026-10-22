@@ -161,25 +161,28 @@ export async function homeFeed(db: SQLiteDatabase, now = new Date()) {
     });
   }
   if (myIds.length) {
-    const sessions = await db.getAllAsync<{ id: string; title: string | null; started_at: string; team: string; venue: string | null }>(
-      `SELECT s.id, s.title, s.started_at, t.name AS team, v.name AS venue FROM session s
-         JOIN team t ON t.id = s.team_id LEFT JOIN venue v ON v.id = s.venue_id
+    const sessions = await db.getAllAsync<{ id: string; title: string | null; started_at: string; team: string; venue: string | null; cancelled_at: string | null; my_status: string | null }>(
+      `SELECT s.id, s.title, s.started_at, s.cancelled_at, t.name AS team, v.name AS venue,
+              (SELECT status FROM practice_rsvp r WHERE r.session_id = s.id AND r.person_id = ?) AS my_status
+         FROM session s JOIN team t ON t.id = s.team_id LEFT JOIN venue v ON v.id = s.venue_id
         WHERE s.deleted_at IS NULL AND s.kind = 'practice' AND s.team_id IN (${myIds.map(() => '?').join(',')})
           AND s.started_at >= ? AND s.started_at <= ?`,
+      meId,
       ...myIds,
       new Date(now.getTime() - 3 * 3600_000).toISOString(),
       new Date(end).toISOString(),
     );
     for (const s of sessions) {
+      const answer = s.cancelled_at ? 'Cancelled' : s.my_status === 'going' ? 'You’re going' : s.my_status === 'not_going' ? 'Not going' : 'Are you coming? Tap to answer';
       items.push({
         key: `s:${s.id}`,
         at: s.started_at,
         kind: 'practice',
-        title: s.title || `${s.team} practice`,
-        subtitle: s.venue ?? '',
+        title: `${multi ? `${s.team} practice` : 'Practice'}${s.title ? ` · ${s.title}` : ''}`,
+        subtitle: [answer, s.venue].filter(Boolean).join(' · '),
         tag: { name: 'Practice', color: '#475569' },
         following: false,
-        url: '/log',
+        url: `/practice/${s.id}`,
       });
     }
   }

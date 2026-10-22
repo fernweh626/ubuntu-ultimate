@@ -16,20 +16,10 @@ import {
   updateFixture,
 } from '@/db/repo';
 import { canPostpone, postponeRuleText, STATUS_REASONS, type StatusReason } from '@/domain/fixtures';
-import { dmyToIso, localDmy, shortDate, timeOfDay } from '@/domain/format';
+import { dmyTimeToIso as toIso, localDmy, shortDate, timeOfDay } from '@/domain/format';
 import { Button, Card, Chip, Choice, DateField, Field, IconButton, Screen, Section, Sheet, T, TeamSwatch } from '@/ui/components';
 import { FieldPicker } from '@/ui/field-picker';
 import { colors, space } from '@/ui/theme';
-
-/** Combine dd/mm/yyyy + HH:MM into an ISO timestamp; null if either is missing or invalid. */
-function toIso(date: string, time: string) {
-  const iso = dmyToIso(date);
-  if (!iso || !/^\d{1,2}:\d{2}$/.test(time)) return null;
-  const [hh, mm] = time.split(':').map(Number);
-  const d = new Date(`${iso}T00:00:00`);
-  d.setHours(hh, mm, 0, 0);
-  return d.toISOString();
-}
 
 export default function Fixture() {
   const { id } = useLocalSearchParams<{ id: string }>();

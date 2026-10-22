@@ -84,6 +84,17 @@ export function localDmy(iso: string | null | undefined) {
 }
 
 /** "2001-06-30" → "30/06/2001". */
+/** Combine dd/mm/yyyy + HH:MM (local time) into an ISO timestamp; null if either is missing or invalid. */
+export function dmyTimeToIso(date: string, time: string) {
+  const iso = dmyToIso(date);
+  if (!iso || !/^\d{1,2}:\d{2}$/.test(time.trim())) return null;
+  const [hh, mm] = time.trim().split(':').map(Number);
+  if (hh > 23 || mm > 59) return null;
+  const d = new Date(`${iso}T00:00:00`);
+  d.setHours(hh, mm, 0, 0);
+  return d.toISOString();
+}
+
 export function isoToDmy(iso: string | null | undefined) {
   if (!iso) return '';
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);

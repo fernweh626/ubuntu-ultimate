@@ -18,6 +18,7 @@ type Seen = {
   decided: string[];
   status: string[];
   results: string[];
+  cancelled?: string[];
   fixtures: Record<string, string>;
 };
 
@@ -32,7 +33,7 @@ async function load(db: SQLiteDatabase) {
 
 async function save(db: SQLiteDatabase, s: Seen) {
   const trim = (xs: string[]) => xs.slice(-500);
-  const v = { ...s, shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
+  const v = { ...s, cancelled: trim(s.cancelled ?? []), shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
   await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('notify:seen', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, JSON.stringify(v));
 }
 
@@ -146,6 +147,26 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
         body: `${l.by ? `${l.by} · ` : ''}${l.reason ? STATUS_REASONS[l.reason] : ''}`.trim() || 'Tap for details.',
         url: l.action === 'postpone' ? `/game/${l.game_id}/fixture` : `/game/${l.game_id}/report`,
       });
+    }
+  }
+
+  // Practices of my teams that got cancelled (only if I hadn't already said I'm not coming).
+  if (mine.length && prefs.practices) {
+    seen.cancelled ??= [];
+    const cancelled = await db.getAllAsync<{ id: string; started_at: string; team: string; status: string | null }>(
+      `SELECT s.id, s.started_at, t.name AS team, (SELECT status FROM practice_rsvp r WHERE r.session_id = s.id AND r.person_id = ?) AS status
+         FROM session s JOIN team t ON t.id = s.team_id
+        WHERE s.kind = 'practice' AND s.cancelled_at IS NOT NULL AND s.deleted_at IS NULL AND s.team_id IN (${inList(mine)}) AND s.started_at >= ?`,
+      me,
+      ...mine,
+      new Date().toISOString(),
+    );
+    for (const c of cancelled) {
+      if (seen.cancelled.includes(c.id)) continue;
+      seen.cancelled.push(c.id);
+      if (!first && c.status !== 'not_going') {
+        out.push({ key: `pcx:${c.id}`, title: `${c.team} practice cancelled`, body: `${shortDate(c.started_at)} ${timeOfDay(c.started_at)} is off.`, url: `/practice/${c.id}` });
+      }
     }
   }
 

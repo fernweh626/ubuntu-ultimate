@@ -643,6 +643,33 @@ const MIGRATIONS: string[] = [
     WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
     BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('follow', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
   `,
+  // v10: scheduled practices (notes, cancel, weekly series) and who's coming.
+  `
+  ALTER TABLE session ADD COLUMN notes TEXT;
+  ALTER TABLE session ADD COLUMN cancelled_at TEXT;
+  ALTER TABLE session ADD COLUMN series_id TEXT;
+  -- One row per player per practice; id is session_id:person_id so two phones answering agree.
+  CREATE TABLE practice_rsvp (
+    id TEXT PRIMARY KEY NOT NULL,
+    session_id TEXT NOT NULL REFERENCES session(id),
+    person_id TEXT NOT NULL REFERENCES person(id),
+    status TEXT NOT NULL CHECK (status IN ('going','not_going')),
+    reason TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (session_id, person_id)
+  );
+  CREATE INDEX idx_practice_rsvp_session ON practice_rsvp (session_id);
+  CREATE TRIGGER sync_practice_rsvp_insert AFTER INSERT ON practice_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('practice_rsvp', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_practice_rsvp_update AFTER UPDATE ON practice_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('practice_rsvp', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_practice_rsvp_delete AFTER DELETE ON practice_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('practice_rsvp', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

@@ -6,8 +6,8 @@ import { Alert, Linking, Pressable, View } from 'react-native';
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
 import { loadFinishedGames, peopleById, teamAggregate } from '@/db/reports';
-import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, sessionsForTeam, setMembershipRole, setTeamLogo, shoutoutsForTeam } from '@/db/repo';
-import { displayName, pct, round1, shortDate } from '@/domain/format';
+import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, sessionsForTeam, setMembershipRole, upcomingPractices, setTeamLogo, shoutoutsForTeam } from '@/db/repo';
+import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format';
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
@@ -39,6 +39,9 @@ export default function TeamPage() {
   const [logoSheet, setLogoSheet] = useState(false);
   const [logging, setLogging] = useState(false);
   const practices = useData((d) => sessionsForTeam(d, id), [id]) ?? [];
+  const upcoming = useData(async (d) => upcomingPractices(d, id, (await getAccess(d)).meId), [id]) ?? [];
+  const [opened] = useState(() => Date.now());
+  const past = practices.filter((p) => !p.cancelled_at && Date.parse(p.started_at) + p.duration_min * 60_000 < opened);
   const shouts = useData(async (d) => {
     const rows = await shoutoutsForTeam(d, id, 8);
     return { rows, people: await peopleById(d, rows.flatMap((r) => [r.from_person_id, r.to_person_id])) };
@@ -219,25 +222,44 @@ export default function TeamPage() {
         {onSquad || isStaffHere ? (
           <Section
             title="Practices"
-            action={isStaffHere && access?.meId ? <Button label="Log a practice" icon="plus" kind="ghost" onPress={() => setLogging(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} /> : undefined}>
-            {practices.length ? (
-              practices.slice(0, 5).map((pr) => (
-                <Card key={pr.id}>
-                  <T v="bodyStrong">{pr.title || 'Practice'}</T>
-                  <T v="small">
-                    {shortDate(pr.started_at)} · {pr.duration_min} min
+            action={
+              isStaffHere ? (
+                <Button label="Schedule" icon="calendar-plus" kind="ghost" onPress={() => router.push({ pathname: '/practice/edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+              ) : undefined
+            }>
+            {upcoming.slice(0, 4).map((pr) => (
+              <Card key={pr.id} onPress={() => router.push(`/practice/${pr.id}`)}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
+                  <T v="bodyStrong" style={{ flex: 1, textDecorationLine: pr.cancelled_at ? 'line-through' : 'none' }}>
+                    {shortDate(pr.started_at)} · {timeOfDay(pr.started_at)}
                   </T>
-                  <View style={{ flexDirection: 'row', gap: space.sm }}>
-                    {onSquad ? <Button label="How was it?" icon="comment-question-outline" onPress={() => router.push({ pathname: '/reflect', params: { sessionId: pr.id } })} style={{ flex: 1 }} /> : null}
-                    {isStaffHere ? <Button label="Debrief" icon="clipboard-text-outline" onPress={() => router.push({ pathname: '/debrief', params: { sessionId: pr.id, teamId: id } })} style={{ flex: 1 }} /> : null}
-                  </View>
-                </Card>
-              ))
-            ) : (
-              <Card>
-                <T v="small">{isStaffHere ? 'Log a practice and the squad can tell you how it went.' : 'No practices logged yet.'}</T>
+                  {pr.cancelled_at ? (
+                    <Chip label="Cancelled" tone="danger" />
+                  ) : pr.my_status === 'going' ? (
+                    <Chip label="You’re going" icon="check" />
+                  ) : pr.my_status === 'not_going' ? (
+                    <Chip label="Not going" tone="neutral" />
+                  ) : onSquad ? (
+                    <Chip label="Are you coming?" tone="warn" />
+                  ) : null}
+                </View>
+                <T v="small">
+                  {[pr.title, pr.venue_name, pr.cancelled_at ? null : `${pr.going} going${pr.going_f + pr.going_m ? ` · ${pr.going_f}F ${pr.going_m}M` : ''}`].filter(Boolean).join(' · ')}
+                </T>
               </Card>
-            )}
+            ))}
+            {upcoming.length === 0 ? (
+              <Card>
+                <T v="small">{isStaffHere ? 'Schedule a practice and the squad can say if they’re coming, then tell you how it went.' : 'No practices scheduled.'}</T>
+              </Card>
+            ) : null}
+            {past.length ? <T v="label">Recent</T> : null}
+            {past.slice(0, 3).map((pr) => (
+              <Row key={pr.id} title={pr.title || 'Practice'} subtitle={`${shortDate(pr.started_at)} · ${pr.duration_min} min`} onPress={() => router.push(`/practice/${pr.id}`)} />
+            ))}
+            {isStaffHere && access?.meId ? (
+              <Button label="Log a practice that wasn’t scheduled" icon="plus" kind="ghost" onPress={() => setLogging(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+            ) : null}
           </Section>
         ) : null}
 

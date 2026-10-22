@@ -11,6 +11,7 @@ import { shortDate, timeOfDay } from '@/domain/format';
 export type NotifyPrefs = {
   gameReminders: boolean;
   postGame: boolean;
+  practices: boolean;
   spirit: boolean;
   roster: boolean;
   shoutouts: boolean;
@@ -24,6 +25,7 @@ export type NotifyPrefs = {
 export const DEFAULT_PREFS: NotifyPrefs = {
   gameReminders: true,
   postGame: true,
+  practices: true,
   spirit: true,
   roster: true,
   shoutouts: true,
@@ -203,6 +205,58 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
             url: `/game/${g.id}/report`,
           });
         }
+      }
+    }
+  }
+
+  // Practices: "are you coming?" the day before, a reminder if you're going, and a check-in after.
+  if (prefs.practices) {
+    const practices = await db.getAllAsync<{ id: string; title: string | null; started_at: string; duration_min: number; team: string; venue: string | null; status: string | null; answered: number }>(
+      `SELECT s.id, s.title, s.started_at, s.duration_min, t.name AS team, v.name AS venue,
+              (SELECT status FROM practice_rsvp r WHERE r.session_id = s.id AND r.person_id = ?) AS status,
+              EXISTS (SELECT 1 FROM reflection rf WHERE rf.session_id = s.id AND rf.person_id = ?) AS answered
+         FROM session s JOIN team t ON t.id = s.team_id LEFT JOIN venue v ON v.id = s.venue_id
+        WHERE s.kind = 'practice' AND s.deleted_at IS NULL AND s.cancelled_at IS NULL AND s.team_id IN (${q})
+          AND s.started_at >= ? AND s.started_at <= ?`,
+      me,
+      me,
+      ...teamIds,
+      new Date(now.getTime() - 2 * 86400_000).toISOString(),
+      horizon,
+    );
+    for (const pr of practices) {
+      const start = new Date(pr.started_at);
+      const endAt = new Date(start.getTime() + pr.duration_min * 60_000);
+      const what = `${pr.team} practice${pr.title ? ` · ${pr.title}` : ''}`;
+      if (!pr.status) {
+        out.push({
+          key: `prsvp:${pr.id}`,
+          kind: 'practices',
+          at: respectQuiet(new Date(start.getTime() - 24 * 3600_000), prefs, start),
+          title: `Practice tomorrow ${timeOfDay(pr.started_at)}: are you coming?`,
+          body: `${what}${pr.venue ? ` at ${pr.venue}` : ''}. One tap so your captains can plan.`,
+          url: `/practice/${pr.id}`,
+        });
+      }
+      if (pr.status === 'going') {
+        out.push({
+          key: `pgo:${pr.id}`,
+          kind: 'practices',
+          at: respectQuiet(new Date(start.getTime() - 2 * 3600_000), prefs, start),
+          title: `Practice at ${timeOfDay(pr.started_at)}`,
+          body: `${what}${pr.venue ? ` · 📍 ${pr.venue}` : ''}. Light and dark shirt, water.`,
+          url: `/practice/${pr.id}`,
+        });
+      }
+      if (pr.status === 'going' && !pr.answered) {
+        out.push({
+          key: `pafter:${pr.id}`,
+          kind: 'practices',
+          at: respectQuiet(new Date(endAt.getTime() + 30 * 60_000), prefs),
+          title: 'How was practice?',
+          body: 'A minute for your coaches: how hard it was, how you felt, anything niggling.',
+          url: `/reflect?sessionId=${pr.id}`,
+        });
       }
     }
   }
