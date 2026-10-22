@@ -78,7 +78,7 @@ export default function LineEdit() {
             ]}
           />
         </Section>
-        <Section title={`Players · ${women} W · ${men} M`}>
+        <Section title={`Players · ${women} F · ${men} M`}>
           <T v="small">Pick as many as you like — extras become the first subs when someone is tired.</T>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
             {players.map((p) => (

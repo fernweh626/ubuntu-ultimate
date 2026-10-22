@@ -173,7 +173,7 @@ export default function TeamPage() {
                 <Row
                   key={p.id}
                   title={`${displayName(p)}${p.jersey_number ? `  #${p.jersey_number}` : ''}`}
-                  subtitle={[p.gender === 'W' ? 'Woman' : p.gender === 'M' ? 'Man' : null, p.position ? POS[p.position] : null].filter(Boolean).join(' · ')}
+                  subtitle={[p.gender === 'W' ? 'Female matching' : p.gender === 'M' ? 'Male matching' : null, p.position ? POS[p.position] : null].filter(Boolean).join(' · ')}
                   right={
                     p.role !== 'player' ? (
                       <Chip label={TEAM_ROLE_LABEL[p.role]} />

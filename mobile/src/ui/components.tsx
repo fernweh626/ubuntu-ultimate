@@ -243,7 +243,7 @@ export function RatioBadge({ ratio, point, compact, onDark }: { ratio: string | 
   const fg = women ? '#6B2C91' : '#1D3F8F';
   return (
     <View
-      accessibilityLabel={`${code}: ${women ? 'female' : 'male'} point ${slot}, ${women ? 'four women, three men' : 'four men, three women'}`}
+      accessibilityLabel={`${code}: ${women ? 'female' : 'male'} point ${slot}, ${women ? 'four female matching and three male matching players' : 'four male matching and three female matching players'}`}
       style={[
         styles.chip,
         { backgroundColor: onDark ? fg : bg, gap: 6, paddingVertical: compact ? 2 : 6, paddingHorizontal: compact ? 8 : 12 },

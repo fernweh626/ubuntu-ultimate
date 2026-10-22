@@ -57,8 +57,8 @@ export function QuickAddPlayer({
         value={gender}
         onChange={setGender}
         options={[
-          { value: 'W', label: 'Woman' },
-          { value: 'M', label: 'Man' },
+          { value: 'W', label: 'Female matching' },
+          { value: 'M', label: 'Male matching' },
           { value: 'X', label: 'Other' },
         ]}
       />

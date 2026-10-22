@@ -326,8 +326,8 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
         </View>
         {mixed ? (
           <View style={{ flexDirection: 'row', gap: 6 }}>
-            <Tile tone="paper" teamColor={color} value={`${wGoals} of ${goals}`} label="goals scored by women" />
-            <Tile tone="paper" teamColor={color} value={`${mAssists} of ${assists}`} label="assists thrown by men" />
+            <Tile tone="paper" teamColor={color} value={`${wGoals} of ${goals}`} label="goals by female matching players" />
+            <Tile tone="paper" teamColor={color} value={`${mAssists} of ${assists}`} label="assists by male matching players" />
           </View>
         ) : null}
       </Page>
@@ -347,11 +347,14 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
         <ConnectionWeb tone="dark" pairs={conn.pairs} name={nm} isWoman={(id) => gender(id) === 'W'} />
         {mixed ? (
           <View style={{ flexDirection: 'row', gap: 6 }}>
-            <Tile tone="dark" value={conn.byGender.mm} label="Man to man" />
-            <Tile tone="dark" value={conn.byGender.mw} label="Man to woman" />
-            <Tile tone="dark" value={conn.byGender.wm} label="Woman to man" />
-            <Tile tone="dark" value={conn.byGender.ww} label="Woman to woman" />
+            <Tile tone="dark" value={conn.byGender.mm} label="MMP to MMP" />
+            <Tile tone="dark" value={conn.byGender.mw} label="MMP to FMP" />
+            <Tile tone="dark" value={conn.byGender.wm} label="FMP to MMP" />
+            <Tile tone="dark" value={conn.byGender.ww} label="FMP to FMP" />
           </View>
+        ) : null}
+        {mixed ? (
+          <Body tone="dark">FMP = female matching player · MMP = male matching player. Dashed lines start from an FMP.</Body>
         ) : null}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {(

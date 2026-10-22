@@ -110,8 +110,8 @@ export default function PlayerEdit() {
             value={f.gender ?? 'none'}
             onChange={(v) => set('gender', v === 'none' ? null : v)}
             options={[
-              { value: 'W', label: 'Woman' },
-              { value: 'M', label: 'Man' },
+              { value: 'W', label: 'Female matching' },
+              { value: 'M', label: 'Male matching' },
               { value: 'X', label: 'Other' },
             ]}
           />

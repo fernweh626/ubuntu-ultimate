@@ -269,8 +269,8 @@ export default function NewGame() {
               value={ratio}
               onChange={setRatio}
               options={[
-                { value: 'W', label: '4 women' },
-                { value: 'M', label: '4 men' },
+                { value: 'W', label: '4 female matching' },
+                { value: 'M', label: '4 male matching' },
               ]}
             />
             <T v="small">Then it alternates in blocks of two (ABBA). The app tells you each point.</T>

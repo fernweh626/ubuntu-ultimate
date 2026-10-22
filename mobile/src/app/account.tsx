@@ -190,8 +190,8 @@ function LinkPlayer({ me, busy, email, onLink }: { me: { id: string; first_name:
           value={gender}
           onChange={setGender}
           options={[
-            { value: 'W', label: 'Woman' },
-            { value: 'M', label: 'Man' },
+            { value: 'W', label: 'Female matching' },
+            { value: 'M', label: 'Male matching' },
             { value: 'X', label: 'Other' },
           ]}
         />

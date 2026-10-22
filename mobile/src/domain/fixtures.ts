@@ -7,8 +7,8 @@ import { dmyToIso } from './format';
 export const STATUS_REASONS = {
   weather: 'Weather',
   lights: 'Lights',
-  not_enough_men: 'Not enough men',
-  not_enough_women: 'Not enough women',
+  not_enough_men: 'Not enough male matching players',
+  not_enough_women: 'Not enough female matching players',
   other: 'Other',
 } as const;
 export type StatusReason = keyof typeof STATUS_REASONS;

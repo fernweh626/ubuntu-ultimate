@@ -99,7 +99,7 @@ export const WHAT_IS_ULTIMATE: { title: string; body: string }[] = [
   {
     title: 'Divisions',
     body:
-      'Most South African play is mixed (men and women on the field together, with a set gender ratio on each point). There are also open and women’s divisions, and age divisions such as U17, U20, U24 and masters.',
+      'Most South African play is mixed (female and male matching players on the field together, with a set gender ratio on each point). There are also open and women’s divisions, and age divisions such as U17, U20, U24 and masters.',
   },
   {
     title: 'How to start',
@@ -168,7 +168,7 @@ export const RULES: RuleCard[] = [
   {
     title: 'Mixed ratio (ABBA)',
     points: [
-      'In mixed games each line is either four women and three men or four men and three women.',
+      'In mixed games each line is either four female matching and three male matching players, or four male matching and three female matching players.',
       'The ratio for the first point is chosen, then it alternates in blocks of two: A, B, B, A, A, B, B…',
     ],
   },
