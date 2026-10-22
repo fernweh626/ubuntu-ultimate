@@ -169,6 +169,7 @@ export default function GameReport() {
             <Button label="Video" icon="link-plus" onPress={() => setVideoSheet(true)} style={{ flex: 1 }} />
           )}
         </View>
+        {final ? <Button label="Full report · PDF & images" icon="file-document-multiple-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'game', gameId: id } })} /> : null}
         {!final ? <Button label="Back to scoring" icon="whistle" onPress={() => router.replace(`/game/${id}`)} /> : null}
         {final && myGame && !data.game.forfeit_team_id ? (
           <Card onPress={() => router.push({ pathname: '/reflect', params: { gameId: id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, borderColor: myReflection ? colors.border : colors.brand, borderWidth: myReflection ? 1 : 2 }}>

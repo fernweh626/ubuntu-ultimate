@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
@@ -118,7 +118,10 @@ export default function TeamReport() {
             <Section title="Players">
               <PlayerTable rows={totals} people={loaded.people} extra={(s) => `${(s as { games?: number }).games ?? 0} games`} />
             </Section>
-            <Button label="Share team card" icon="share-variant" kind="primary" onPress={openShare} />
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <Button label="Share card" icon="share-variant" kind="primary" onPress={openShare} style={{ flex: 1 }} />
+              <Button label="Full report" icon="file-document-multiple-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'team', teamId: id, ...(eventId ? { eventId } : {}) } })} style={{ flex: 1 }} />
+            </View>
             <Section title="Games">
               {games.map((g) => (
                 <GameCard key={g.item.id} g={g.item} />

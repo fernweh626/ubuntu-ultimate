@@ -240,7 +240,10 @@ export default function EventPage() {
               ))}
             </View>
             <T v="small">{bundle.final.hasBracket ? 'Places come from the playoff games; anyone without a placing game is ranked by the standings.' : 'No playoffs, so places come straight from the standings.'}</T>
-            <Button label="Share the podium" icon="share-variant" kind="primary" onPress={openShare} />
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <Button label="Share podium" icon="share-variant" kind="primary" onPress={openShare} style={{ flex: 1 }} />
+              <Button label="Full report" icon="file-document-multiple-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'event', eventId: id } })} style={{ flex: 1 }} />
+            </View>
           </>
         ) : null}
 
