@@ -18,11 +18,13 @@ import {
   setFollowing,
   setMeId,
   setMembershipRole,
-  setScorekeeperFlag,
+  setTestLevel,
+  getTestLevel,
   type MyRole,
 } from '@/db/repo';
 import type { Gender } from '@/db/types';
 import { displayName } from '@/domain/format';
+import { canSetTeamRole, grantSummary, LEVEL_LABEL } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, Field, Icon, IconButton, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
 import { Avatar } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
@@ -37,11 +39,11 @@ const ROLE_LABEL: Record<MyRole['role'], string> = {
 const STAFF: MyRole['role'][] = ['captain', 'coach', 'spirit_captain', 'manager'];
 
 const LEVELS = [
-  { key: 'admin', title: 'Admin', body: 'Assigns roles to everyone. Can merge duplicate players.' },
-  { key: 'coordinator', title: 'Coordinator', body: 'Runs leagues, regionals and nationals: events, schedules, results.' },
-  { key: 'staff', title: 'Team staff', body: 'Captains, coaches, spirit captains, managers: roster, lines, contacts, spirit scores.' },
-  { key: 'scorekeeper', title: 'Scorekeeper', body: 'Scores the games they are given.' },
-  { key: 'player', title: 'Player', body: 'Edits their own details, joins teams, sees all stats.' },
+  { key: 'admin', title: 'Admin', body: 'Everything. Can make people coordinators, team staff or scorekeepers.' },
+  { key: 'coordinator', title: 'Coordinator', body: 'Runs leagues, regionals and nationals. Can make people team staff or scorekeepers.' },
+  { key: 'staff', title: 'Team staff', body: 'Captains, coaches, spirit captains, managers: roster, lines, contacts, spirit, confirming who played. Can give staff roles and scorekeeper within their team.' },
+  { key: 'scorekeeper', title: 'Scorekeeper', body: 'Starts and scores any game and adds players. Can’t give access to anyone.' },
+  { key: 'player', title: 'Player', body: 'Starts friendly games, edits their own details, joins teams. Can’t give access to anyone.' },
 ] as const;
 
 export default function Me() {
@@ -49,6 +51,7 @@ export default function Me() {
   const me = useData(getMe);
   const roles = useData(async (d) => (me ? myRoles(d, me.id) : []), [me?.id]) ?? [];
   const access = useData(getAccess);
+  const testLevel = useData(getTestLevel) ?? 'player';
   const following = useData(async (d) => {
     const [follows, teams, events] = await Promise.all([listFollows(d), listTeams(d), listEvents(d)]);
     return follows
@@ -117,14 +120,19 @@ export default function Me() {
           <Card style={{ borderColor: colors.brand, borderWidth: 2 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
               <Icon name="shield-account-outline" color={colors.brand} />
-              <T v="title">{level === 'staff' ? 'Team staff' : level === 'scorekeeper' ? 'Scorekeeper' : 'Player'}</T>
+              <T v="title">{LEVEL_LABEL[level]}</T>
             </View>
             <T v="small">
               {level === 'staff'
                 ? `${staffOn.map((r) => `${ROLE_LABEL[r.role]} of ${r.team_name}`).join(', ')}.`
                 : level === 'scorekeeper'
                   ? 'You can start any game — league, tournament or friendly — and add players. Captains confirm the rosters afterwards.'
-                  : 'You can start friendly scrimmages and pickups, update your own details, join teams and see every stat.'}
+                  : level === 'player'
+                    ? 'You can start friendly scrimmages and pickups, update your own details, join teams and see every stat.'
+                    : LEVELS.find((l) => l.key === level)!.body}
+            </T>
+            <T v="small" style={{ color: colors.ink }}>
+              {grantSummary(level)}
             </T>
           </Card>
           <View style={{ gap: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.divider }}>
@@ -141,15 +149,13 @@ export default function Me() {
               );
             })}
           </View>
-          {level !== 'staff' ? (
-            <Choice
-              label={level === 'scorekeeper' ? 'Scorekeeper: on' : 'I’m a scorekeeper'}
-              sublabel={level === 'scorekeeper' ? 'Tap to turn off' : 'Lets you start league and tournament games'}
-              selected={level === 'scorekeeper'}
-              onPress={() => setScorekeeperFlag(db, level !== 'scorekeeper')}
-              tall
-            />
-          ) : null}
+          <T v="label">Try a level on this phone</T>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {(['player', 'scorekeeper', 'coordinator', 'admin'] as const).map((l) => (
+              <Choice key={l} label={LEVEL_LABEL[l]} selected={testLevel === l} onPress={() => setTestLevel(db, l)} style={{ paddingHorizontal: 14 }} />
+            ))}
+          </View>
+          <T v="small">Team staff comes from your role on a team (captain, coach…), given by staff, a coordinator or an admin.</T>
           <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
             <T v="smallStrong" style={{ color: colors.warnInk }}>
               Not enforced yet
@@ -185,19 +191,22 @@ export default function Me() {
       </Screen>
 
       <Sheet visible={!!roleFor} onClose={() => setRoleFor(null)} title={roleFor ? `Your role in ${roleFor.team_name}` : ''}>
-        {(Object.keys(ROLE_LABEL) as MyRole['role'][]).map((r) => (
-          <Choice
-            key={r}
-            label={ROLE_LABEL[r]}
-            selected={roleFor?.role === r}
-            onPress={async () => {
-              await setMembershipRole(db, me.id, roleFor!.team_id, r);
-              setRoleFor(null);
-            }}
-            style={{ alignItems: 'flex-start' }}
-          />
-        ))}
-        <T v="small">For trying things out. With accounts, only admins and team staff can give someone a staff role.</T>
+        {roleFor && access && canSetTeamRole(access.level, access.staffTeamIds, roleFor.team_id, 'captain') ? (
+          (Object.keys(ROLE_LABEL) as MyRole['role'][]).map((r) => (
+            <Choice
+              key={r}
+              label={ROLE_LABEL[r]}
+              selected={roleFor?.role === r}
+              onPress={async () => {
+                await setMembershipRole(db, me.id, roleFor!.team_id, r);
+                setRoleFor(null);
+              }}
+              style={{ alignItems: 'flex-start' }}
+            />
+          ))
+        ) : (
+          <T>You’re {ROLE_LABEL[roleFor?.role ?? 'player'].toLowerCase()} here. Staff roles are given by this team’s captain or coach, a coordinator or an admin.</T>
+        )}
         <Button label="Open team page" kind="ghost" onPress={() => { const t = roleFor!.team_id; setRoleFor(null); router.push(`/team/${t}`); }} />
       </Sheet>
     </>

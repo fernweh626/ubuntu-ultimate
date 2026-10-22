@@ -6,9 +6,10 @@ import { Alert, Linking, Pressable, View } from 'react-native';
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
 import { loadFinishedGames, teamAggregate } from '@/db/reports';
-import { deleteTeam, getTeam, listGamesForTeam, roster, savedLines, setTeamLogo } from '@/db/repo';
+import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, setMembershipRole, setTeamLogo } from '@/db/repo';
 import { displayName, pct, round1 } from '@/domain/format';
-import { Button, Card, Chip, EmptyState, Icon, IconButton, Row, Screen, Section, StatTile, T } from '@/ui/components';
+import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
+import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
 import { FormDots, GameCard } from '@/ui/game-bits';
 import { Avatar, deletePhoto, PhotoSheet, TeamLogo } from '@/ui/photo';
@@ -28,6 +29,9 @@ export default function TeamPage() {
   const db = useSQLiteContext();
   const team = useData((d) => getTeam(d, id), [id]);
   const players = useData((d) => roster(d, id), [id]);
+  const access = useData(getAccess);
+  const [rolesSheet, setRolesSheet] = useState(false);
+  const [rolePerson, setRolePerson] = useState<string | null>(null);
   const lines = useData((d) => savedLines(d, id), [id]);
   const games = useData((d) => listGamesForTeam(d, id), [id]);
   const loaded = useData(async (d) => loadFinishedGames(d, await listGamesForTeam(d, id)), [id]);
@@ -35,6 +39,8 @@ export default function TeamPage() {
 
   if (!team) return <Screen edges={[]}>{null}</Screen>;
   const agg = loaded ? teamAggregate(id, loaded) : null;
+  const canManage = !!access && canSetTeamRole(access.level, access.staffTeamIds, id, 'captain');
+  const canDelete = !!access && (access.level === 'admin' || access.level === 'coordinator');
   const hasContact = team.contact_name || team.contact_phone || team.contact_email || team.website || team.social;
 
   function remove() {
@@ -56,19 +62,19 @@ export default function TeamPage() {
       <Stack.Screen
         options={{
           title: '',
-          headerRight: () => (
+          headerRight: () => (canManage ? (
             <View style={{ flexDirection: 'row' }}>
               <IconButton icon="pencil" label="Edit team" onPress={() => router.push({ pathname: '/team/edit', params: { id } })} />
-              <IconButton icon="delete-outline" label="Delete team" onPress={remove} color={colors.danger} />
+              {canDelete ? <IconButton icon="delete-outline" label="Delete team" onPress={remove} color={colors.danger} /> : null}
             </View>
-          ),
+          ) : null),
         }}
       />
       <Screen edges={[]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-          <Pressable accessibilityRole="button" accessibilityLabel={team.logo_uri ? 'Change logo' : 'Add a logo'} onPress={() => setLogoSheet(true)}>
+          <Pressable accessibilityRole="button" accessibilityLabel={team.logo_uri ? 'Change logo' : 'Add a logo'} disabled={!canManage} onPress={() => setLogoSheet(true)}>
             <TeamLogo uri={team.logo_uri} color={team.primary_color} size={56} />
-            {!team.logo_uri ? (
+            {!team.logo_uri && canManage ? (
               <View style={{ position: 'absolute', right: -4, bottom: -4, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
                 <Icon name="camera-plus-outline" size={16} />
               </View>
@@ -107,8 +113,8 @@ export default function TeamPage() {
               </View>
             </Card>
           ) : (
-            <Card onPress={() => router.push({ pathname: '/team/edit', params: { id } })}>
-              <T v="small">No contact details yet. Tap to add who to contact and how.</T>
+            <Card onPress={canManage ? () => router.push({ pathname: '/team/edit', params: { id } }) : undefined}>
+              <T v="small">{canManage ? 'No contact details yet. Tap to add who to contact and how.' : 'No contact details yet.'}</T>
             </Card>
           )}
         </Section>
@@ -144,7 +150,14 @@ export default function TeamPage() {
 
         <Section
           title={`Roster · ${players?.length ?? 0}`}
-          action={<Button label="Add player" icon="account-plus" kind="ghost" onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
+          action={
+            canManage ? (
+              <View style={{ flexDirection: 'row', gap: space.md }}>
+                <Button label="Roles" icon="shield-account-outline" kind="ghost" onPress={() => setRolesSheet(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+                <Button label="Add" icon="account-plus" kind="ghost" onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+              </View>
+            ) : undefined
+          }>
           {players && players.length ? (
             <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
               {players.map((p) => (
@@ -152,7 +165,13 @@ export default function TeamPage() {
                   key={p.id}
                   title={`${displayName(p)}${p.jersey_number ? `  #${p.jersey_number}` : ''}`}
                   subtitle={[p.gender === 'W' ? 'Woman' : p.gender === 'M' ? 'Man' : null, p.position ? POS[p.position] : null].filter(Boolean).join(' · ')}
-                  right={p.membership_kind !== 'core' ? <Chip label={KIND_LABEL[p.membership_kind]} tone="warn" /> : undefined}
+                  right={
+                    p.role !== 'player' ? (
+                      <Chip label={TEAM_ROLE_LABEL[p.role]} />
+                    ) : p.membership_kind !== 'core' ? (
+                      <Chip label={KIND_LABEL[p.membership_kind]} tone="warn" />
+                    ) : undefined
+                  }
                   left={<Avatar uri={p.photo_uri} name={displayName(p)} size={36} tone="tint" />}
                   onPress={() => router.push(`/player/${p.id}`)}
                 />
@@ -162,14 +181,14 @@ export default function TeamPage() {
             <EmptyState
               icon="account-multiple-plus-outline"
               title="No players yet"
-              action={<Button label="Add player" icon="account-plus" kind="primary" onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })} />}
+              action={canManage ? <Button label="Add player" icon="account-plus" kind="primary" onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })} /> : undefined}
             />
           )}
         </Section>
 
         <Section
           title="Saved lines"
-          action={<Button label="New line" icon="plus" kind="ghost" onPress={() => router.push({ pathname: '/team/line-edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
+          action={canManage ? <Button label="New line" icon="plus" kind="ghost" onPress={() => router.push({ pathname: '/team/line-edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} /> : undefined}>
           {lines && lines.length ? (
             <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
               {lines.map((l) => (
@@ -192,6 +211,40 @@ export default function TeamPage() {
           {games && games.length ? games.slice(0, 10).map((g) => <GameCard key={g.id} g={g} />) : <T v="small">No games yet.</T>}
         </Section>
       </Screen>
+      <Sheet
+        visible={rolesSheet}
+        onClose={() => {
+          setRolesSheet(false);
+          setRolePerson(null);
+        }}
+        title={rolePerson ? `Role for ${displayName(players?.find((p) => p.id === rolePerson) ?? { first_name: '', last_name: '', birth_date: null })}` : 'Team roles'}>
+        {rolePerson ? (
+          <>
+            {(Object.keys(TEAM_ROLE_LABEL) as TeamRole[])
+              .filter((r) => access && canSetTeamRole(access.level, access.staffTeamIds, id, r))
+              .map((r) => (
+                <Choice
+                  key={r}
+                  label={TEAM_ROLE_LABEL[r]}
+                  selected={players?.find((p) => p.id === rolePerson)?.role === r}
+                  onPress={async () => {
+                    await setMembershipRole(db, rolePerson, id, r);
+                    setRolePerson(null);
+                  }}
+                  style={{ alignItems: 'flex-start' }}
+                />
+              ))}
+            <Button label="Back" kind="ghost" onPress={() => setRolePerson(null)} />
+          </>
+        ) : (
+          <>
+            <T v="small">{access ? grantSummary(access.level) : ''}</T>
+            {(players ?? []).map((p) => (
+              <Choice key={p.id} label={displayName(p)} sublabel={TEAM_ROLE_LABEL[p.role]} onPress={() => setRolePerson(p.id)} style={{ alignItems: 'flex-start' }} />
+            ))}
+          </>
+        )}
+      </Sheet>
       <PhotoSheet
         visible={logoSheet}
         onClose={() => setLogoSheet(false)}

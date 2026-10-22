@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { otherTeam, type GameData } from '@/domain/engine';
 import { byFirstName, isMinor } from '@/domain/format';
+import { LEVEL_RANK, type Level } from '@/domain/permissions';
 import { parseRules, ratioForPoint, type Rules } from '@/domain/rules';
 
 import { notifyChanged } from './live';
@@ -81,25 +82,25 @@ export async function getMe(db: SQLiteDatabase) {
   return id ? getPerson(db, id) : null;
 }
 
-export async function getScorekeeperFlag(db: SQLiteDatabase) {
-  const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_scorekeeper'`);
-  return row?.value === '1';
+/** Level set on this phone for testing (player, scorekeeper, coordinator or admin). Accounts replace it. */
+export async function getTestLevel(db: SQLiteDatabase): Promise<Level> {
+  const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_level'`);
+  const v = row?.value as Level | undefined;
+  return v && v in LEVEL_RANK && v !== 'staff' ? v : 'player';
 }
 
-export function setScorekeeperFlag(db: SQLiteDatabase, on: boolean) {
+export function setTestLevel(db: SQLiteDatabase, level: Exclude<Level, 'staff'>) {
   return write(db, () =>
-    db.runAsync(
-      `INSERT INTO app_meta (key, value) VALUES ('me_scorekeeper', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-      on ? '1' : '0',
-    ),
+    db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('me_level', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, level),
   );
 }
 
-export type Access = { level: 'player' | 'scorekeeper' | 'staff'; meId: string | null; staffTeamIds: string[] };
+export type Access = { level: Level; meId: string | null; staffTeamIds: string[] };
 
 /**
- * What the person using this phone may do. Local stand-in until accounts: staff = holds a captain/coach/
- * spirit captain/manager role on a team; scorekeeper = switched on in Me; otherwise player.
+ * What the person using this phone may do. Local stand-in until accounts: team staff = holds a captain/
+ * coach/spirit captain/manager role on a team; admin/coordinator/scorekeeper = the test switch in Me.
+ * The higher of the two wins.
  */
 export async function getAccess(db: SQLiteDatabase): Promise<Access> {
   const meId = await getMeId(db);
@@ -110,11 +111,12 @@ export async function getAccess(db: SQLiteDatabase): Promise<Access> {
       )
     : [];
   const staffTeamIds = staff.map((s) => s.team_id);
-  const level = staffTeamIds.length ? 'staff' : (await getScorekeeperFlag(db)) ? 'scorekeeper' : 'player';
+  const test = await getTestLevel(db);
+  const level: Level = staffTeamIds.length && LEVEL_RANK.staff > LEVEL_RANK[test] ? 'staff' : test;
   return { level, meId, staffTeamIds };
 }
 
-export type MyRole ={ team_id: string; team_name: string; primary_color: string | null; role: RosterEntry['role']; kind: 'core' | 'guest' | 'mercenary' };
+export type MyRole = { team_id: string; team_name: string; primary_color: string | null; role: RosterEntry['role']; kind: 'core' | 'guest' | 'mercenary' };
 
 export function myRoles(db: SQLiteDatabase, personId: string) {
   return db.getAllAsync<MyRole>(

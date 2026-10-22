@@ -49,3 +49,21 @@ by majority vote; disagreements are flagged for review. Nothing in the tables ne
 
 Accounts and roles, join requests, pickup claims (placeholder → real person), reflections and shout-outs,
 AI summaries, notifications, and the importer for the Stall Count export.
+
+## Access levels and who can grant what
+
+Defined in `mobile/src/domain/permissions.ts`; the server will enforce the same table.
+
+| Level | Can do | Can give out |
+| --- | --- | --- |
+| Admin | Everything | Coordinator, team staff roles, scorekeeper |
+| Coordinator | Run leagues, regionals, nationals | Team staff roles, scorekeeper |
+| Team staff (captain, coach, spirit captain, manager) | Roster, lines, contacts, logo, spirit, confirm who played | Staff roles and scorekeeper, own team only; approve other staff |
+| Scorekeeper | Start and score any game, add players | Nothing |
+| Player | Start friendly games, edit own details, join teams | Nothing |
+
+Players added during a game are marked `added_in_game`; after the game team staff confirm or remove each
+player, or the player taps "I played" (`game_player.confirmation`).
+
+Until sign-in exists, the phone stores who "me" is and a test level in `app_meta`; team staff comes from
+`membership.role`.
