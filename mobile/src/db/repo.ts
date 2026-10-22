@@ -62,6 +62,28 @@ export async function deviceId(db: SQLiteDatabase) {
 /* ---------------- Me (who is using this phone) ---------------- */
 
 // Until sign-in exists, "me" is just the player this phone's owner picked. Accounts will replace it.
+/** The region this phone's user plays in / cares most about — the default filter across the app. */
+export async function getHomeRegion(db: SQLiteDatabase) {
+  const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'home_region'`);
+  if (row) return row.value;
+  // Not chosen yet: guess from the teams you play for.
+  const team = await db.getFirstAsync<{ region: string }>(
+    `SELECT t.region FROM membership m JOIN team t ON t.id = m.team_id
+      WHERE m.person_id = (SELECT value FROM app_meta WHERE key = 'me_person_id') AND m.end_date IS NULL AND m.deleted_at IS NULL
+        AND t.region IS NOT NULL AND t.is_sample = 0
+      ORDER BY m.created_at LIMIT 1`,
+  );
+  return team?.region ?? null;
+}
+
+export function setHomeRegion(db: SQLiteDatabase, region: string | null) {
+  return write(db, () =>
+    region
+      ? db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('home_region', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, region)
+      : db.runAsync(`DELETE FROM app_meta WHERE key = 'home_region'`),
+  );
+}
+
 export async function getMeId(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_person_id'`);
   return row?.value ?? null;
@@ -510,6 +532,9 @@ export type GameListItem = Game & {
   score_a: number;
   score_b: number;
   venue_name: string | null;
+  a_region: string | null;
+  b_region: string | null;
+  event_region: string | null;
 };
 
 const GAME_LIST_SQL = `
@@ -521,7 +546,7 @@ const GAME_LIST_SQL = `
          CASE WHEN g.forfeit_team_id = g.team_b_id THEN 0
               WHEN g.forfeit_team_id = g.team_a_id THEN COALESCE(json_extract(g.rules_json, '$.pointTarget'), 15)
               ELSE (SELECT COUNT(*) FROM point p WHERE p.game_id = g.id AND p.scoring_team_id = g.team_b_id) END AS score_b,
-         v.name AS venue_name
+         v.name AS venue_name, ta.region AS a_region, tb.region AS b_region, e.region AS event_region
     FROM game g
     JOIN team ta ON ta.id = g.team_a_id
     JOIN team tb ON tb.id = g.team_b_id

@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { listCalendar, listGames, listPickups, myScope, type GameListItem } from '@/db/repo';
+import { regionName } from '@/content/hub';
+import { getHomeRegion, listCalendar, listGames, listPickups, myScope, type GameListItem } from '@/db/repo';
 import { useData } from '@/db/live';
 import { DAYS_LONG, dateRange, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, Section, Screen, Segmented, T } from '@/ui/components';
@@ -15,10 +16,15 @@ export default function Home() {
   const pickups = useData(listPickups);
   const calendar = useData(listCalendar);
   const scope = useData(myScope);
-  const [feedChoice, setFeed] = useState<'you' | 'all' | null>(null);
-  const feed = feedChoice ?? (scope?.hasAny ? 'you' : 'all');
+  const home = useData(getHomeRegion);
+  const [feedChoice, setFeed] = useState<'you' | 'region' | 'all' | null>(null);
+  const feed = feedChoice === 'region' && !home ? 'all' : (feedChoice ?? (scope?.hasAny ? 'you' : home ? 'region' : 'all'));
+  const inRegion = (r: string | null | undefined) => feed !== 'region' || !r || r === home;
   const inFeed = (g: GameListItem) =>
-    feed === 'all' || !!scope?.teamIds.has(g.team_a_id) || !!scope?.teamIds.has(g.team_b_id) || (!!g.event_id && !!scope?.eventIds.has(g.event_id));
+    feed === 'all' ||
+    (feed === 'region'
+      ? g.a_region === home || g.b_region === home || g.event_region === home
+      : !!scope?.teamIds.has(g.team_a_id) || !!scope?.teamIds.has(g.team_b_id) || (!!g.event_id && !!scope?.eventIds.has(g.event_id)));
 
   // Games being scored on this phone always show; everything else follows the For you / All switch.
   const live = games?.filter((g) => g.status === 'live') ?? [];
@@ -28,9 +34,12 @@ export default function Home() {
     .sort((a, b) => (a.scheduled_at ?? '9999').localeCompare(b.scheduled_at ?? '9999'))
     .slice(0, 3);
   const today = weekdayIndex();
-  const todays = pickups?.filter((p) => p.day_of_week === today) ?? [];
+  const todays = pickups?.filter((p) => p.day_of_week === today && (feed === 'all' || !home || p.region === home)) ?? [];
   const todayIso = new Date().toISOString().slice(0, 10);
-  const upcoming = (calendar ?? []).filter((c) => c.start_date && (c.end_date ?? c.start_date) >= todayIso).slice(0, 3);
+  const upcoming = (calendar ?? [])
+    .filter((c) => c.start_date && (c.end_date ?? c.start_date) >= todayIso)
+    .filter((c) => c.level === 'national' || c.level === 'international' || inRegion(c.region))
+    .slice(0, 3);
 
   return (
     <Screen>
@@ -47,6 +56,7 @@ export default function Home() {
         onChange={setFeed}
         options={[
           { value: 'you', label: '★ For you' },
+          ...(home ? [{ value: 'region' as const, label: regionName(home) }] : []),
           { value: 'all', label: 'All of SA' },
         ]}
       />

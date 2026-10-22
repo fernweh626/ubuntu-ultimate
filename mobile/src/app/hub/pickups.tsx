@@ -7,6 +7,7 @@ import { useData } from '@/db/live';
 import { listPickups } from '@/db/repo';
 import { DAYS, DAYS_LONG, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, Choice, EmptyState, IconButton, Screen, T } from '@/ui/components';
+import { RegionChips, useRegionFilter } from '@/ui/region-filter';
 import { colors, font, space } from '@/ui/theme';
 
 const LEVEL = { all: 'All levels', beginner: 'Beginner friendly', competitive: 'Competitive' } as const;
@@ -19,9 +20,11 @@ export default function Pickups() {
   const pickups = useData(listPickups);
   const [day, setDay] = useState(weekdayIndex());
   const [city, setCity] = useState<string>('all');
+  const region = useRegionFilter();
 
-  const cities = useMemo(() => Array.from(new Set((pickups ?? []).map((p) => p.city))).sort(), [pickups]);
-  const inCity = (pickups ?? []).filter((p) => city === 'all' || p.city === city);
+  const inRegion = useMemo(() => (pickups ?? []).filter((p) => region.value === 'all' || p.region === region.value), [pickups, region.value]);
+  const cities = useMemo(() => Array.from(new Set(inRegion.map((p) => p.city))).sort(), [inRegion]);
+  const inCity = inRegion.filter((p) => city === 'all' || p.city === city);
   const forDay = inCity.filter((p) => p.day_of_week === day);
   const countFor = (d: number) => inCity.filter((p) => p.day_of_week === d).length;
 
@@ -73,6 +76,14 @@ export default function Pickups() {
               );
             })}
           </View>
+          <RegionChips
+            value={region.value}
+            onChange={(v) => {
+              region.setValue(v);
+              setCity('all');
+            }}
+            home={region.home}
+          />
           {cities.length > 1 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
               {['all', ...cities].map((c) => (

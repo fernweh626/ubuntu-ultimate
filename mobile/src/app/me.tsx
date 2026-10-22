@@ -7,6 +7,7 @@ import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
 import {
   getAccess,
+  getHomeRegion,
   getMe,
   listEvents,
   listFollows,
@@ -18,6 +19,7 @@ import {
   myRoles,
   savePerson,
   setFollowing,
+  setHomeRegion,
   setMeId,
   setMembershipRole,
   setTestLevel,
@@ -27,6 +29,7 @@ import type { Gender } from '@/db/types';
 import { displayName } from '@/domain/format';
 import { canSetTeamRole, grantSummary, LEVEL_LABEL } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, Field, Icon, IconButton, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
+import { RegionChips } from '@/ui/region-filter';
 import { Avatar } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
@@ -52,6 +55,7 @@ export default function Me() {
   const me = useData(getMe);
   const roles = useData(async (d) => (me ? myRoles(d, me.id) : []), [me?.id]) ?? [];
   const access = useData(getAccess);
+  const homeRegion = useData(getHomeRegion);
   const week = useData(async (d) => {
     if (!me) return null;
     const monday = new Date();
@@ -120,6 +124,11 @@ export default function Me() {
           />
           <Row title="Notifications" subtitle="Game reminders, shout-outs, check-ins" left={<Icon name="bell-outline" color={colors.brand} />} onPress={() => router.push('/notifications')} />
         </View>
+
+        <Section title="Your region">
+          <T v="small">Where you play, or care about most. Calendar, pickups and teams open on it — you can always switch to All of SA.</T>
+          <RegionChips value={homeRegion ?? ''} onChange={(v) => setHomeRegion(db, v === 'all' ? null : v)} home={homeRegion ?? null} />
+        </Section>
 
         <View style={{ gap: space.sm }}>
           <Button label="My stats & games" icon="chart-box-outline" kind="primary" onPress={() => router.push(`/player/${me.id}`)} />

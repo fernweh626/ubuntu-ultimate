@@ -7,6 +7,7 @@ import { useData } from '@/db/live';
 import { listCalendar } from '@/db/repo';
 import type { CalendarEntry } from '@/db/types';
 import { dateRange } from '@/domain/format';
+import { RegionChips, useRegionFilter } from '@/ui/region-filter';
 import { Card, Chip, EmptyState, IconButton, Screen, Section, Segmented, T } from '@/ui/components';
 import { colors, font, space } from '@/ui/theme';
 
@@ -21,7 +22,10 @@ const LEVEL_TONE: Record<string, 'brand' | 'neutral' | 'warn' | 'dark'> = {
 };
 
 export default function Calendar() {
-  const entries = useData(listCalendar) ?? [];
+  const all = useData(listCalendar) ?? [];
+  const region = useRegionFilter();
+  // National, international and all-region events matter to everyone, so they show in every region.
+  const entries = all.filter((e) => region.value === 'all' || !e.region || e.region === region.value || e.level === 'national' || e.level === 'international');
   const [view, setView] = useState<'upcoming' | 'tbc' | 'past'>('upcoming');
   const today = new Date().toISOString().slice(0, 10);
 
@@ -46,6 +50,8 @@ export default function Calendar() {
         }}
       />
       <Screen edges={[]}>
+        <RegionChips value={region.value} onChange={region.setValue} home={region.home} />
+        {region.value !== 'all' ? <T v="small">{regionName(region.value)} events, plus national and international ones.</T> : null}
         <Segmented
           value={view}
           onChange={setView}

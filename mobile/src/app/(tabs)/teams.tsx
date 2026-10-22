@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 
 import { REGIONS, regionName } from '@/content/hub';
+import { useRegionFilter } from '@/ui/region-filter';
 import { useData } from '@/db/live';
 import { listTeams, myScope } from '@/db/repo';
 import { Button, Chip, Choice, EmptyState, Icon, PageTitle, Row, Screen, Section } from '@/ui/components';
@@ -14,7 +15,8 @@ export default function Teams() {
   const teams = useData(listTeams);
   const scope = useData(myScope);
   const [q, setQ] = useState('');
-  const [region, setRegion] = useState<string>('all');
+  // Starts on the home region chosen in Me.
+  const { value: region, setValue: setRegion } = useRegionFilter();
 
   const filtered = (teams ?? []).filter((t) => {
     if (region === 'mine') return !!scope?.teamIds.has(t.id);
