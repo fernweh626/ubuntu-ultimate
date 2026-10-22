@@ -111,6 +111,16 @@ export default function Me() {
           <Icon name="chevron-right" color={colors.faint} />
         </Card>
 
+        <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+          <Row
+            title={access?.signedIn ? 'Account & sync' : 'Go online'}
+            subtitle={access?.signedIn ? 'Backed up · syncs automatically' : 'Back up your data and share with your team'}
+            left={<Icon name={access?.signedIn ? 'cloud-check-outline' : 'cloud-upload-outline'} color={colors.brand} />}
+            onPress={() => router.push('/account')}
+          />
+          <Row title="Notifications" subtitle="Game reminders, shout-outs, check-ins" left={<Icon name="bell-outline" color={colors.brand} />} onPress={() => router.push('/notifications')} />
+        </View>
+
         <View style={{ gap: space.sm }}>
           <Button label="My stats & games" icon="chart-box-outline" kind="primary" onPress={() => router.push(`/player/${me.id}`)} />
           <Button label="Update my details" icon="account-edit-outline" onPress={() => router.push({ pathname: '/player/edit', params: { id: me.id } })} />
@@ -170,6 +180,8 @@ export default function Me() {
               );
             })}
           </View>
+          {!access?.signedIn ? (
+            <>
           <T v="label">Try a level on this phone</T>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
             {(['player', 'scorekeeper', 'staff', 'coordinator', 'admin'] as const).map((l) => (
@@ -190,6 +202,11 @@ export default function Me() {
             ))}
           </View>
           <T v="small">Team staff makes you captain of a team you pick. In real use, staff roles are given by that team’s staff, a coordinator or an admin.</T>
+            </>
+          ) : (
+            <T v="small">Your level comes from your account. Admins and coordinators give levels from a player’s profile; team staff give team roles from the team page.</T>
+          )}
+          {!access?.signedIn ? (
           <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
             <T v="smallStrong" style={{ color: colors.warnInk }}>
               Not enforced yet
@@ -198,6 +215,7 @@ export default function Me() {
               This app version has no sign-in, so anyone holding this phone can edit anything. When accounts arrive, the server will check these levels on every change, and admins will assign them.
             </T>
           </Card>
+          ) : null}
         </Section>
 
         <Section title="Following">
