@@ -1108,7 +1108,7 @@ export function confirmTeamRoster(db: SQLiteDatabase, gameId: string, teamId: st
 
 /* ---------------- Following ---------------- */
 
-export type FollowKind = 'team' | 'event' | 'player';
+export type FollowKind = 'team' | 'event' | 'player' | 'pickup';
 
 export function listFollows(db: SQLiteDatabase) {
   return db.getAllAsync<{ kind: FollowKind; target_id: string }>(`SELECT kind, target_id FROM follow`);

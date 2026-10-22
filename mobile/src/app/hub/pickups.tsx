@@ -1,10 +1,11 @@
 import { router, Stack } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { useData } from '@/db/live';
-import { listPickups } from '@/db/repo';
+import { listFollows, listPickups, setFollowing } from '@/db/repo';
 import { DAYS, DAYS_LONG, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, Choice, EmptyState, IconButton, Screen, T } from '@/ui/components';
 import { RegionChips, useRegionFilter } from '@/ui/region-filter';
@@ -17,7 +18,9 @@ function mapsUrl(q: string) {
 }
 
 export default function Pickups() {
+  const db = useSQLiteContext();
   const pickups = useData(listPickups);
+  const going = useData(async (d) => new Set((await listFollows(d)).filter((f) => f.kind === 'pickup').map((f) => f.target_id))) ?? new Set<string>();
   const [day, setDay] = useState(weekdayIndex());
   const [city, setCity] = useState<string>('all');
   const region = useRegionFilter();
@@ -125,6 +128,12 @@ export default function Pickups() {
                   </View>
                   {p.notes ? <T v="small">{p.notes}</T> : null}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.xs }}>
+                    <Button
+                      label={going.has(p.id) ? 'I go here ✓' : 'I go here'}
+                      icon={going.has(p.id) ? 'star' : 'star-outline'}
+                      kind={going.has(p.id) ? 'primary' : 'secondary'}
+                      onPress={() => setFollowing(db, 'pickup', p.id, !going.has(p.id))}
+                    />
                     {p.whatsapp_url ? (
                       <Button label="WhatsApp group" icon="whatsapp" kind="primary" onPress={() => Linking.openURL(p.whatsapp_url!)} />
                     ) : null}

@@ -621,6 +621,28 @@ const MIGRATIONS: string[] = [
     WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
     BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('join_request', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
   `,
+  // v9: follow pickups too (for the Home timeline). SQLite can't alter a CHECK, so rebuild the table + its sync triggers.
+  `
+  CREATE TABLE follow_v9 (
+    id TEXT PRIMARY KEY NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('team','event','player','pickup')),
+    target_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (kind, target_id)
+  );
+  INSERT INTO follow_v9 (id, kind, target_id, created_at) SELECT id, kind, target_id, created_at FROM follow;
+  DROP TABLE follow;
+  ALTER TABLE follow_v9 RENAME TO follow;
+  CREATE TRIGGER sync_follow_insert AFTER INSERT ON follow
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('follow', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_follow_update AFTER UPDATE ON follow
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('follow', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_follow_delete AFTER DELETE ON follow
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('follow', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {
