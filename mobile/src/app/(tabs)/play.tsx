@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useData } from '@/db/live';
-import { listEvents, listGames } from '@/db/repo';
+import { getAccess, listEvents, listGames } from '@/db/repo';
 import { dateRange } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, PageTitle, Screen, Section, Segmented, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
@@ -22,9 +22,12 @@ export default function Play() {
   const [tab, setTab] = useState<'games' | 'events'>('games');
   const games = useData(listGames);
   const events = useData(listEvents);
+  const access = useData(getAccess);
+  const runsEvents = access?.level === 'admin' || access?.level === 'coordinator';
 
   const live = games?.filter((g) => g.status === 'live') ?? [];
   const done = games?.filter((g) => g.status === 'final') ?? [];
+  const upcoming = (games ?? []).filter((g) => g.status === 'scheduled').sort((a, b) => (a.scheduled_at ?? '9999').localeCompare(b.scheduled_at ?? '9999')).slice(0, 10);
 
   return (
     <Screen>
@@ -48,6 +51,13 @@ export default function Play() {
               ))}
             </Section>
           ) : null}
+          {upcoming.length ? (
+            <Section title="Coming up">
+              {upcoming.map((g) => (
+                <GameCard key={g.id} g={g} />
+              ))}
+            </Section>
+          ) : null}
           <Section title="Finished">
             {done.length === 0 ? (
               <EmptyState icon="flag-checkered" title="No finished games yet" body="Every finished game gets a full report you can share." />
@@ -58,7 +68,11 @@ export default function Play() {
         </>
       ) : (
         <>
-          <Button label="New tournament or league" icon="trophy-outline" kind="primary" big onPress={() => router.push('/event/edit')} />
+          {runsEvents ? (
+            <Button label="New tournament or league" icon="trophy-outline" kind="primary" big onPress={() => router.push('/event/edit')} />
+          ) : (
+            <T v="small">Coordinators and admins create tournaments and leagues. Set your level in Me (top right).</T>
+          )}
           {(events ?? []).length === 0 ? (
             <EmptyState
               icon="trophy-outline"

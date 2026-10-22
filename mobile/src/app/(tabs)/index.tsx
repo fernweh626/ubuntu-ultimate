@@ -23,6 +23,10 @@ export default function Home() {
   // Games being scored on this phone always show; everything else follows the For you / All switch.
   const live = games?.filter((g) => g.status === 'live') ?? [];
   const recent = games?.filter((g) => g.status === 'final' && inFeed(g)).slice(0, 5) ?? [];
+  const nextUp = (games ?? [])
+    .filter((g) => g.status === 'scheduled' && inFeed(g))
+    .sort((a, b) => (a.scheduled_at ?? '9999').localeCompare(b.scheduled_at ?? '9999'))
+    .slice(0, 3);
   const today = weekdayIndex();
   const todays = pickups?.filter((p) => p.day_of_week === today) ?? [];
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -56,6 +60,14 @@ export default function Home() {
       {live.length > 0 ? (
         <Section title="Live now">
           {live.map((g) => (
+            <GameCard key={g.id} g={g} />
+          ))}
+        </Section>
+      ) : null}
+
+      {nextUp.length ? (
+        <Section title={feed === 'you' ? 'Your next games' : 'Next games'}>
+          {nextUp.map((g) => (
             <GameCard key={g.id} g={g} />
           ))}
         </Section>

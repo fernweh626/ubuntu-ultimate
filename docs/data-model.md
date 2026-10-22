@@ -67,3 +67,20 @@ player, or the player taps "I played" (`game_player.confirmation`).
 
 Until sign-in exists, the phone stores who "me" is and a test level in `app_meta`; team staff comes from
 `membership.role`.
+
+## Fixtures, postponements and forfeits
+
+A scheduled game is a `game` row with `status = 'scheduled'`, a `scheduled_at` (null = date TBC), a field
+(`venue_id`) and `home_team_id` — the home team sets up the field. Starting it turns the same row live, so
+it stays in the event's schedule.
+
+- **League games** can be postponed twice (`game.postponements`); after that a team that can't play forfeits.
+- **Tournament games** (regionals, nationals, …) can't be postponed — only forfeited.
+- Every postponement, forfeit and reschedule is logged in `game_status_log` with the team, reason
+  (weather, lights, not enough men, not enough women, other + note) and the previous date.
+- A forfeit sets `status = 'final'` and `forfeit_team_id`; it counts as a win for the other team at the
+  game's target score to 0.
+
+Schedules are built from an event's Schedule tab by coordinators and admins: generate a round robin
+(home duty balanced to within one game per team), import a CSV (`date,time,field,home,away,pool`, dates
+dd/mm/yyyy), or add games one at a time.

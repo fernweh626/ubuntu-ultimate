@@ -316,6 +316,11 @@ export function computeGameStats(data: GameData): GameStats {
   const first = points.find((p) => p.pulled_at)?.pulled_at;
   const last = [...points].reverse().find((p) => p.scored_at)?.scored_at;
   const durationSeconds = first && last ? (Date.parse(last) - Date.parse(first)) / 1000 : null;
+  if (game.forfeit_team_id) {
+    // A forfeit is recorded as a win for the other team at the target score, e.g. 15–0.
+    teams[game.forfeit_team_id].score = 0;
+    teams[otherTeam(game, game.forfeit_team_id)].score = rules.pointTarget;
+  }
   const a = teams[game.team_a_id].score;
   const b = teams[game.team_b_id].score;
 

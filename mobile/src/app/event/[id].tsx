@@ -4,8 +4,8 @@ import { Linking, Pressable, ScrollView, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, peopleById, playerTotals, teamAggregate } from '@/db/reports';
-import { eventTeams, getEvent, listGamesForEvent, spiritForEvent } from '@/db/repo';
-import { dateRange, displayName, pct, round1, shortName } from '@/domain/format';
+import { eventTeams, getAccess, getEvent, listGamesForEvent, spiritForEvent } from '@/db/repo';
+import { dateRange, displayName, pct, round1, shortDate, shortName } from '@/domain/format';
 import { rankStandings, type TeamAggregate } from '@/domain/stats';
 import { Button, Card, Choice, EmptyState, IconButton, Screen, Section, T, TeamSwatch } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
@@ -28,13 +28,21 @@ export default function EventPage() {
       const loaded = await loadFinishedGames(d, games);
       const ids = new Set<string>();
       loaded.forEach((g) => Object.keys(g.stats.players).forEach((p) => ids.add(p)));
-      return { event, teams, games, loaded, spirit, people: await peopleById(d, [...ids]) };
+      return { event, teams, games, loaded, spirit, people: await peopleById(d, [...ids]), access: await getAccess(d) };
     },
     [id],
   );
 
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
-  const { event, teams, games, loaded, spirit, people } = bundle;
+  const { event, teams, games, loaded, spirit, people, access } = bundle;
+  const runsEvents = access.level === 'admin' || access.level === 'coordinator';
+  const upcoming = games.filter((g) => g.status === 'scheduled');
+  const played = games.filter((g) => g.status !== 'scheduled');
+  const byDay = new Map<string, typeof upcoming>();
+  for (const g of upcoming) {
+    const key = g.scheduled_at ? shortDate(g.scheduled_at) : 'Date TBC';
+    byDay.set(key, [...(byDay.get(key) ?? []), g]);
+  }
   const teamById = new Map(teams.map((t) => [t.id, t]));
   const aggs = teams.map((t) => teamAggregate(t.id, loaded.filter((g) => g.item.team_a_id === t.id || g.item.team_b_id === t.id)));
   const pools = Array.from(new Set(teams.map((t) => t.pool ?? ''))).sort();
@@ -119,7 +127,7 @@ export default function EventPage() {
       <Stack.Screen
         options={{
           title: '',
-          headerRight: () => <IconButton icon="pencil" label="Edit event" onPress={() => router.push({ pathname: '/event/edit', params: { id } })} />,
+          headerRight: () => (runsEvents ? <IconButton icon="pencil" label="Edit event" onPress={() => router.push({ pathname: '/event/edit', params: { id } })} /> : null),
         }}
       />
       <Screen edges={[]}>
@@ -143,7 +151,7 @@ export default function EventPage() {
           {(
             [
               ['standings', 'Standings'],
-              ['games', `Games (${games.length})`],
+              ['games', `Schedule (${games.length})`],
               ['leaders', 'Leaders'],
               ['teams', 'Team stats'],
               ['spirit', 'Spirit'],
@@ -170,7 +178,38 @@ export default function EventPage() {
         ) : null}
         {tab === 'standings' && teams.length ? <T v="small">Ranked by wins, then point difference, then points scored. Tap a team for its tournament report.</T> : null}
 
-        {tab === 'games' ? (games.length ? games.map((g) => <GameCard key={g.id} g={g} />) : <EmptyState icon="whistle" title="No games yet" body="Tap “Score a game” to start one in this event." />) : null}
+        {tab === 'games' ? (
+          <>
+            {runsEvents ? (
+              <Card>
+                <T v="bodyStrong">Build the schedule</T>
+                <T v="small">Generate every pairing automatically, import a spreadsheet, or add games one at a time.</T>
+                <Button label="Generate round robin" icon="autorenew" kind="primary" onPress={() => router.push({ pathname: '/event/schedule-generate', params: { eventId: id } })} />
+                <View style={{ flexDirection: 'row', gap: space.sm }}>
+                  <Button label="Import" icon="file-upload-outline" onPress={() => router.push({ pathname: '/event/schedule-import', params: { eventId: id } })} style={{ flex: 1 }} />
+                  <Button label="Add a game" icon="plus" onPress={() => router.push({ pathname: '/event/schedule-add', params: { eventId: id } })} style={{ flex: 1 }} />
+                </View>
+              </Card>
+            ) : null}
+            {games.length === 0 ? (
+              <EmptyState icon="calendar-blank" title="No games scheduled yet" body={runsEvents ? 'Use the tools above to build the schedule.' : 'The coordinator hasn’t published the schedule yet.'} />
+            ) : null}
+            {[...byDay.entries()].map(([day, gs]) => (
+              <Section key={day} title={day}>
+                {gs.map((g) => (
+                  <GameCard key={g.id} g={g} />
+                ))}
+              </Section>
+            ))}
+            {played.length ? (
+              <Section title="Played">
+                {played.map((g) => (
+                  <GameCard key={g.id} g={g} />
+                ))}
+              </Section>
+            ) : null}
+          </>
+        ) : null}
 
         {tab === 'leaders' ? (
           <>

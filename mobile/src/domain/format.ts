@@ -76,6 +76,13 @@ export function dmyToIso(text: string): string | null {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+/** Local calendar date of a timestamp as dd/mm/yyyy. */
+export function localDmy(iso: string | null | undefined) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 /** "2001-06-30" → "30/06/2001". */
 export function isoToDmy(iso: string | null | undefined) {
   if (!iso) return '';

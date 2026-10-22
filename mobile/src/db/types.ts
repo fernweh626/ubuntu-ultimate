@@ -119,6 +119,9 @@ export type Game = {
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+  home_team_id: string | null;
+  postponements: number;
+  forfeit_team_id: string | null;
 };
 
 export type GamePlayer = {

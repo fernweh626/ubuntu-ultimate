@@ -5,8 +5,9 @@ import { Alert, Linking, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
-import { END_REASONS, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
+import { END_REASONS, statusLog, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
 import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, timeOfDay } from '@/domain/format';
+import { STATUS_REASONS } from '@/domain/fixtures';
 import { computeGameStats, type TeamGameStats } from '@/domain/stats';
 import { weatherLine, type Weather } from '@/domain/weather';
 import { Bars, ScoreProgression } from '@/ui/charts';
@@ -30,7 +31,7 @@ export default function GameReport() {
         spiritForGame(d, id),
       ]);
       const people = await peopleById(d, data.players.map((p) => p.person_id));
-      return { data, ta: ta!, tb: tb!, event, venue, spirit, people, access: await getAccess(d) };
+      return { data, ta: ta!, tb: tb!, event, venue, spirit, people, access: await getAccess(d), log: await statusLog(d, id) };
     },
     [id],
   );
@@ -41,7 +42,8 @@ export default function GameReport() {
   const [menu, setMenu] = useState(false);
 
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
-  const { data, ta, tb, event, venue, spirit, people, access } = bundle;
+  const { data, ta, tb, event, venue, spirit, people, access, log } = bundle;
+  const forfeit = data.game.forfeit_team_id ? log.find((l) => l.action === 'forfeit') : null;
   const { game } = data;
   const stats = computeGameStats(data);
   const A = stats.teams[ta.id];
@@ -111,6 +113,7 @@ export default function GameReport() {
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               {final ? <Chip label="Final" tone="dark" /> : <Chip label="LIVE" tone="danger" />}
               {endReason && endReason !== 'target' && END_REASONS[endReason] ? <Chip label={`Ended early · ${END_REASONS[endReason]}`} tone="warn" /> : null}
+              {data.game.forfeit_team_id ? <Chip label="Forfeit" tone="warn" /> : null}
             </View>
             <T style={{ fontFamily: font.medium, fontSize: 13, color: colors.nightMuted }}>
               {[event?.name, shortDate(game.started_at ?? game.created_at)].filter(Boolean).join(' · ')}
@@ -141,6 +144,18 @@ export default function GameReport() {
           </T>
           {weather ? <T style={{ fontFamily: font.regular, fontSize: 13, color: colors.nightMuted }}>{weatherLine(weather)}</T> : null}
         </Card>
+
+        {data.game.forfeit_team_id ? (
+          <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
+            <T v="bodyStrong" style={{ color: colors.warnInk }}>
+              {data.game.forfeit_team_id === ta.id ? ta.name : tb.name} forfeited
+            </T>
+            <T v="small" style={{ color: colors.warnInk }}>
+              {[forfeit?.reason ? STATUS_REASONS[forfeit.reason] : null, forfeit?.note].filter(Boolean).join(' — ') || 'No reason recorded'}
+              {data.game.postponements ? ` · after ${data.game.postponements} postponement${data.game.postponements > 1 ? 's' : ''}` : ''}
+            </T>
+          </Card>
+        ) : null}
 
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <Button label="Share" icon="share-variant" kind="primary" onPress={openShare} style={{ flex: 1 }} />

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 
 import { useData } from '@/db/live';
-import { createGame, eventTeams, getAccess, getEvent, listEvents, listTeams, roster } from '@/db/repo';
+import { createGame, eventTeams, getAccess, getEvent, getGameListItem, getTeam, listEvents, listTeams, roster, startScheduledGame } from '@/db/repo';
 import type { Division, RosterEntry, Team, TrackingMode } from '@/db/types';
 import { shortName } from '@/domain/format';
 import { RULE_PRESETS, rulesFor } from '@/domain/rules';
@@ -20,7 +20,8 @@ const MODES: { value: TrackingMode; label: string; body: string }[] = [
 ];
 
 export default function NewGame() {
-  const params = useLocalSearchParams<{ eventId?: string }>();
+  const params = useLocalSearchParams<{ eventId?: string; fixtureId?: string }>();
+  const fixtureId = params.fixtureId ?? null;
   const db = useSQLiteContext();
   const teamRows = useData(listTeams);
   const teams = useMemo(() => teamRows ?? [], [teamRows]);
@@ -47,7 +48,7 @@ export default function NewGame() {
   const [eventTeamIds, setEventTeamIds] = useState<string[]>([]);
 
   // Players may only start friendly games (no event, casual rules); scorekeepers and staff choose freely.
-  const eventId = isPlayer ? null : eventChoice;
+  const eventId = isPlayer && !fixtureId ? null : eventChoice;
   const preset = isPlayer ? 'casual' : presetChoice;
   const mode: TrackingMode = modeChoice ?? (isPlayer ? 'lite' : 'standard');
   const eventKind = events.find((e) => e.id === eventId)?.kind;
@@ -60,6 +61,25 @@ export default function NewGame() {
     getEvent(db, eventId).then((e) => e && setDivision(e.division));
   }, [db, eventId]);
   const inEvent = useMemo(() => (eventId ? eventTeamIds : []), [eventId, eventTeamIds]);
+
+  // Starting a scheduled fixture: teams (home first), event, field and rules come from the schedule.
+  useEffect(() => {
+    if (!fixtureId) return;
+    getGameListItem(db, fixtureId).then(async (f) => {
+      if (!f) return;
+      const homeId = f.home_team_id ?? f.team_a_id;
+      const awayId = homeId === f.team_a_id ? f.team_b_id : f.team_a_id;
+      const [home, away, event] = await Promise.all([getTeam(db, homeId), getTeam(db, awayId), f.event_id ? getEvent(db, f.event_id) : null]);
+      if (!home || !away) return;
+      setTeamA(home);
+      setTeamB(away);
+      setRosterA(await roster(db, home.id));
+      setRosterB(await roster(db, away.id));
+      setEventId(f.event_id);
+      setVenueId(f.venue_id);
+      if (event?.kind === 'league') setPreset('league');
+    });
+  }, [db, fixtureId]);
 
   async function loadRoster(side: 'A' | 'B', team: Team) {
     const r = await roster(db, team.id);
@@ -94,7 +114,7 @@ export default function NewGame() {
       return Alert.alert('No players', 'Add players to at least one team, or use Lite mode to just count goals.');
     }
     const rules = { ...rulesFor(preset, division), mixedRatio: usesRatio };
-    const id = await createGame(db, {
+    const game = {
       eventId,
       venueId,
       teamAId: teamA.id,
@@ -107,7 +127,8 @@ export default function NewGame() {
         ...squadA.map((p) => ({ teamId: teamA.id, personId: p.id, jersey: p.jersey_number, position: p.position })),
         ...squadB.map((p) => ({ teamId: teamB.id, personId: p.id, jersey: p.jersey_number, position: p.position })),
       ],
-    });
+    };
+    const id = fixtureId ? await startScheduledGame(db, fixtureId, game) : await createGame(db, game);
     router.replace(`/game/${id}`);
   }
 
@@ -150,7 +171,7 @@ export default function NewGame() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'New game' }} />
+      <Stack.Screen options={{ title: fixtureId ? 'Start fixture' : 'New game' }} />
       <Screen
         edges={[]}
         footer={

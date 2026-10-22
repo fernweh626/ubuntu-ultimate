@@ -284,6 +284,24 @@ const MIGRATIONS: string[] = [
   ALTER TABLE game_player ADD COLUMN confirmation TEXT NOT NULL DEFAULT 'pending';
   ALTER TABLE game_player ADD COLUMN added_in_game INTEGER NOT NULL DEFAULT 0;
   `,
+  // v4: fixtures — home team (sets up the field), postponements and forfeits with reasons
+  `
+  ALTER TABLE game ADD COLUMN home_team_id TEXT REFERENCES team(id);
+  ALTER TABLE game ADD COLUMN postponements INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE game ADD COLUMN forfeit_team_id TEXT REFERENCES team(id);
+  -- action: postpone | forfeit | reschedule; reason: weather | lights | not_enough_men | not_enough_women | other
+  CREATE TABLE game_status_log (
+    id TEXT PRIMARY KEY NOT NULL,
+    game_id TEXT NOT NULL REFERENCES game(id),
+    action TEXT NOT NULL,
+    team_id TEXT REFERENCES team(id),
+    reason TEXT,
+    note TEXT,
+    previous_scheduled_at TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX idx_game_status_log_game ON game_status_log(game_id);
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

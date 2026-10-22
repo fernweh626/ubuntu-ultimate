@@ -4,6 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { otherTeam, type GameData } from '@/domain/engine';
 import { byFirstName, isMinor } from '@/domain/format';
 import { LEVEL_RANK, type Level } from '@/domain/permissions';
+import { canPostpone, type StatusReason } from '@/domain/fixtures';
 import { parseRules, ratioForPoint, type Rules } from '@/domain/rules';
 
 import { notifyChanged } from './live';
@@ -496,26 +497,37 @@ export type GameListItem = Game & {
   event_name: string | null;
   score_a: number;
   score_b: number;
+  venue_name: string | null;
 };
 
 const GAME_LIST_SQL = `
   SELECT g.*, ta.name AS a_name, tb.name AS b_name, ta.primary_color AS a_color, tb.primary_color AS b_color,
          ta.short_name AS a_short, tb.short_name AS b_short, e.name AS event_name,
-         (SELECT COUNT(*) FROM point p WHERE p.game_id = g.id AND p.scoring_team_id = g.team_a_id) AS score_a,
-         (SELECT COUNT(*) FROM point p WHERE p.game_id = g.id AND p.scoring_team_id = g.team_b_id) AS score_b
+         CASE WHEN g.forfeit_team_id = g.team_a_id THEN 0
+              WHEN g.forfeit_team_id = g.team_b_id THEN COALESCE(json_extract(g.rules_json, '$.pointTarget'), 15)
+              ELSE (SELECT COUNT(*) FROM point p WHERE p.game_id = g.id AND p.scoring_team_id = g.team_a_id) END AS score_a,
+         CASE WHEN g.forfeit_team_id = g.team_b_id THEN 0
+              WHEN g.forfeit_team_id = g.team_a_id THEN COALESCE(json_extract(g.rules_json, '$.pointTarget'), 15)
+              ELSE (SELECT COUNT(*) FROM point p WHERE p.game_id = g.id AND p.scoring_team_id = g.team_b_id) END AS score_b,
+         v.name AS venue_name
     FROM game g
     JOIN team ta ON ta.id = g.team_a_id
     JOIN team tb ON tb.id = g.team_b_id
     LEFT JOIN event e ON e.id = g.event_id
+    LEFT JOIN venue v ON v.id = g.venue_id
    WHERE g.deleted_at IS NULL`;
 
 export function listGames(db: SQLiteDatabase) {
   return db.getAllAsync<GameListItem>(`${GAME_LIST_SQL} ORDER BY COALESCE(g.started_at, g.scheduled_at, g.created_at) DESC`);
 }
 
+export function getGameListItem(db: SQLiteDatabase, gameId: string) {
+  return db.getFirstAsync<GameListItem>(`${GAME_LIST_SQL} AND g.id = ?`, gameId);
+}
+
 export function listGamesForEvent(db: SQLiteDatabase, eventId: string) {
   return db.getAllAsync<GameListItem>(
-    `${GAME_LIST_SQL} AND g.event_id = ? ORDER BY COALESCE(g.started_at, g.scheduled_at, g.created_at)`,
+    `${GAME_LIST_SQL} AND g.event_id = ? ORDER BY COALESCE(g.scheduled_at, g.started_at, '9999'), g.created_at`,
     eventId,
   );
 }
@@ -598,6 +610,179 @@ export function createGame(db: SQLiteDatabase, g: NewGame) {
     const receiving = g.firstPullTeamId === g.teamAId ? g.teamBId : g.teamAId;
     await insertPoint(db, id, 1, 1, receiving, ratioForPoint(1, g.ratioPoint1));
     return id;
+  });
+}
+
+/* ---------------- Fixtures (scheduled games) ---------------- */
+
+export type NewFixture = {
+  eventId: string;
+  homeId: string;
+  awayId: string;
+  scheduledAt: string | null;
+  venueId: string | null;
+  rules: Rules;
+};
+
+async function insertFixture(db: SQLiteDatabase, f: NewFixture) {
+  const id = uuid();
+  const ts = now();
+  // Home is listed first (team A): they set up the field.
+  await db.runAsync(
+    `INSERT INTO game (id, event_id, venue_id, team_a_id, team_b_id, home_team_id, scheduled_at, status, tracking_mode,
+       rules_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', 'standard', ?, ?, ?)`,
+    id,
+    f.eventId,
+    f.venueId,
+    f.homeId,
+    f.awayId,
+    f.homeId,
+    f.scheduledAt,
+    JSON.stringify(f.rules),
+    ts,
+    ts,
+  );
+  return id;
+}
+
+export function createFixtures(db: SQLiteDatabase, fixtures: NewFixture[]) {
+  return write(db, async () => {
+    const ids: string[] = [];
+    for (const f of fixtures) ids.push(await insertFixture(db, f));
+    return ids;
+  });
+}
+
+export function updateFixture(db: SQLiteDatabase, gameId: string, f: { scheduledAt: string | null; venueId: string | null; homeId: string; awayId: string }) {
+  return write(db, async () => {
+    const before = await db.getFirstAsync<{ scheduled_at: string | null }>(`SELECT scheduled_at FROM game WHERE id = ?`, gameId);
+    await db.runAsync(
+      `UPDATE game SET scheduled_at = ?, venue_id = ?, team_a_id = ?, team_b_id = ?, home_team_id = ?, updated_at = ? WHERE id = ?`,
+      f.scheduledAt,
+      f.venueId,
+      f.homeId,
+      f.awayId,
+      f.homeId,
+      now(),
+      gameId,
+    );
+    if (before?.scheduled_at !== f.scheduledAt) {
+      await db.runAsync(
+        `INSERT INTO game_status_log (id, game_id, action, previous_scheduled_at, created_at) VALUES (?, ?, 'reschedule', ?, ?)`,
+        uuid(),
+        gameId,
+        before?.scheduled_at ?? null,
+        now(),
+      );
+    }
+  });
+}
+
+export type StatusLogEntry = {
+  id: string;
+  action: 'postpone' | 'forfeit' | 'reschedule';
+  team_id: string | null;
+  reason: StatusReason | null;
+  note: string | null;
+  previous_scheduled_at: string | null;
+  created_at: string;
+};
+
+export function statusLog(db: SQLiteDatabase, gameId: string) {
+  return db.getAllAsync<StatusLogEntry>(`SELECT * FROM game_status_log WHERE game_id = ? ORDER BY created_at DESC`, gameId);
+}
+
+/** Postpone a league game (max twice). The new date can be set now or later (date TBC). */
+export function postponeGame(
+  db: SQLiteDatabase,
+  gameId: string,
+  byTeamId: string,
+  reason: StatusReason,
+  note: string | null,
+  newScheduledAt: string | null,
+) {
+  return write(db, async () => {
+    const g = await db.getFirstAsync<{ scheduled_at: string | null; postponements: number; kind: EventKind | null }>(
+      `SELECT g.scheduled_at, g.postponements, e.kind FROM game g LEFT JOIN event e ON e.id = g.event_id WHERE g.id = ?`,
+      gameId,
+    );
+    if (!g || !canPostpone(g.kind, g.postponements)) throw new Error('This game can’t be postponed again — it has to be forfeited.');
+    await db.runAsync(
+      `INSERT INTO game_status_log (id, game_id, action, team_id, reason, note, previous_scheduled_at, created_at)
+       VALUES (?, ?, 'postpone', ?, ?, ?, ?, ?)`,
+      uuid(),
+      gameId,
+      byTeamId,
+      reason,
+      note,
+      g.scheduled_at,
+      now(),
+    );
+    await db.runAsync(
+      `UPDATE game SET postponements = postponements + 1, scheduled_at = ?, updated_at = ? WHERE id = ?`,
+      newScheduledAt,
+      now(),
+      gameId,
+    );
+  });
+}
+
+/** The team that can't play forfeits: the game is final and counts as a loss for them. */
+export function forfeitGame(db: SQLiteDatabase, gameId: string, forfeitingTeamId: string, reason: StatusReason, note: string | null) {
+  return write(db, async () => {
+    const ts = now();
+    await db.runAsync(
+      `INSERT INTO game_status_log (id, game_id, action, team_id, reason, note, created_at) VALUES (?, ?, 'forfeit', ?, ?, ?, ?)`,
+      uuid(),
+      gameId,
+      forfeitingTeamId,
+      reason,
+      note,
+      ts,
+    );
+    await db.runAsync(
+      `UPDATE game SET status = 'final', forfeit_team_id = ?, ended_at = ?, updated_at = ? WHERE id = ?`,
+      forfeitingTeamId,
+      ts,
+      ts,
+      gameId,
+    );
+  });
+}
+
+/** Turn a scheduled fixture into a live game: same id, so it stays in the event's schedule. */
+export function startScheduledGame(db: SQLiteDatabase, gameId: string, g: NewGame) {
+  return write(db, async () => {
+    const ts = now();
+    await db.runAsync(
+      `UPDATE game SET venue_id = ?, team_a_id = ?, team_b_id = ?, status = 'live', tracking_mode = ?, rules_json = ?,
+         first_pull_team_id = ?, ratio_point1 = ?, updated_at = ? WHERE id = ?`,
+      g.venueId,
+      g.teamAId,
+      g.teamBId,
+      g.trackingMode,
+      JSON.stringify(g.rules),
+      g.firstPullTeamId,
+      g.ratioPoint1,
+      ts,
+      gameId,
+    );
+    await db.runAsync(`DELETE FROM game_player WHERE game_id = ?`, gameId);
+    for (const sq of g.squads) {
+      await db.runAsync(
+        `INSERT INTO game_player (id, game_id, team_id, person_id, jersey_number, position) VALUES (?, ?, ?, ?, ?, ?)`,
+        uuid(),
+        gameId,
+        sq.teamId,
+        sq.personId,
+        sq.jersey,
+        sq.position,
+      );
+    }
+    const receiving = g.firstPullTeamId === g.teamAId ? g.teamBId : g.teamAId;
+    await insertPoint(db, gameId, 1, 1, receiving, ratioForPoint(1, g.ratioPoint1));
+    return gameId;
   });
 }
 
