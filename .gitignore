@@ -1,0 +1,16 @@
+# Stall Count exports and screenshots contain personal data — never commit them
+*.zip
+*.csv
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
