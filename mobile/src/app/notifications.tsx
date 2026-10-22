@@ -1,11 +1,11 @@
-import * as Notifications from 'expo-notifications';
 import { Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, Switch, View } from 'react-native';
 
 import { useData } from '@/db/live';
-import { ensurePermission, refreshNotifications } from '@/notify/manager';
+import { ensurePermission, notificationsAvailable, refreshNotifications } from '@/notify/manager';
+import { Notify } from '@/notify/native';
 import { describeWhen, getPrefs, planNotifications, setPrefs, type NotifyPrefs } from '@/notify/plan';
 import { Button, Card, Screen, Section, Segmented, T } from '@/ui/components';
 import { colors, space } from '@/ui/theme';
@@ -51,7 +51,16 @@ export default function NotificationSettings() {
     <>
       <Stack.Screen options={{ title: 'Notifications' }} />
       <Screen edges={[]}>
-        {allowed === false ? (
+        {!notificationsAvailable ? (
+          <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
+            <T v="bodyStrong" style={{ color: colors.warnInk }}>
+              Notifications aren’t available in this version of the app
+            </T>
+            <T v="small" style={{ color: colors.warnInk }}>
+              They’ll work in the installed app. Your settings here are saved for then.
+            </T>
+          </Card>
+        ) : allowed === false ? (
           <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
             <T v="bodyStrong" style={{ color: colors.warnInk }}>
               Notifications are off for this app
@@ -100,10 +109,11 @@ export default function NotificationSettings() {
           label="Send me a test"
           icon="bell-ring-outline"
           onPress={async () => {
+            if (!Notify) return Alert.alert('Not available here', 'Notifications will work in the installed app.');
             if (!(await ensurePermission(true))) return Alert.alert('Notifications are off', 'Allow them in your phone’s settings.');
-            await Notifications.scheduleNotificationAsync({
+            await Notify.scheduleNotificationAsync({
               content: { title: '100 minutes to the pull 🥏', body: 'That’s one full hard cap to find your boots. (This is a test.)' },
-              trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3 },
+              trigger: { type: Notify.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3 },
             });
           }}
         />

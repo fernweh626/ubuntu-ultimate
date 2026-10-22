@@ -1,5 +1,3 @@
-import { Asset, requestPermissionsAsync } from 'expo-media-library';
-import * as Print from 'expo-print';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { createRef, useMemo, useState, type ComponentRef, type ReactElement, type RefObject } from 'react';
@@ -64,6 +62,9 @@ export default function Report() {
   async function saveImages() {
     setBusy('Saving images…');
     try {
+      // Loaded on tap, so a phone without these native bits still opens the report.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { Asset, requestPermissionsAsync } = require('expo-media-library') as typeof import('expo-media-library');
       const perm = await requestPermissionsAsync(true);
       if (!perm.granted) return Alert.alert('Allow photo access to save the images');
       for (const uri of await capture('tmpfile')) await Asset.create(uri);
@@ -82,6 +83,8 @@ export default function Report() {
       const html = `<html><head><style>@page{margin:0}body{margin:0}img{width:100%;display:block;page-break-after:always}</style></head><body>${imgs
         .map((b) => `<img src="data:image/png;base64,${b}"/>`)
         .join('')}</body></html>`;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const Print = require('expo-print') as typeof import('expo-print');
       const { uri } = await Print.printToFileAsync({ html, width: 612, height: 765 });
       await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Share report', UTI: 'com.adobe.pdf' });
     } catch (e) {

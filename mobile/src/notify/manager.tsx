@@ -1,4 +1,3 @@
-import * as Notifications from 'expo-notifications';
 import { router, type Href } from 'expo-router';
 import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { useEffect } from 'react';
@@ -7,11 +6,12 @@ import { Platform } from 'react-native';
 import { onChanged } from '@/db/live';
 
 import { detectEvents } from './events';
+import { Notify as Notifications } from './native';
 import { planNotifications } from './plan';
 
 const TAG = 'sa-ultimate';
 
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
@@ -20,7 +20,10 @@ Notifications.setNotificationHandler({
   }),
 });
 
+export const notificationsAvailable = !!Notifications;
+
 export async function ensurePermission(ask: boolean) {
+  if (!Notifications) return false;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Games and reminders',
@@ -34,7 +37,7 @@ export async function ensurePermission(ask: boolean) {
 
 /** Replace this app's scheduled notifications with the current plan, and fire anything new from sync. */
 export async function refreshNotifications(db: SQLiteDatabase) {
-  if (!(await ensurePermission(false))) return;
+  if (!Notifications || !(await ensurePermission(false))) return;
   const planned = await planNotifications(db);
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   const want = new Map(planned.map((p) => [p.key, p]));
@@ -71,14 +74,14 @@ export function NotificationManager() {
     };
     run();
     const off = onChanged(soon);
-    const tap = Notifications.addNotificationResponseReceivedListener((res) => {
+    const tap = Notifications?.addNotificationResponseReceivedListener((res) => {
       const url = (res.notification.request.content.data as { url?: string })?.url;
       if (url) router.push(url as Href);
     });
     return () => {
       if (timer) clearTimeout(timer);
       off();
-      tap.remove();
+      tap?.remove();
     };
   }, [db]);
   return null;
