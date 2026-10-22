@@ -8,6 +8,7 @@ import { eventTeams, getEvent, listGamesForEvent, spiritForEvent } from '@/db/re
 import { dateRange, displayName, pct, round1, shortName } from '@/domain/format';
 import { rankStandings, type TeamAggregate } from '@/domain/stats';
 import { Button, Card, Choice, EmptyState, IconButton, Screen, Section, T, TeamSwatch } from '@/ui/components';
+import { FollowButton } from '@/ui/follow-button';
 import { FormDots, GameCard } from '@/ui/game-bits';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
@@ -129,6 +130,7 @@ export default function EventPage() {
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <Button label="Score a game" icon="whistle" kind="primary" onPress={() => router.push({ pathname: '/game/new', params: { eventId: id } })} style={{ flex: 1.4 }} />
           <Button label="Share" icon="share-variant" onPress={openShare} style={{ flex: 1 }} />
+          <FollowButton kind="event" id={id} />
         </View>
         {event.video_url || event.photos_url ? (
           <View style={{ flexDirection: 'row', gap: space.sm }}>

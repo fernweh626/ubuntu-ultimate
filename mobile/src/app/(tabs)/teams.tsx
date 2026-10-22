@@ -4,18 +4,20 @@ import { ScrollView, TextInput, View } from 'react-native';
 
 import { REGIONS, regionName } from '@/content/hub';
 import { useData } from '@/db/live';
-import { listTeams } from '@/db/repo';
-import { Button, Choice, EmptyState, Icon, PageTitle, Row, Screen, Section } from '@/ui/components';
+import { listTeams, myScope } from '@/db/repo';
+import { Button, Chip, Choice, EmptyState, Icon, PageTitle, Row, Screen, Section } from '@/ui/components';
 import { MeButton } from '@/ui/me-button';
 import { TeamLogo } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
 export default function Teams() {
   const teams = useData(listTeams);
+  const scope = useData(myScope);
   const [q, setQ] = useState('');
   const [region, setRegion] = useState<string>('all');
 
   const filtered = (teams ?? []).filter((t) => {
+    if (region === 'mine') return !!scope?.teamIds.has(t.id);
     if (region !== 'all' && (region === 'sample' ? !t.is_sample : t.region !== region || t.is_sample)) return false;
     if (!q) return true;
     const s = q.toLowerCase();
@@ -52,13 +54,17 @@ export default function Teams() {
           />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
-          {[{ code: 'all', name: 'All' }, ...REGIONS.map((r) => ({ code: r.code, name: r.name })), { code: 'sample', name: 'Samples' }].map((r) => (
+          {[{ code: 'all', name: 'All' }, { code: 'mine', name: '★ Mine & following' }, ...REGIONS.map((r) => ({ code: r.code, name: r.name })), { code: 'sample', name: 'Samples' }].map((r) => (
             <Choice key={r.code} label={r.name} selected={region === r.code} onPress={() => setRegion(r.code)} style={{ minHeight: 40, paddingHorizontal: 14 }} />
           ))}
         </ScrollView>
       </View>
       {groups.length === 0 ? (
-        <EmptyState icon="account-group-outline" title="No teams match" body="Try another search, or add the team." />
+        <EmptyState
+          icon={region === 'mine' ? 'star-outline' : 'account-group-outline'}
+          title={region === 'mine' ? 'No teams yet' : 'No teams match'}
+          body={region === 'mine' ? 'Open any team — in any region — and tap Follow to keep an eye on it. Teams you play for show here too.' : 'Try another search, or add the team.'}
+        />
       ) : (
         groups.map((g) => (
           <View key={g.key} style={{ paddingHorizontal: space.lg }}>
@@ -70,6 +76,7 @@ export default function Teams() {
                     title={t.name}
                     subtitle={[t.city, t.region ? regionName(t.region) : null].filter(Boolean).join(' · ')}
                     left={<TeamLogo uri={t.logo_uri} color={t.primary_color} size={32} />}
+                    right={scope?.myTeamIds.has(t.id) ? <Chip label="My team" /> : scope?.teamIds.has(t.id) ? <Icon name="star" color={colors.warn} /> : undefined}
                     onPress={() => router.push(`/team/${t.id}`)}
                   />
                 ))}

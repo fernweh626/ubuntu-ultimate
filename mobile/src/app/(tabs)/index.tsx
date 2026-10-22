@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
-import { listCalendar, listGames, listPickups } from '@/db/repo';
+import { listCalendar, listGames, listPickups, myScope, type GameListItem } from '@/db/repo';
 import { useData } from '@/db/live';
 import { DAYS_LONG, dateRange, weekdayIndex } from '@/domain/format';
-import { Button, Card, Chip, EmptyState, Section, Screen, T } from '@/ui/components';
+import { Button, Card, Chip, EmptyState, Section, Screen, Segmented, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
 import { MeButton } from '@/ui/me-button';
 import { colors, font, space } from '@/ui/theme';
@@ -13,9 +14,15 @@ export default function Home() {
   const games = useData(listGames);
   const pickups = useData(listPickups);
   const calendar = useData(listCalendar);
+  const scope = useData(myScope);
+  const [feedChoice, setFeed] = useState<'you' | 'all' | null>(null);
+  const feed = feedChoice ?? (scope?.hasAny ? 'you' : 'all');
+  const inFeed = (g: GameListItem) =>
+    feed === 'all' || !!scope?.teamIds.has(g.team_a_id) || !!scope?.teamIds.has(g.team_b_id) || (!!g.event_id && !!scope?.eventIds.has(g.event_id));
 
+  // Games being scored on this phone always show; everything else follows the For you / All switch.
   const live = games?.filter((g) => g.status === 'live') ?? [];
-  const recent = games?.filter((g) => g.status === 'final').slice(0, 3) ?? [];
+  const recent = games?.filter((g) => g.status === 'final' && inFeed(g)).slice(0, 5) ?? [];
   const today = weekdayIndex();
   const todays = pickups?.filter((p) => p.day_of_week === today) ?? [];
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -30,6 +37,21 @@ export default function Home() {
         </View>
         <MeButton />
       </View>
+
+      <Segmented
+        value={feed}
+        onChange={setFeed}
+        options={[
+          { value: 'you', label: '★ For you' },
+          { value: 'all', label: 'All of SA' },
+        ]}
+      />
+      {feed === 'you' && !scope?.hasAny ? (
+        <Card onPress={() => router.push('/teams')}>
+          <T v="bodyStrong">Make this feed yours</T>
+          <T v="small">Pick yourself in Me (top right) to see your teams, and tap Follow on any team or tournament — in any province — to keep an eye on it.</T>
+        </Card>
+      ) : null}
 
       {live.length > 0 ? (
         <Section title="Live now">
@@ -78,7 +100,11 @@ export default function Home() {
 
       <Section title="Recent results" action={recent.length ? <Button label="All games" kind="ghost" onPress={() => router.push('/play')} style={{ minHeight: 32, paddingHorizontal: 0 }} /> : undefined}>
         {recent.length === 0 ? (
-          <EmptyState icon="flag-checkered" title="No finished games yet" body="Finished games and their reports will show up here." />
+          <EmptyState
+            icon="flag-checkered"
+            title={feed === 'you' ? 'Nothing from your teams yet' : 'No finished games yet'}
+            body={feed === 'you' ? 'Results for teams and tournaments you follow show up here.' : 'Finished games and their reports will show up here.'}
+          />
         ) : (
           recent.map((g) => <GameCard key={g.id} g={g} />)
         )}

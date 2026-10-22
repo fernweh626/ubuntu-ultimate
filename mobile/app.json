@@ -39,7 +39,20 @@
       "expo-font",
       "expo-image",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SA Ultimate uses your location to find the field you are at and record the weather."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a profile photo or team logo.",
+          "cameraPermission": "Take a profile photo or team logo."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

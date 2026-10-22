@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 
 import { useData } from '@/db/live';
-import { createGame, eventTeams, getEvent, listEvents, listTeams, listVenues, roster } from '@/db/repo';
+import { createGame, eventTeams, getAccess, getEvent, listEvents, listTeams, roster } from '@/db/repo';
 import type { Division, RosterEntry, Team, TrackingMode } from '@/db/types';
 import { shortName } from '@/domain/format';
 import { RULE_PRESETS, rulesFor } from '@/domain/rules';
 import { Button, Card, Choice, Footer, Icon, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
+import { FieldPicker } from '@/ui/field-picker';
 import { QuickAddPlayer } from '@/ui/quick-add-player';
 import { colors, font, space } from '@/ui/theme';
 
@@ -24,18 +25,19 @@ export default function NewGame() {
   const teamRows = useData(listTeams);
   const teams = useMemo(() => teamRows ?? [], [teamRows]);
   const events = useData(listEvents) ?? [];
-  const venues = useData(listVenues) ?? [];
+  const access = useData(getAccess);
+  const isPlayer = access?.level === 'player';
 
-  const [eventId, setEventId] = useState<string | null>(params.eventId ?? null);
+  const [eventChoice, setEventId] = useState<string | null>(params.eventId ?? null);
   const [teamA, setTeamA] = useState<Team | null>(null);
   const [teamB, setTeamB] = useState<Team | null>(null);
   const [rosterA, setRosterA] = useState<RosterEntry[]>([]);
   const [rosterB, setRosterB] = useState<RosterEntry[]>([]);
   const [outA, setOutA] = useState<string[]>([]);
   const [outB, setOutB] = useState<string[]>([]);
-  const [preset, setPreset] = useState('wfdf');
+  const [presetChoice, setPreset] = useState('wfdf');
   const [division, setDivision] = useState<Division>('mixed');
-  const [mode, setMode] = useState<TrackingMode>('standard');
+  const [modeChoice, setMode] = useState<TrackingMode | null>(null);
   const [firstPull, setFirstPull] = useState<'A' | 'B'>('A');
   const [ratio, setRatio] = useState<'W' | 'M'>('W');
   const [venueId, setVenueId] = useState<string | null>(null);
@@ -43,6 +45,14 @@ export default function NewGame() {
   const [adding, setAdding] = useState<'A' | 'B' | null>(null);
   const [q, setQ] = useState('');
   const [eventTeamIds, setEventTeamIds] = useState<string[]>([]);
+
+  // Players may only start friendly games (no event, casual rules); scorekeepers and staff choose freely.
+  const eventId = isPlayer ? null : eventChoice;
+  const preset = isPlayer ? 'casual' : presetChoice;
+  const mode: TrackingMode = modeChoice ?? (isPlayer ? 'lite' : 'standard');
+  const eventKind = events.find((e) => e.id === eventId)?.kind;
+  const friendly = preset === 'casual' || eventKind === 'scrimmage' || eventKind === 'practice' || eventKind === 'pickup';
+  const usesRatio = division === 'mixed' && !friendly;
 
   useEffect(() => {
     if (!eventId) return;
@@ -83,7 +93,7 @@ export default function NewGame() {
     if (squadA.length === 0 && squadB.length === 0 && mode !== 'lite') {
       return Alert.alert('No players', 'Add players to at least one team, or use Lite mode to just count goals.');
     }
-    const rules = rulesFor(preset, division);
+    const rules = { ...rulesFor(preset, division), mixedRatio: usesRatio };
     const id = await createGame(db, {
       eventId,
       venueId,
@@ -177,6 +187,14 @@ export default function NewGame() {
         {squadBlock('A')}
         {squadBlock('B')}
 
+        {isPlayer ? (
+          <Card style={{ backgroundColor: colors.brandTint, borderColor: colors.brandTint }}>
+            <T v="bodyStrong">Friendly game</T>
+            <T v="small">Players can start scrimmages and pickups. League and tournament games are started by a scorekeeper or team staff (set your level in Me).</T>
+          </Card>
+        ) : null}
+
+        {!isPlayer ? (
         <Section title="Tournament or league (optional)">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
             <Choice label="None (friendly)" selected={!eventId} onPress={() => setEventId(null)} style={{ paddingHorizontal: 14 }} />
@@ -185,6 +203,7 @@ export default function NewGame() {
             ))}
           </View>
         </Section>
+        ) : null}
 
         <Section title="Division">
           <Segmented
@@ -199,13 +218,14 @@ export default function NewGame() {
         </Section>
 
         <Section title="Rules">
-          {RULE_PRESETS.map((p) => (
+          {RULE_PRESETS.filter((p) => !isPlayer || p.id === 'casual').map((p) => (
             <Choice key={p.id} label={p.name} sublabel={p.summary} selected={preset === p.id} onPress={() => setPreset(p.id)} tall style={{ alignItems: 'flex-start' }} />
           ))}
         </Section>
 
         <Section title="How much to track">
-          <Segmented value={mode} onChange={setMode} options={MODES.map((m) => ({ value: m.value, label: m.label }))} />
+          <Segmented value={mode} onChange={setMode} options={MODES.map((m) => ({ value: m.value, label: isPlayer && m.value === 'lite' ? 'Lite ★' : m.label }))} />
+          {isPlayer ? <T v="small">★ Recommended for pickups and scrimmages.</T> : null}
           <T v="small">{MODES.find((m) => m.value === mode)!.body}</T>
         </Section>
 
@@ -222,7 +242,7 @@ export default function NewGame() {
           </Section>
         ) : null}
 
-        {division === 'mixed' && preset !== 'casual' ? (
+        {usesRatio ? (
           <Section title="Ratio for point 1">
             <Segmented
               value={ratio}
@@ -236,13 +256,10 @@ export default function NewGame() {
           </Section>
         ) : null}
 
-        <Section title="Field (for weather and wind)">
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            <Choice label="Not listed" selected={!venueId} onPress={() => setVenueId(null)} style={{ paddingHorizontal: 14 }} />
-            {venues.map((v) => (
-              <Choice key={v.id} label={v.name} sublabel={v.city ?? undefined} selected={venueId === v.id} onPress={() => setVenueId(v.id)} style={{ paddingHorizontal: 14 }} />
-            ))}
-          </View>
+        {friendly && division === 'mixed' ? <T v="small">Gender ratio isn’t enforced for friendly games.</T> : null}
+
+        <Section title="Field">
+          <FieldPicker value={venueId} onChange={setVenueId} />
         </Section>
       </Screen>
 

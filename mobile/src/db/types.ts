@@ -129,6 +129,8 @@ export type GamePlayer = {
   jersey_number: string | null;
   position: Position | null;
   status: 'available' | 'tired' | 'injured' | 'out';
+  confirmation: 'pending' | 'confirmed' | 'played' | 'removed';
+  added_in_game: number;
 };
 
 export type EventRow = {

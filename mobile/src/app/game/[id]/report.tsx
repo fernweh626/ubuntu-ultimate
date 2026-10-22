@@ -5,7 +5,7 @@ import { Alert, Linking, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
-import { END_REASONS, deleteGame, type EndReason, getEvent, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
+import { END_REASONS, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
 import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, timeOfDay } from '@/domain/format';
 import { computeGameStats, type TeamGameStats } from '@/domain/stats';
 import { weatherLine, type Weather } from '@/domain/weather';
@@ -30,7 +30,7 @@ export default function GameReport() {
         spiritForGame(d, id),
       ]);
       const people = await peopleById(d, data.players.map((p) => p.person_id));
-      return { data, ta: ta!, tb: tb!, event, venue, spirit, people };
+      return { data, ta: ta!, tb: tb!, event, venue, spirit, people, access: await getAccess(d) };
     },
     [id],
   );
@@ -41,7 +41,7 @@ export default function GameReport() {
   const [menu, setMenu] = useState(false);
 
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
-  const { data, ta, tb, event, venue, spirit, people } = bundle;
+  const { data, ta, tb, event, venue, spirit, people, access } = bundle;
   const { game } = data;
   const stats = computeGameStats(data);
   const A = stats.teams[ta.id];
@@ -270,6 +270,54 @@ export default function GameReport() {
             ) : null}
           </View>
         </Section>
+
+        {final ? (
+          <Section title="Who played">
+            {[ta, tb].map((t) => {
+              const squad = data.players
+                .filter((p) => p.team_id === t.id && people.get(p.person_id))
+                .sort((a, b) => people.get(a.person_id)!.first_name.localeCompare(people.get(b.person_id)!.first_name));
+              if (!squad.length) return null;
+              const isStaff = access.staffTeamIds.includes(t.id);
+              const pending = squad.filter((p) => p.confirmation === 'pending' || p.confirmation === 'played').length;
+              return (
+                <Card key={t.id}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <T v="bodyStrong">{t.name}</T>
+                    {pending ? <Chip label={`${pending} to confirm`} tone="warn" /> : <Chip label="Confirmed" icon="check" />}
+                  </View>
+                  {isStaff && pending ? <Button label="Confirm everyone below" icon="check-all" kind="primary" onPress={() => confirmTeamRoster(db, id, t.id)} /> : null}
+                  {!isStaff && pending ? <T v="small">A captain or coach of {t.name} confirms this list. If you played, tap “I played”.</T> : null}
+                  {squad.map((gp) => {
+                    const p = people.get(gp.person_id)!;
+                    const isMe = access.meId === gp.person_id;
+                    const status = { pending: 'To confirm', confirmed: 'Confirmed', played: 'Says they played', removed: 'Wasn’t playing' }[gp.confirmation];
+                    return (
+                      <View key={gp.person_id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 44, opacity: gp.confirmation === 'removed' ? 0.5 : 1 }}>
+                        <View style={{ flex: 1 }}>
+                          <T v="smallStrong">
+                            {displayName(p)}
+                            {gp.added_in_game ? <T v="small"> · added on the day</T> : null}
+                          </T>
+                          <T v="small">{status}</T>
+                        </View>
+                        {isStaff && gp.confirmation !== 'confirmed' ? (
+                          <Button label="Confirm" kind="ghost" onPress={() => setConfirmation(db, id, gp.person_id, 'confirmed')} style={{ minHeight: 36, paddingHorizontal: 8 }} />
+                        ) : null}
+                        {isStaff && gp.confirmation !== 'removed' ? (
+                          <Button label="Wasn’t here" kind="ghost" onPress={() => setConfirmation(db, id, gp.person_id, 'removed')} style={{ minHeight: 36, paddingHorizontal: 8 }} />
+                        ) : null}
+                        {!isStaff && isMe && gp.confirmation === 'pending' ? (
+                          <Button label="I played" kind="primary" onPress={() => setConfirmation(db, id, gp.person_id, 'played')} style={{ minHeight: 36 }} />
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </Card>
+              );
+            })}
+          </Section>
+        ) : null}
 
         {spirit.length ? (
           <Section title="Spirit">

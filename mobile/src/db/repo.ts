@@ -81,7 +81,40 @@ export async function getMe(db: SQLiteDatabase) {
   return id ? getPerson(db, id) : null;
 }
 
-export type MyRole = { team_id: string; team_name: string; primary_color: string | null; role: RosterEntry['role']; kind: 'core' | 'guest' | 'mercenary' };
+export async function getScorekeeperFlag(db: SQLiteDatabase) {
+  const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_scorekeeper'`);
+  return row?.value === '1';
+}
+
+export function setScorekeeperFlag(db: SQLiteDatabase, on: boolean) {
+  return write(db, () =>
+    db.runAsync(
+      `INSERT INTO app_meta (key, value) VALUES ('me_scorekeeper', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      on ? '1' : '0',
+    ),
+  );
+}
+
+export type Access = { level: 'player' | 'scorekeeper' | 'staff'; meId: string | null; staffTeamIds: string[] };
+
+/**
+ * What the person using this phone may do. Local stand-in until accounts: staff = holds a captain/coach/
+ * spirit captain/manager role on a team; scorekeeper = switched on in Me; otherwise player.
+ */
+export async function getAccess(db: SQLiteDatabase): Promise<Access> {
+  const meId = await getMeId(db);
+  const staff = meId
+    ? await db.getAllAsync<{ team_id: string }>(
+        `SELECT team_id FROM membership WHERE person_id = ? AND role != 'player' AND end_date IS NULL AND deleted_at IS NULL`,
+        meId,
+      )
+    : [];
+  const staffTeamIds = staff.map((s) => s.team_id);
+  const level = staffTeamIds.length ? 'staff' : (await getScorekeeperFlag(db)) ? 'scorekeeper' : 'player';
+  return { level, meId, staffTeamIds };
+}
+
+export type MyRole ={ team_id: string; team_name: string; primary_color: string | null; role: RosterEntry['role']; kind: 'core' | 'guest' | 'mercenary' };
 
 export function myRoles(db: SQLiteDatabase, personId: string) {
   return db.getAllAsync<MyRole>(
@@ -336,10 +369,38 @@ export function personHistory(db: SQLiteDatabase, personId: string) {
 
 /* ---------------- Venues ---------------- */
 
-export type Venue = { id: string; name: string; city: string | null; latitude: number | null; longitude: number | null };
+export type Venue = { id: string; name: string; city: string | null; latitude: number | null; longitude: number | null; notes: string | null };
 
 export function listVenues(db: SQLiteDatabase) {
   return db.getAllAsync<Venue>(`SELECT * FROM venue WHERE deleted_at IS NULL ORDER BY name`);
+}
+
+export function saveVenue(
+  db: SQLiteDatabase,
+  v: { id?: string; name: string; city: string | null; latitude: number | null; longitude: number | null; notes?: string | null },
+) {
+  return write(db, async () => {
+    const id = v.id ?? uuid();
+    const ts = now();
+    await db.runAsync(
+      `INSERT INTO venue (id, name, city, latitude, longitude, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET name = excluded.name, city = excluded.city, latitude = excluded.latitude,
+         longitude = excluded.longitude, notes = excluded.notes, updated_at = excluded.updated_at`,
+      id,
+      v.name.trim(),
+      v.city,
+      v.latitude,
+      v.longitude,
+      v.notes ?? null,
+      ts,
+      ts,
+    );
+    return id;
+  });
+}
+
+export function deleteVenue(db: SQLiteDatabase, id: string) {
+  return write(db, () => db.runAsync(`UPDATE venue SET deleted_at = ? WHERE id = ?`, now(), id));
 }
 
 export function getVenue(db: SQLiteDatabase, id: string) {
@@ -787,7 +848,7 @@ export function setPlayerStatus(db: SQLiteDatabase, gameId: string, personId: st
 export function addGamePlayer(db: SQLiteDatabase, gameId: string, teamId: string, personId: string, jersey: string | null) {
   return write(db, () =>
     db.runAsync(
-      `INSERT OR IGNORE INTO game_player (id, game_id, team_id, person_id, jersey_number) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO game_player (id, game_id, team_id, person_id, jersey_number, added_in_game) VALUES (?, ?, ?, ?, ?, 1)`,
       uuid(),
       gameId,
       teamId,
@@ -795,6 +856,58 @@ export function addGamePlayer(db: SQLiteDatabase, gameId: string, teamId: string
       jersey,
     ),
   );
+}
+
+/** After the game: team staff confirm or remove, or a player confirms they played. */
+export function setConfirmation(db: SQLiteDatabase, gameId: string, personId: string, confirmation: GamePlayer['confirmation']) {
+  return write(db, () =>
+    db.runAsync(`UPDATE game_player SET confirmation = ? WHERE game_id = ? AND person_id = ?`, confirmation, gameId, personId),
+  );
+}
+
+export function confirmTeamRoster(db: SQLiteDatabase, gameId: string, teamId: string) {
+  return write(db, () =>
+    db.runAsync(
+      `UPDATE game_player SET confirmation = 'confirmed' WHERE game_id = ? AND team_id = ? AND confirmation IN ('pending','played')`,
+      gameId,
+      teamId,
+    ),
+  );
+}
+
+/* ---------------- Following ---------------- */
+
+export type FollowKind = 'team' | 'event' | 'player';
+
+export function listFollows(db: SQLiteDatabase) {
+  return db.getAllAsync<{ kind: FollowKind; target_id: string }>(`SELECT kind, target_id FROM follow`);
+}
+
+export async function isFollowing(db: SQLiteDatabase, kind: FollowKind, targetId: string) {
+  return !!(await db.getFirstAsync(`SELECT 1 FROM follow WHERE kind = ? AND target_id = ?`, kind, targetId));
+}
+
+export function setFollowing(db: SQLiteDatabase, kind: FollowKind, targetId: string, on: boolean) {
+  return write(db, () =>
+    on
+      ? db.runAsync(`INSERT OR IGNORE INTO follow (id, kind, target_id, created_at) VALUES (?, ?, ?, ?)`, uuid(), kind, targetId, now())
+      : db.runAsync(`DELETE FROM follow WHERE kind = ? AND target_id = ?`, kind, targetId),
+  );
+}
+
+/**
+ * The teams and events "For you" covers: teams I'm on, teams I follow, events I follow, and events
+ * those teams are entered in.
+ */
+export async function myScope(db: SQLiteDatabase) {
+  const meId = await getMeId(db);
+  const mine = meId
+    ? (await db.getAllAsync<{ team_id: string }>(`SELECT team_id FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`, meId)).map((r) => r.team_id)
+    : [];
+  const follows = await listFollows(db);
+  const teamIds = new Set([...mine, ...follows.filter((f) => f.kind === 'team').map((f) => f.target_id)]);
+  const eventIds = new Set(follows.filter((f) => f.kind === 'event').map((f) => f.target_id));
+  return { teamIds, eventIds, myTeamIds: new Set(mine), hasAny: teamIds.size + eventIds.size > 0 };
 }
 
 export function updateGameMeta(db: SQLiteDatabase, gameId: string, fields: { weather_json?: string; video_url?: string | null }) {

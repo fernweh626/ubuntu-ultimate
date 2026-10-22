@@ -9,6 +9,7 @@ import { loadFinishedGames, teamAggregate } from '@/db/reports';
 import { deleteTeam, getTeam, listGamesForTeam, roster, savedLines, setTeamLogo } from '@/db/repo';
 import { displayName, pct, round1 } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, Icon, IconButton, Row, Screen, Section, StatTile, T } from '@/ui/components';
+import { FollowButton } from '@/ui/follow-button';
 import { FormDots, GameCard } from '@/ui/game-bits';
 import { Avatar, deletePhoto, PhotoSheet, TeamLogo } from '@/ui/photo';
 import { colors, space } from '@/ui/theme';
@@ -82,6 +83,10 @@ export default function TeamPage() {
           <Chip label={team.kind} tone="neutral" />
           {team.short_name ? <Chip label={team.short_name} tone="neutral" /> : null}
           {team.is_sample ? <Chip label="Sample team" tone="warn" /> : null}
+        </View>
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <FollowButton kind="team" id={id} />
+          {agg && agg.games ? <Button label="Team report" icon="chart-box-outline" onPress={() => router.push({ pathname: '/team/report', params: { id } })} /> : null}
         </View>
         {team.about ? <T v="small">{team.about}</T> : null}
 

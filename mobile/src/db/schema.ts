@@ -271,6 +271,19 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE person ADD COLUMN photo_uri TEXT;
   `,
+  // v3: following teams/events/players, and confirming who actually played after a game
+  `
+  CREATE TABLE follow (
+    id TEXT PRIMARY KEY NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('team','event','player')),
+    target_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (kind, target_id)
+  );
+  -- confirmation: pending → confirmed (by team staff) or played (the player said so) or removed (wasn't there)
+  ALTER TABLE game_player ADD COLUMN confirmation TEXT NOT NULL DEFAULT 'pending';
+  ALTER TABLE game_player ADD COLUMN added_in_game INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

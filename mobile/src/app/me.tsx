@@ -5,10 +5,25 @@ import { TextInput, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
-import { getMe, listGamesForPerson, listPeople, myRoles, savePerson, setMeId, setMembershipRole, type MyRole } from '@/db/repo';
+import {
+  getAccess,
+  getMe,
+  listEvents,
+  listFollows,
+  listGamesForPerson,
+  listPeople,
+  listTeams,
+  myRoles,
+  savePerson,
+  setFollowing,
+  setMeId,
+  setMembershipRole,
+  setScorekeeperFlag,
+  type MyRole,
+} from '@/db/repo';
 import type { Gender } from '@/db/types';
 import { displayName } from '@/domain/format';
-import { Button, Card, Chip, Choice, Field, Icon, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
+import { Button, Card, Chip, Choice, Field, Icon, IconButton, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
 import { Avatar } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
@@ -33,6 +48,17 @@ export default function Me() {
   const db = useSQLiteContext();
   const me = useData(getMe);
   const roles = useData(async (d) => (me ? myRoles(d, me.id) : []), [me?.id]) ?? [];
+  const access = useData(getAccess);
+  const following = useData(async (d) => {
+    const [follows, teams, events] = await Promise.all([listFollows(d), listTeams(d), listEvents(d)]);
+    return follows
+      .map((f) =>
+        f.kind === 'team'
+          ? { ...f, name: teams.find((t) => t.id === f.target_id)?.name, color: teams.find((t) => t.id === f.target_id)?.primary_color ?? null }
+          : { ...f, name: events.find((e) => e.id === f.target_id)?.name, color: null },
+      )
+      .filter((f) => f.name);
+  }) ?? [];
   const totals = useData(async (d) => (me ? playerTotals(await loadFinishedGames(d, await listGamesForPerson(d, me.id))).get(me.id) ?? null : null), [me?.id]);
   const [roleFor, setRoleFor] = useState<MyRole | null>(null);
 
@@ -40,7 +66,7 @@ export default function Me() {
   if (!me) return <WhoAreYou />;
 
   const staffOn = roles.filter((r) => STAFF.includes(r.role));
-  const level = staffOn.length ? 'staff' : 'player';
+  const level = access?.level ?? 'player';
 
   return (
     <>
@@ -91,12 +117,14 @@ export default function Me() {
           <Card style={{ borderColor: colors.brand, borderWidth: 2 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
               <Icon name="shield-account-outline" color={colors.brand} />
-              <T v="title">{level === 'staff' ? 'Team staff' : 'Player'}</T>
+              <T v="title">{level === 'staff' ? 'Team staff' : level === 'scorekeeper' ? 'Scorekeeper' : 'Player'}</T>
             </View>
             <T v="small">
               {level === 'staff'
                 ? `${staffOn.map((r) => `${ROLE_LABEL[r.role]} of ${r.team_name}`).join(', ')}.`
-                : 'You can update your own details, join teams and see every stat.'}
+                : level === 'scorekeeper'
+                  ? 'You can start any game — league, tournament or friendly — and add players. Captains confirm the rosters afterwards.'
+                  : 'You can start friendly scrimmages and pickups, update your own details, join teams and see every stat.'}
             </T>
           </Card>
           <View style={{ gap: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.divider }}>
@@ -113,6 +141,15 @@ export default function Me() {
               );
             })}
           </View>
+          {level !== 'staff' ? (
+            <Choice
+              label={level === 'scorekeeper' ? 'Scorekeeper: on' : 'I’m a scorekeeper'}
+              sublabel={level === 'scorekeeper' ? 'Tap to turn off' : 'Lets you start league and tournament games'}
+              selected={level === 'scorekeeper'}
+              onPress={() => setScorekeeperFlag(db, level !== 'scorekeeper')}
+              tall
+            />
+          ) : null}
           <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
             <T v="smallStrong" style={{ color: colors.warnInk }}>
               Not enforced yet
@@ -121,6 +158,27 @@ export default function Me() {
               This app version has no sign-in, so anyone holding this phone can edit anything. When accounts arrive, the server will check these levels on every change, and admins will assign them.
             </T>
           </Card>
+        </Section>
+
+        <Section title="Following">
+          {following.length ? (
+            <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+              {following.map((f) => (
+                <Row
+                  key={`${f.kind}-${f.target_id}`}
+                  title={f.name!}
+                  subtitle={f.kind === 'team' ? 'Team' : 'Tournament / league'}
+                  left={f.kind === 'team' ? <TeamSwatch color={f.color} /> : <Icon name="trophy-outline" />}
+                  right={<IconButton icon="star" color={colors.warn} label="Unfollow" onPress={() => setFollowing(db, f.kind, f.target_id, false)} />}
+                  onPress={() => router.push(f.kind === 'team' ? `/team/${f.target_id}` : `/event/${f.target_id}`)}
+                />
+              ))}
+            </View>
+          ) : (
+            <Card onPress={() => router.push('/teams')}>
+              <T v="small">Follow teams in any province, and tournaments, to see their results on Home under “For you”.</T>
+            </Card>
+          )}
         </Section>
 
         <Button label="Not you? Switch player" kind="ghost" onPress={() => setMeId(db, null)} />
