@@ -3,7 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 
-import { getPerson, savePerson, type PersonInput } from '@/db/repo';
+import { clearPrivateField, getPersonForEdit, savePerson, type PersonForEdit, type PersonInput } from '@/db/repo';
 import type { Gender, Position } from '@/db/types';
 import { isMinor } from '@/domain/format';
 import { Button, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
@@ -15,10 +15,32 @@ export default function PlayerEdit() {
   const [f, setF] = useState<PersonInput>({ first_name: '', last_name: '', gender: null, position: null });
   const [kind, setKind] = useState<'core' | 'guest' | 'mercenary'>('core');
   const [addAnother, setAddAnother] = useState(false);
+  // What is on file for email/birth date. The values themselves never come back to the screen.
+  const [onFile, setOnFile] = useState<Pick<PersonForEdit, 'has_email' | 'is_minor'> | null>(null);
 
   useEffect(() => {
-    if (id) getPerson(db, id).then((p) => p && setF(p));
+    if (!id) return;
+    getPersonForEdit(db, id).then((p) => {
+      if (!p) return;
+      const { has_email, is_minor, ...rest } = p;
+      setF({ ...rest, email: null, birth_date: null });
+      setOnFile({ has_email, is_minor });
+    });
   }, [db, id]);
+
+  function clear(field: 'email' | 'birth_date') {
+    Alert.alert(field === 'email' ? 'Remove the email on file?' : 'Remove the birth date on file?', undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          await clearPrivateField(db, id!, field);
+          setOnFile((o) => o && (field === 'email' ? { ...o, has_email: 0 } : { ...o, is_minor: null }));
+        },
+      },
+    ]);
+  }
 
   const set = <K extends keyof PersonInput>(k: K, v: PersonInput[K]) => setF((x) => ({ ...x, [k]: v }));
 
@@ -100,21 +122,28 @@ export default function PlayerEdit() {
           </Section>
         ) : null}
         <Field
-          label="Birth date (optional)"
+          label={onFile?.is_minor != null ? 'Birth date (on file — type to replace)' : 'Birth date (optional)'}
           value={f.birth_date ?? ''}
           onChangeText={(v) => set('birth_date', v || null)}
-          placeholder="2001-06-30"
+          placeholder={onFile?.is_minor != null ? (onFile.is_minor ? 'On file · under 18' : 'On file · 18 or older') : '2001-06-30'}
           keyboardType="numbers-and-punctuation"
-          hint={isMinor(f.birth_date) ? 'Under 18: shown publicly as first name and surname initial only.' : 'Used for age divisions. Others only see the age group.'}
+          hint={
+            isMinor(f.birth_date) || (!f.birth_date && onFile?.is_minor)
+              ? 'Under 18: shown publicly as first name and surname initial only.'
+              : 'Used for age divisions. Nobody can read it back — only the age group is shown.'
+          }
         />
+        {onFile?.is_minor != null ? <Button label="Remove birth date" kind="ghost" onPress={() => clear('birth_date')} style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }} /> : null}
         <Field
-          label="Email (optional)"
+          label={onFile?.has_email ? 'Email (on file — type to replace)' : 'Email (optional)'}
           value={f.email ?? ''}
           onChangeText={(v) => set('email', v || null)}
+          placeholder={onFile?.has_email ? 'Hidden' : undefined}
           keyboardType="email-address"
           autoCapitalize="none"
-          hint="Never shown to anyone. Only used to send game summaries and reminders."
+          hint="Never shown to anyone, including admins. Only used to send game summaries and reminders."
         />
+        {onFile?.has_email ? <Button label="Remove email" kind="ghost" onPress={() => clear('email')} style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }} /> : null}
       </Screen>
     </>
   );

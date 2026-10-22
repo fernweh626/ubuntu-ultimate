@@ -12,7 +12,7 @@ import {
   type TeamAggregate,
 } from '@/domain/stats';
 
-import { loadGameData, type GameListItem } from './repo';
+import { loadGameData, personCols, type GameListItem } from './repo';
 import type { Person } from './types';
 
 export type LoadedGame = { item: GameListItem; data: GameData; stats: GameStats };
@@ -55,7 +55,7 @@ export function playerTotals(games: LoadedGame[], teamId?: string): Map<string, 
 export async function peopleById(db: SQLiteDatabase, ids: string[]) {
   if (ids.length === 0) return new Map<string, Person>();
   const rows = await db.getAllAsync<Person>(
-    `SELECT * FROM person WHERE id IN (${ids.map(() => '?').join(',')})`,
+    `SELECT ${personCols()} FROM person WHERE id IN (${ids.map(() => '?').join(',')})`,
     ...ids,
   );
   return new Map(rows.map((p) => [p.id, p]));

@@ -2,7 +2,7 @@ import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { otherTeam, type GameData } from '@/domain/engine';
-import { byFirstName } from '@/domain/format';
+import { byFirstName, isMinor } from '@/domain/format';
 import { parseRules, ratioForPoint, type Rules } from '@/domain/rules';
 
 import { notifyChanged } from './live';
@@ -30,6 +30,12 @@ import type {
 } from './types';
 
 export const uuid = () => randomUUID();
+
+/** Person columns safe to load into screens: email is never selected. */
+export const personCols = (alias = '') => {
+  const a = alias ? `${alias}.` : '';
+  return `${a}id, ${a}first_name, ${a}last_name, ${a}nickname, NULL AS email, ${a}birth_date, ${a}gender, ${a}preferred_number, ${a}position, ${a}is_placeholder`;
+};
 export const now = () => new Date().toISOString();
 
 async function write<T>(db: SQLiteDatabase, fn: () => Promise<T>): Promise<T> {
@@ -102,7 +108,7 @@ export function deleteTeam(db: SQLiteDatabase, id: string) {
 
 export async function roster(db: SQLiteDatabase, teamId: string): Promise<RosterEntry[]> {
   const rows = await db.getAllAsync<RosterEntry>(
-    `SELECT p.*, m.id AS membership_id, m.kind AS membership_kind, m.role,
+    `SELECT ${personCols('p')}, m.id AS membership_id, m.kind AS membership_kind, m.role,
             COALESCE(m.jersey_number, p.preferred_number) AS jersey_number
        FROM membership m JOIN person p ON p.id = m.person_id
       WHERE m.team_id = ? AND m.deleted_at IS NULL AND p.deleted_at IS NULL AND m.end_date IS NULL`,
@@ -112,12 +118,34 @@ export async function roster(db: SQLiteDatabase, teamId: string): Promise<Roster
 }
 
 export function getPerson(db: SQLiteDatabase, id: string) {
-  return db.getFirstAsync<Person>(`SELECT * FROM person WHERE id = ?`, id);
+  return db.getFirstAsync<Person>(`SELECT ${personCols()} FROM person WHERE id = ?`, id);
+}
+
+/**
+ * A person for the edit form, without their email or birth date. Those are never read back into the
+ * UI; the form only learns whether they are on file (and the age group, for the under-18 rule).
+ */
+export type PersonForEdit = Omit<Person, 'email' | 'birth_date'> & { has_email: number; is_minor: number | null };
+
+export async function getPersonForEdit(db: SQLiteDatabase, id: string): Promise<PersonForEdit | null> {
+  const row = await db.getFirstAsync<PersonForEdit & { birth_date: string | null }>(
+    `SELECT id, first_name, last_name, nickname, gender, preferred_number, position, is_placeholder,
+            email IS NOT NULL AS has_email, birth_date
+       FROM person WHERE id = ?`,
+    id,
+  );
+  if (!row) return null;
+  const { birth_date, ...rest } = row;
+  return { ...rest, is_minor: birth_date ? (isMinor(birth_date) ? 1 : 0) : null };
+}
+
+export function clearPrivateField(db: SQLiteDatabase, id: string, field: 'email' | 'birth_date') {
+  return write(db, () => db.runAsync(`UPDATE person SET ${field} = NULL, updated_at = ? WHERE id = ?`, now(), id));
 }
 
 export function listPeople(db: SQLiteDatabase) {
   return db
-    .getAllAsync<Person>(`SELECT * FROM person WHERE deleted_at IS NULL`)
+    .getAllAsync<Person>(`SELECT ${personCols()} FROM person WHERE deleted_at IS NULL`)
     .then((rows) => rows.sort(byFirstName));
 }
 
@@ -147,7 +175,9 @@ export function savePerson(
          is_placeholder, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET first_name = excluded.first_name, last_name = excluded.last_name,
-         nickname = excluded.nickname, email = excluded.email, birth_date = excluded.birth_date,
+         nickname = excluded.nickname,
+         -- Email and birth date are write-only in the app: an empty value keeps what is on file.
+         email = COALESCE(excluded.email, person.email), birth_date = COALESCE(excluded.birth_date, person.birth_date),
          gender = excluded.gender, preferred_number = excluded.preferred_number, position = excluded.position,
          updated_at = excluded.updated_at`,
       id,
