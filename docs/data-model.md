@@ -84,3 +84,17 @@ it stays in the event's schedule.
 Schedules are built from an event's Schedule tab by coordinators and admins: generate a round robin
 (home duty balanced to within one game per team), import a CSV (`date,time,field,home,away,pool`, dates
 dd/mm/yyyy), or add games one at a time.
+
+## Competition formats
+
+`game.stage` says which part of an event a game belongs to: null/`pool` (round robin or pool play),
+`swiss`, or `playoff`; `game.round` numbers Swiss and playoff rounds. Standings use non-playoff games only.
+
+- **Round robin** — generated up front (see Fixtures).
+- **Swiss** — one round at a time from the current standings; no rematches where possible; with an odd
+  number of teams the lowest-ranked team without a bye sits out. The next round can only be paired once
+  the previous one is finished.
+- **Playoffs** — `bracket_slot` rows from a template (top 4, top 8, crossovers from pools A/B). Each side
+  has a source: a rank (overall or in a pool), or the winner/loser of another slot. Whenever a game in the
+  event finishes or is forfeited, every slot whose two teams are now known gets its game created, so
+  teams advance automatically. Rank sources wait until all pool games in that pool are finished.

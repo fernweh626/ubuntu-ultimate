@@ -353,6 +353,25 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
   `,
+  // v6: competition formats — which stage/round a game belongs to, and playoff brackets
+  `
+  ALTER TABLE game ADD COLUMN stage TEXT;   -- null/'pool' = round robin or pool play, 'swiss', 'playoff'
+  ALTER TABLE game ADD COLUMN round INTEGER;
+  -- One slot per playoff game. Each side is filled from a source once it is known:
+  -- {"type":"rank","pool":"A"|null,"rank":1} | {"type":"winner","slot":"<slot id>"} | {"type":"loser","slot":"<slot id>"}
+  CREATE TABLE bracket_slot (
+    id TEXT PRIMARY KEY NOT NULL,
+    event_id TEXT NOT NULL REFERENCES event(id),
+    name TEXT NOT NULL,
+    round INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    source_a TEXT NOT NULL,
+    source_b TEXT NOT NULL,
+    game_id TEXT REFERENCES game(id),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX idx_bracket_slot_event ON bracket_slot(event_id);
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

@@ -122,6 +122,8 @@ export type Game = {
   home_team_id: string | null;
   postponements: number;
   forfeit_team_id: string | null;
+  stage: 'pool' | 'swiss' | 'playoff' | null;
+  round: number | null;
 };
 
 export type GamePlayer = {

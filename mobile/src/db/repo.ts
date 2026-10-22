@@ -5,8 +5,9 @@ import { otherTeam, type GameData } from '@/domain/engine';
 import { byFirstName, isMinor } from '@/domain/format';
 import { LEVEL_RANK, type Level } from '@/domain/permissions';
 import { canPostpone, type StatusReason } from '@/domain/fixtures';
+import { resolveSource, swissRound, type BracketTemplate, type Source, type Standing } from '@/domain/formats';
 import type { Answers, NiggleSeverity, PlayingTime, ReflectionKind, ReflectionRow } from '@/domain/reflection';
-import { parseRules, ratioForPoint, type Rules } from '@/domain/rules';
+import { parseRules, ratioForPoint, rulesFor, type Rules } from '@/domain/rules';
 
 import { notifyChanged } from './live';
 import type {
@@ -623,6 +624,8 @@ export type NewFixture = {
   scheduledAt: string | null;
   venueId: string | null;
   rules: Rules;
+  stage?: 'pool' | 'swiss' | 'playoff' | null;
+  round?: number | null;
 };
 
 async function insertFixture(db: SQLiteDatabase, f: NewFixture) {
@@ -631,8 +634,8 @@ async function insertFixture(db: SQLiteDatabase, f: NewFixture) {
   // Home is listed first (team A): they set up the field.
   await db.runAsync(
     `INSERT INTO game (id, event_id, venue_id, team_a_id, team_b_id, home_team_id, scheduled_at, status, tracking_mode,
-       rules_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', 'standard', ?, ?, ?)`,
+       rules_json, stage, round, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', 'standard', ?, ?, ?, ?, ?)`,
     id,
     f.eventId,
     f.venueId,
@@ -641,6 +644,8 @@ async function insertFixture(db: SQLiteDatabase, f: NewFixture) {
     f.homeId,
     f.scheduledAt,
     JSON.stringify(f.rules),
+    f.stage ?? null,
+    f.round ?? null,
     ts,
     ts,
   );
@@ -749,6 +754,8 @@ export function forfeitGame(db: SQLiteDatabase, gameId: string, forfeitingTeamId
       ts,
       gameId,
     );
+    const ev = await db.getFirstAsync<{ event_id: string | null }>(`SELECT event_id FROM game WHERE id = ?`, gameId);
+    if (ev?.event_id) await fillBracket(db, ev.event_id);
   });
 }
 
@@ -956,6 +963,7 @@ export function endGame(db: SQLiteDatabase, data: GameData, reason: EndReason = 
     }
     await insertEvent(db, { gameId: data.game.id, pointId: null, type: 'end', value: reason });
     await db.runAsync(`UPDATE game SET status = 'final', ended_at = ?, updated_at = ? WHERE id = ?`, ts, ts, data.game.id);
+    if (data.game.event_id) await fillBracket(db, data.game.event_id);
   });
 }
 
@@ -1526,4 +1534,171 @@ export async function recentLoad(db: SQLiteDatabase, personIds: string[], hours 
     since,
   );
   return new Map(rows.map((r) => [r.person_id, r.load ?? 0]));
+}
+
+/* ---------------- Formats: standings, playoff brackets, Swiss ---------------- */
+
+/** Standings from finished non-playoff games, per pool (null = everyone). null when that pool still has games to play. */
+export async function eventRankings(db: SQLiteDatabase, eventId: string) {
+  const [teams, games] = await Promise.all([eventTeams(db, eventId), listGamesForEvent(db, eventId)]);
+  const pool = games.filter((g) => g.stage !== 'playoff');
+  const table = (teamIds: string[]): Standing[] =>
+    teamIds.map((teamId) => {
+      const mine = pool.filter((g) => g.status === 'final' && (g.team_a_id === teamId || g.team_b_id === teamId));
+      let wins = 0;
+      let losses = 0;
+      let pf = 0;
+      let pa = 0;
+      for (const g of mine) {
+        const [f, a] = g.team_a_id === teamId ? [g.score_a, g.score_b] : [g.score_b, g.score_a];
+        pf += f;
+        pa += a;
+        if (f > a) wins += 1;
+        else if (f < a) losses += 1;
+      }
+      return { teamId, wins, losses, diff: pf - pa, pointsFor: pf };
+    });
+  const order = (st: Standing[]) =>
+    [...st].sort((a, b) => b.wins - a.wins || a.losses - b.losses || b.diff - a.diff || b.pointsFor - a.pointsFor).map((x) => x.teamId);
+  const open = (teamIds: string[]) => pool.some((g) => g.status !== 'final' && (teamIds.includes(g.team_a_id) || teamIds.includes(g.team_b_id)));
+  const all = teams.map((t) => t.id);
+  return {
+    teams,
+    games,
+    standings: table(all),
+    rankings: (p: string | null) => {
+      const ids = p ? teams.filter((t) => (t.pool ?? '') === p).map((t) => t.id) : all;
+      if (!ids.length || open(ids) || !pool.some((g) => g.status === 'final')) return null;
+      return order(table(ids));
+    },
+  };
+}
+
+export type BracketSlotRow = {
+  id: string;
+  event_id: string;
+  name: string;
+  round: number;
+  position: number;
+  source_a: string;
+  source_b: string;
+  game_id: string | null;
+};
+
+export function bracketSlots(db: SQLiteDatabase, eventId: string) {
+  return db.getAllAsync<BracketSlotRow>(`SELECT * FROM bracket_slot WHERE event_id = ? ORDER BY round, position`, eventId);
+}
+
+/** Lay out a playoff bracket from a template. Slots fill with teams as results come in. */
+export function createBracket(db: SQLiteDatabase, eventId: string, template: BracketTemplate) {
+  return write(db, async () => {
+    const ids = new Map(template.slots.map((sl) => [sl.key, uuid()]));
+    const map = (src: Source): Source => (src.type === 'rank' ? src : { ...src, slot: ids.get(src.slot)! });
+    let position = 0;
+    for (const sl of template.slots) {
+      position += 1;
+      await db.runAsync(
+        `INSERT INTO bracket_slot (id, event_id, name, round, position, source_a, source_b, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ids.get(sl.key)!,
+        eventId,
+        sl.name,
+        sl.round,
+        position,
+        JSON.stringify(map(sl.a)),
+        JSON.stringify(map(sl.b)),
+        now(),
+      );
+    }
+    return fillBracket(db, eventId);
+  });
+}
+
+export function deleteBracket(db: SQLiteDatabase, eventId: string) {
+  return write(db, async () => {
+    const slots = await bracketSlots(db, eventId);
+    for (const sl of slots) {
+      if (sl.game_id) await db.runAsync(`UPDATE game SET deleted_at = ? WHERE id = ? AND status = 'scheduled'`, now(), sl.game_id);
+    }
+    await db.runAsync(`DELETE FROM bracket_slot WHERE event_id = ?`, eventId);
+  });
+}
+
+/**
+ * Create the playoff games whose two teams are now known. Runs after every finished or forfeited game
+ * in the event, so winners advance on their own. Returns how many games were created.
+ */
+export async function fillBracket(db: SQLiteDatabase, eventId: string) {
+  const slots = await bracketSlots(db, eventId);
+  if (!slots.length) return 0;
+  const { games, rankings } = await eventRankings(db, eventId);
+  const event = await getEvent(db, eventId);
+  const rules = rulesFor(event?.kind === 'league' ? 'league' : 'wfdf', event?.division ?? 'mixed');
+  const byId = new Map(games.map((g) => [g.id, g]));
+  const gameOf = new Map(slots.map((sl) => [sl.id, sl.game_id]));
+  const result = (slotId: string) => {
+    const g = byId.get(gameOf.get(slotId) ?? '');
+    if (!g || g.status !== 'final' || g.score_a === g.score_b) return null;
+    const aWon = g.score_a > g.score_b;
+    return { winner: aWon ? g.team_a_id : g.team_b_id, loser: aWon ? g.team_b_id : g.team_a_id };
+  };
+  let created = 0;
+  for (const sl of slots) {
+    if (gameOf.get(sl.id)) continue;
+    const a = resolveSource(JSON.parse(sl.source_a), { rankings, result });
+    const b = resolveSource(JSON.parse(sl.source_b), { rankings, result });
+    if (!a || !b || a === b) continue;
+    const id = await insertFixture(db, { eventId, homeId: a, awayId: b, scheduledAt: null, venueId: null, rules, stage: 'playoff', round: sl.round });
+    await db.runAsync(`UPDATE bracket_slot SET game_id = ? WHERE id = ?`, id, sl.id);
+    gameOf.set(sl.id, id);
+    created += 1;
+  }
+  return created;
+}
+
+export function fillBracketNow(db: SQLiteDatabase, eventId: string) {
+  return write(db, () => fillBracket(db, eventId));
+}
+
+/** Pair and create the next Swiss round from the current standings (no rematches where possible). */
+export function createSwissRound(db: SQLiteDatabase, eventId: string, opts: { scheduledAt: string | null; venueIds: string[] }) {
+  return write(db, async () => {
+    const { teams, games, standings } = await eventRankings(db, eventId);
+    const swiss = games.filter((g) => g.stage === 'swiss');
+    const unfinished = swiss.filter((g) => g.status !== 'final');
+    if (unfinished.length) throw new Error(`Finish the current round first (${unfinished.length} game${unfinished.length > 1 ? 's' : ''} left).`);
+    const round = Math.max(0, ...swiss.map((g) => g.round ?? 0)) + 1;
+    const played = new Set<string>();
+    for (const g of games.filter((x) => x.stage !== 'playoff')) {
+      played.add(`${g.team_a_id}|${g.team_b_id}`);
+      played.add(`${g.team_b_id}|${g.team_a_id}`);
+    }
+    const hadBye = new Set<string>();
+    for (let r = 1; r < round; r += 1) {
+      const inRound = new Set(swiss.filter((g) => g.round === r).flatMap((g) => [g.team_a_id, g.team_b_id]));
+      teams.forEach((t) => !inRound.has(t.id) && hadBye.add(t.id));
+    }
+    const { pairs, bye } = swissRound(standings, played, hadBye);
+    const homes = new Map<string, number>();
+    for (const g of swiss) homes.set(g.home_team_id ?? g.team_a_id, (homes.get(g.home_team_id ?? g.team_a_id) ?? 0) + 1);
+    const event = await getEvent(db, eventId);
+    const rules = rulesFor(event?.kind === 'league' ? 'league' : 'wfdf', event?.division ?? 'mixed');
+    let i = 0;
+    for (const [x, y] of pairs) {
+      // Whoever has hosted less this Swiss stage hosts (sets up the field).
+      const [home, away] = (homes.get(x) ?? 0) <= (homes.get(y) ?? 0) ? [x, y] : [y, x];
+      homes.set(home, (homes.get(home) ?? 0) + 1);
+      await insertFixture(db, {
+        eventId,
+        homeId: home,
+        awayId: away,
+        scheduledAt: opts.scheduledAt,
+        venueId: opts.venueIds.length ? opts.venueIds[i % opts.venueIds.length] : null,
+        rules,
+        stage: 'swiss',
+        round,
+      });
+      i += 1;
+    }
+    return { round, games: pairs.length, bye };
+  });
 }

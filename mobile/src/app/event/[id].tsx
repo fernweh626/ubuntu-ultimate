@@ -4,17 +4,18 @@ import { Linking, Pressable, ScrollView, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, peopleById, playerTotals, teamAggregate } from '@/db/reports';
-import { eventTeams, getAccess, getEvent, listGamesForEvent, spiritForEvent } from '@/db/repo';
+import { bracketSlots, eventTeams, getAccess, getEvent, listGamesForEvent, spiritForEvent } from '@/db/repo';
 import { dateRange, displayName, pct, round1, shortDate, shortName } from '@/domain/format';
 import { rankStandings, type TeamAggregate } from '@/domain/stats';
 import { Button, Card, Choice, EmptyState, IconButton, Screen, Section, T, TeamSwatch } from '@/ui/components';
+import { BracketView } from '@/ui/bracket';
 import { FollowButton } from '@/ui/follow-button';
 import { FormDots, GameCard } from '@/ui/game-bits';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
 import { colors, font, space } from '@/ui/theme';
 
-type Tab = 'standings' | 'games' | 'leaders' | 'teams' | 'spirit';
+type Tab = 'standings' | 'games' | 'playoffs' | 'leaders' | 'teams' | 'spirit';
 
 export default function EventPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,7 +29,7 @@ export default function EventPage() {
       const loaded = await loadFinishedGames(d, games);
       const ids = new Set<string>();
       loaded.forEach((g) => Object.keys(g.stats.players).forEach((p) => ids.add(p)));
-      return { event, teams, games, loaded, spirit, people: await peopleById(d, [...ids]), access: await getAccess(d) };
+      return { event, teams, games, loaded, spirit, people: await peopleById(d, [...ids]), access: await getAccess(d), slots: await bracketSlots(d, id) };
     },
     [id],
   );
@@ -44,7 +45,9 @@ export default function EventPage() {
     byDay.set(key, [...(byDay.get(key) ?? []), g]);
   }
   const teamById = new Map(teams.map((t) => [t.id, t]));
-  const aggs = teams.map((t) => teamAggregate(t.id, loaded.filter((g) => g.item.team_a_id === t.id || g.item.team_b_id === t.id)));
+  // Standings come from round robin / Swiss / pool games; playoff results are shown in the bracket.
+  const poolLoaded = loaded.filter((g) => g.item.stage !== 'playoff');
+  const aggs = teams.map((t) => teamAggregate(t.id, poolLoaded.filter((g) => g.item.team_a_id === t.id || g.item.team_b_id === t.id)));
   const pools = Array.from(new Set(teams.map((t) => t.pool ?? ''))).sort();
   const totals = [...playerTotals(loaded).values()];
   const leaders = (k: 'goals' | 'assists' | 'intercepts' | 'plusMinus') => [...totals].sort((a, b) => b[k] - a[k]).filter((p) => p[k] > 0).slice(0, 5);
@@ -154,6 +157,7 @@ export default function EventPage() {
               ['games', `Schedule (${games.length})`],
               ['leaders', 'Leaders'],
               ['teams', 'Team stats'],
+              ...(bundle.slots.length ? ([['playoffs', 'Playoffs']] as [Tab, string][]) : []),
               ['spirit', 'Spirit'],
             ] as [Tab, string][]
           ).map(([k, l]) => (
@@ -178,13 +182,24 @@ export default function EventPage() {
         ) : null}
         {tab === 'standings' && teams.length ? <T v="small">Ranked by wins, then point difference, then points scored. Tap a team for its tournament report.</T> : null}
 
+        {tab === 'playoffs' ? (
+          <BracketView
+            slots={bundle.slots}
+            games={games}
+            teamName={(tid) => teamById.get(tid)?.name ?? ''}
+            teamColor={(tid) => teamById.get(tid)?.primary_color ?? null}
+          />
+        ) : null}
+
         {tab === 'games' ? (
           <>
             {runsEvents ? (
               <Card>
                 <T v="bodyStrong">Build the schedule</T>
-                <T v="small">Generate every pairing automatically, import a spreadsheet, or add games one at a time.</T>
-                <Button label="Generate round robin" icon="autorenew" kind="primary" onPress={() => router.push({ pathname: '/event/schedule-generate', params: { eventId: id } })} />
+                <T v="small">Choose a format, import a spreadsheet, or add games one at a time. Formats can be combined — e.g. round robin or Swiss, then playoffs.</T>
+                <Choice label="Round robin" sublabel="Everyone plays everyone, once or home & away" onPress={() => router.push({ pathname: '/event/schedule-generate', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
+                <Choice label="Swiss draw" sublabel="Pair one round at a time by record, no rematches" onPress={() => router.push({ pathname: '/event/swiss', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
+                <Choice label={bundle.slots.length ? 'Playoffs (bracket set up)' : 'Playoffs'} sublabel="Top 4, top 8, or crossovers from two pools — winners advance automatically" onPress={() => router.push({ pathname: '/event/playoffs', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   <Button label="Import" icon="file-upload-outline" onPress={() => router.push({ pathname: '/event/schedule-import', params: { eventId: id } })} style={{ flex: 1 }} />
                   <Button label="Add a game" icon="plus" onPress={() => router.push({ pathname: '/event/schedule-add', params: { eventId: id } })} style={{ flex: 1 }} />
