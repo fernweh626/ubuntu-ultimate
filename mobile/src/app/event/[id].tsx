@@ -4,9 +4,10 @@ import { Linking, Pressable, ScrollView, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, peopleById, playerTotals, teamAggregate } from '@/db/reports';
-import { bracketSlots, eventTeams, getAccess, getEvent, listGamesForEvent, spiritForEvent } from '@/db/repo';
+import { eventTeams, finalPlacings, resolveBracket, getAccess, getEvent, listGamesForEvent, spiritForEvent } from '@/db/repo';
 import { dateRange, displayName, pct, round1, shortDate, shortName } from '@/domain/format';
-import { rankStandings, type TeamAggregate } from '@/domain/stats';
+import { orderTable } from '@/domain/formats';
+import { type TeamAggregate } from '@/domain/stats';
 import { Button, Card, Choice, EmptyState, IconButton, Screen, Section, T, TeamSwatch } from '@/ui/components';
 import { BracketView } from '@/ui/bracket';
 import { FollowButton } from '@/ui/follow-button';
@@ -15,7 +16,7 @@ import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
 import { colors, font, space } from '@/ui/theme';
 
-type Tab = 'standings' | 'games' | 'playoffs' | 'leaders' | 'teams' | 'spirit';
+type Tab = 'standings' | 'games' | 'playoffs' | 'results' | 'leaders' | 'teams' | 'spirit';
 
 export default function EventPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,7 +30,7 @@ export default function EventPage() {
       const loaded = await loadFinishedGames(d, games);
       const ids = new Set<string>();
       loaded.forEach((g) => Object.keys(g.stats.players).forEach((p) => ids.add(p)));
-      return { event, teams, games, loaded, spirit, people: await peopleById(d, [...ids]), access: await getAccess(d), slots: await bracketSlots(d, id) };
+      return { event, teams, games, loaded, spirit, people: await peopleById(d, [...ids]), access: await getAccess(d), bracket: await resolveBracket(d, id), final: await finalPlacings(d, id) };
     },
     [id],
   );
@@ -48,6 +49,16 @@ export default function EventPage() {
   // Standings come from round robin / Swiss / pool games; playoff results are shown in the bracket.
   const poolLoaded = loaded.filter((g) => g.item.stage !== 'playoff');
   const aggs = teams.map((t) => teamAggregate(t.id, poolLoaded.filter((g) => g.item.team_a_id === t.id || g.item.team_b_id === t.id)));
+  const poolResults = poolLoaded.map((g) => ({ a: g.item.team_a_id, b: g.item.team_b_id, scoreA: g.item.score_a, scoreB: g.item.score_b }));
+  /** Wins (draws count half), then head-to-head among tied teams, then point difference, then points scored. */
+  const ranked = (rows: TeamAggregate[]) => {
+    const order = orderTable(
+      rows.map((a) => ({ teamId: a.teamId, wins: a.wins, draws: a.draws, losses: a.losses, pointsFor: a.pointsFor, pointsAgainst: a.pointsAgainst })),
+      poolResults,
+    );
+    return order.map((tid) => rows.find((a) => a.teamId === tid)!);
+  };
+  const { placings, decided } = bundle.final;
   const pools = Array.from(new Set(teams.map((t) => t.pool ?? ''))).sort();
   const totals = [...playerTotals(loaded).values()];
   const leaders = (k: 'goals' | 'assists' | 'intercepts' | 'plusMinus') => [...totals].sort((a, b) => b[k] - a[k]).filter((p) => p[k] > 0).slice(0, 5);
@@ -60,13 +71,13 @@ export default function EventPage() {
     .sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
 
   function openShare() {
-    const ranked = rankStandings(aggs);
+    const podium = decided ? placings.slice(0, 3) : ranked(aggs).slice(0, 3).map((a, i) => ({ teamId: a.teamId, place: i + 1 }));
     const topScorer = leaders('goals')[0];
     const topAssist = leaders('assists')[0];
     setShare({
       kicker: [event.kind === 'league' ? 'League' : 'Tournament', dateRange(event.start_date, event.end_date)].filter(Boolean).join(' · '),
       title: event.name,
-      stats: ranked.slice(0, 3).map((a, i) => ({ label: `${i + 1}. ${teamById.get(a.teamId)?.name ?? ''}`, value: `${a.wins}–${a.losses}` })),
+      stats: podium.map((p) => ({ label: ['', '🥇 1st', '🥈 2nd', '🥉 3rd'][p.place] ?? `${p.place}th`, value: teamById.get(p.teamId)?.short_name ?? teamById.get(p.teamId)?.name ?? '' })),
       highlights: [
         topScorer ? `Top scorer: ${shortName(people.get(topScorer.personId)!)} · ${topScorer.goals}` : null,
         topAssist ? `Top assists: ${shortName(people.get(topAssist.personId)!)} · ${topAssist.assists}` : null,
@@ -95,7 +106,7 @@ export default function EventPage() {
           +/−
         </T>
       </View>
-      {rankStandings(rows).map((a, i) => {
+      {ranked(rows).map((a, i) => {
         const t = teamById.get(a.teamId)!;
         const diff = a.pointsFor - a.pointsAgainst;
         return (
@@ -157,7 +168,8 @@ export default function EventPage() {
               ['games', `Schedule (${games.length})`],
               ['leaders', 'Leaders'],
               ['teams', 'Team stats'],
-              ...(bundle.slots.length ? ([['playoffs', 'Playoffs']] as [Tab, string][]) : []),
+              ...(bundle.bracket.slots.length ? ([['playoffs', 'Playoffs']] as [Tab, string][]) : []),
+              ...(loaded.length ? ([['results', 'Results']] as [Tab, string][]) : []),
               ['spirit', 'Spirit'],
             ] as [Tab, string][]
           ).map(([k, l]) => (
@@ -180,15 +192,56 @@ export default function EventPage() {
             standingsTable(aggs)
           )
         ) : null}
-        {tab === 'standings' && teams.length ? <T v="small">Ranked by wins, then point difference, then points scored. Tap a team for its tournament report.</T> : null}
+        {tab === 'standings' && teams.length ? <T v="small">Ranked by wins, then head-to-head between tied teams, then point difference, then points scored. Playoff games aren’t included. Tap a team for its report.</T> : null}
 
         {tab === 'playoffs' ? (
           <BracketView
-            slots={bundle.slots}
+            title={event.name}
+            slots={bundle.bracket.slots}
+            state={bundle.bracket.state}
             games={games}
             teamName={(tid) => teamById.get(tid)?.name ?? ''}
             teamColor={(tid) => teamById.get(tid)?.primary_color ?? null}
+            onSlotPress={(_, g) =>
+              g ? router.push(g.status === 'scheduled' ? `/game/${g.id}/fixture` : g.status === 'live' ? `/game/${g.id}` : `/game/${g.id}/report`) : runsEvents ? router.push({ pathname: '/event/playoffs', params: { eventId: id } }) : undefined
+            }
           />
+        ) : null}
+
+        {tab === 'results' ? (
+          <>
+            <Card style={{ backgroundColor: colors.night, borderColor: colors.night }}>
+              <T style={{ fontFamily: font.semibold, fontSize: 12, letterSpacing: 1, color: colors.nightMuted }}>{decided ? 'FINAL PLACINGS' : 'PROVISIONAL — STILL BEING PLAYED'}</T>
+              {placings.slice(0, 3).map((p) => (
+                <View key={p.teamId} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: 4 }}>
+                  <T style={{ fontSize: 26 }}>{['', '🥇', '🥈', '🥉'][p.place]}</T>
+                  <TeamSwatch color={teamById.get(p.teamId)?.primary_color} />
+                  <T style={{ fontFamily: font.bold, fontSize: 18, color: '#fff', flex: 1 }}>{teamById.get(p.teamId)?.name}</T>
+                </View>
+              ))}
+              {spiritByTeam[0]?.avg != null ? (
+                <T style={{ fontFamily: font.medium, fontSize: 14, color: '#7FD1A6', marginTop: 4 }}>
+                  Spirit award: {spiritByTeam[0].team.name} ({round1(spiritByTeam[0].avg!)}/20)
+                </T>
+              ) : null}
+            </Card>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+              {placings.map((p, i) => (
+                <Pressable
+                  key={p.teamId}
+                  onPress={() => router.push({ pathname: '/team/report', params: { id: p.teamId, eventId: id } })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, minHeight: 48, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
+                  <T style={{ fontFamily: font.display, fontSize: 20, width: 36 }}>{p.place}</T>
+                  <TeamSwatch color={teamById.get(p.teamId)?.primary_color} size="sm" />
+                  <T v="bodyStrong" style={{ flex: 1 }}>
+                    {teamById.get(p.teamId)?.name}
+                  </T>
+                </Pressable>
+              ))}
+            </View>
+            <T v="small">{bundle.final.hasBracket ? 'Places come from the playoff games; anyone without a placing game is ranked by the standings.' : 'No playoffs, so places come straight from the standings.'}</T>
+            <Button label="Share the podium" icon="share-variant" kind="primary" onPress={openShare} />
+          </>
         ) : null}
 
         {tab === 'games' ? (
@@ -199,7 +252,7 @@ export default function EventPage() {
                 <T v="small">Choose a format, import a spreadsheet, or add games one at a time. Formats can be combined — e.g. round robin or Swiss, then playoffs.</T>
                 <Choice label="Round robin" sublabel="Everyone plays everyone, once or home & away" onPress={() => router.push({ pathname: '/event/schedule-generate', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
                 <Choice label="Swiss draw" sublabel="Pair one round at a time by record, no rematches" onPress={() => router.push({ pathname: '/event/swiss', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
-                <Choice label={bundle.slots.length ? 'Playoffs (bracket set up)' : 'Playoffs'} sublabel="Top 4, top 8, or crossovers from two pools — winners advance automatically" onPress={() => router.push({ pathname: '/event/playoffs', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
+                <Choice label={bundle.bracket.slots.length ? 'Playoffs (bracket set up)' : 'Playoffs'} sublabel="Top 4, top 8, or crossovers from two pools — winners advance automatically" onPress={() => router.push({ pathname: '/event/playoffs', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   <Button label="Import" icon="file-upload-outline" onPress={() => router.push({ pathname: '/event/schedule-import', params: { eventId: id } })} style={{ flex: 1 }} />
                   <Button label="Add a game" icon="plus" onPress={() => router.push({ pathname: '/event/schedule-add', params: { eventId: id } })} style={{ flex: 1 }} />

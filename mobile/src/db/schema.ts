@@ -372,6 +372,13 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_bracket_slot_event ON bracket_slot(event_id);
   `,
+  // v7: bracket slots can be scheduled before their teams are known, and know which places they decide
+  `
+  ALTER TABLE bracket_slot ADD COLUMN grp TEXT;            -- 'Championship', '5th–8th', …
+  ALTER TABLE bracket_slot ADD COLUMN place INTEGER;       -- for a placing game, the better place it decides (1 = final)
+  ALTER TABLE bracket_slot ADD COLUMN scheduled_at TEXT;
+  ALTER TABLE bracket_slot ADD COLUMN venue_id TEXT REFERENCES venue(id);
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

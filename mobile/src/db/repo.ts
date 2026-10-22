@@ -5,7 +5,7 @@ import { otherTeam, type GameData } from '@/domain/engine';
 import { byFirstName, isMinor } from '@/domain/format';
 import { LEVEL_RANK, type Level } from '@/domain/permissions';
 import { canPostpone, type StatusReason } from '@/domain/fixtures';
-import { resolveSource, swissRound, type BracketTemplate, type Source, type Standing } from '@/domain/formats';
+import { NOBODY, orderTable, resolveSource, swissRound, type Result, type SlotTemplate, type Source, type Standing, type TableRow } from '@/domain/formats';
 import type { Answers, NiggleSeverity, PlayingTime, ReflectionKind, ReflectionRow } from '@/domain/reflection';
 import { parseRules, ratioForPoint, rulesFor, type Rules } from '@/domain/rules';
 
@@ -425,8 +425,9 @@ export function getEvent(db: SQLiteDatabase, id: string) {
 }
 
 export function eventTeams(db: SQLiteDatabase, eventId: string) {
-  return db.getAllAsync<Team & { pool: string | null }>(
-    `SELECT t.*, et.pool FROM event_team et JOIN team t ON t.id = et.team_id WHERE et.event_id = ? ORDER BY t.name`,
+  return db.getAllAsync<Team & { pool: string | null; seed: number | null }>(
+    `SELECT t.*, et.pool, et.seed FROM event_team et JOIN team t ON t.id = et.team_id WHERE et.event_id = ?
+      ORDER BY et.seed IS NULL, et.seed, t.name`,
     eventId,
   );
 }
@@ -443,7 +444,7 @@ export type EventInput = {
   end_date?: string | null;
   video_url?: string | null;
   photos_url?: string | null;
-  teams: { teamId: string; pool: string | null }[];
+  teams: { teamId: string; pool: string | null; seed?: number | null }[];
 };
 
 export function saveEvent(db: SQLiteDatabase, e: EventInput) {
@@ -475,11 +476,12 @@ export function saveEvent(db: SQLiteDatabase, e: EventInput) {
     await db.runAsync(`DELETE FROM event_team WHERE event_id = ?`, id);
     for (const t of e.teams) {
       await db.runAsync(
-        `INSERT INTO event_team (id, event_id, team_id, pool, created_at) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO event_team (id, event_id, team_id, pool, seed, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
         uuid(),
         id,
         t.teamId,
         t.pool,
+        t.seed ?? null,
         ts,
       );
     }
@@ -1538,39 +1540,56 @@ export async function recentLoad(db: SQLiteDatabase, personIds: string[], hours 
 
 /* ---------------- Formats: standings, playoff brackets, Swiss ---------------- */
 
-/** Standings from finished non-playoff games, per pool (null = everyone). null when that pool still has games to play. */
+/**
+ * Standings from finished non-playoff games, ordered with head-to-head tiebreaks.
+ * rankings(pool) is null while that pool (or the event) still has unfinished games.
+ */
 export async function eventRankings(db: SQLiteDatabase, eventId: string) {
   const [teams, games] = await Promise.all([eventTeams(db, eventId), listGamesForEvent(db, eventId)]);
   const pool = games.filter((g) => g.stage !== 'playoff');
-  const table = (teamIds: string[]): Standing[] =>
-    teamIds.map((teamId) => {
-      const mine = pool.filter((g) => g.status === 'final' && (g.team_a_id === teamId || g.team_b_id === teamId));
-      let wins = 0;
-      let losses = 0;
-      let pf = 0;
-      let pa = 0;
-      for (const g of mine) {
-        const [f, a] = g.team_a_id === teamId ? [g.score_a, g.score_b] : [g.score_b, g.score_a];
-        pf += f;
-        pa += a;
-        if (f > a) wins += 1;
-        else if (f < a) losses += 1;
-      }
-      return { teamId, wins, losses, diff: pf - pa, pointsFor: pf };
-    });
-  const order = (st: Standing[]) =>
-    [...st].sort((a, b) => b.wins - a.wins || a.losses - b.losses || b.diff - a.diff || b.pointsFor - a.pointsFor).map((x) => x.teamId);
-  const open = (teamIds: string[]) => pool.some((g) => g.status !== 'final' && (teamIds.includes(g.team_a_id) || teamIds.includes(g.team_b_id)));
+  const done = pool.filter((g) => g.status === 'final');
+  const results: Result[] = done.map((g) => ({ a: g.team_a_id, b: g.team_b_id, scoreA: g.score_a, scoreB: g.score_b }));
+  const row = (teamId: string): TableRow & Standing => {
+    let wins = 0;
+    let draws = 0;
+    let losses = 0;
+    let pf = 0;
+    let pa = 0;
+    for (const r of results) {
+      if (r.a !== teamId && r.b !== teamId) continue;
+      const [f, a] = r.a === teamId ? [r.scoreA, r.scoreB] : [r.scoreB, r.scoreA];
+      pf += f;
+      pa += a;
+      if (f > a) wins += 1;
+      else if (f < a) losses += 1;
+      else draws += 1;
+    }
+    return { teamId, wins, draws, losses, pointsFor: pf, pointsAgainst: pa, diff: pf - pa };
+  };
   const all = teams.map((t) => t.id);
+  const open = (ids: string[]) => pool.some((g) => g.status !== 'final' && (ids.includes(g.team_a_id) || ids.includes(g.team_b_id)));
+  const ordered = (ids: string[]) => orderTable(ids.map(row), results);
+  const poolNames = Array.from(new Set(teams.map((t) => t.pool).filter((p): p is string => !!p))).sort();
+  const rankings = (p: string | null) => {
+    const ids = p ? teams.filter((t) => (t.pool ?? '') === p).map((t) => t.id) : all;
+    if (!ids.length || open(ids) || !done.length) return null;
+    return ordered(ids);
+  };
   return {
     teams,
     games,
-    standings: table(all),
-    rankings: (p: string | null) => {
-      const ids = p ? teams.filter((t) => (t.pool ?? '') === p).map((t) => t.id) : all;
-      if (!ids.length || open(ids) || !pool.some((g) => g.status === 'final')) return null;
-      return order(table(ids));
+    standings: ordered(all).map(row),
+    rankings,
+    /** A1, B1, A2, B2 … once every pool is finished (crossover seeding). */
+    poolOrder: () => {
+      if (!poolNames.length) return rankings(null);
+      const per = poolNames.map((p) => rankings(p));
+      if (per.some((x) => !x)) return null;
+      const out: string[] = [];
+      for (let i = 0; i < Math.max(...per.map((x) => x!.length)); i += 1) per.forEach((x) => x![i] && out.push(x![i]));
+      return out;
     },
+    seeds: () => teams.map((t) => t.id),
   };
 }
 
@@ -1583,22 +1602,27 @@ export type BracketSlotRow = {
   source_a: string;
   source_b: string;
   game_id: string | null;
+  grp: string | null;
+  place: number | null;
+  scheduled_at: string | null;
+  venue_id: string | null;
 };
 
 export function bracketSlots(db: SQLiteDatabase, eventId: string) {
   return db.getAllAsync<BracketSlotRow>(`SELECT * FROM bracket_slot WHERE event_id = ? ORDER BY round, position`, eventId);
 }
 
-/** Lay out a playoff bracket from a template. Slots fill with teams as results come in. */
-export function createBracket(db: SQLiteDatabase, eventId: string, template: BracketTemplate) {
+/** Lay out a playoff bracket. Slots fill with teams (and become games) as results come in. */
+export function createBracket(db: SQLiteDatabase, eventId: string, template: SlotTemplate[]) {
   return write(db, async () => {
-    const ids = new Map(template.slots.map((sl) => [sl.key, uuid()]));
-    const map = (src: Source): Source => (src.type === 'rank' ? src : { ...src, slot: ids.get(src.slot)! });
+    const ids = new Map(template.map((sl) => [sl.key, uuid()]));
+    const map = (src: Source): Source => (src.type === 'winner' || src.type === 'loser' ? { ...src, slot: ids.get(src.slot)! } : src);
     let position = 0;
-    for (const sl of template.slots) {
+    for (const sl of template) {
       position += 1;
       await db.runAsync(
-        `INSERT INTO bracket_slot (id, event_id, name, round, position, source_a, source_b, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO bracket_slot (id, event_id, name, round, position, source_a, source_b, grp, place, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ids.get(sl.key)!,
         eventId,
         sl.name,
@@ -1606,10 +1630,23 @@ export function createBracket(db: SQLiteDatabase, eventId: string, template: Bra
         position,
         JSON.stringify(map(sl.a)),
         JSON.stringify(map(sl.b)),
+        sl.group,
+        sl.place,
         now(),
       );
     }
     return fillBracket(db, eventId);
+  });
+}
+
+/** Set a playoff slot's time and field ahead of time; its game (now or later) uses them. */
+export function scheduleSlot(db: SQLiteDatabase, slotId: string, scheduledAt: string | null, venueId: string | null) {
+  return write(db, async () => {
+    await db.runAsync(`UPDATE bracket_slot SET scheduled_at = ?, venue_id = ? WHERE id = ?`, scheduledAt, venueId, slotId);
+    const sl = await db.getFirstAsync<{ game_id: string | null }>(`SELECT game_id FROM bracket_slot WHERE id = ?`, slotId);
+    if (sl?.game_id) {
+      await db.runAsync(`UPDATE game SET scheduled_at = ?, venue_id = ?, updated_at = ? WHERE id = ? AND status = 'scheduled'`, scheduledAt, venueId, now(), sl.game_id);
+    }
   });
 }
 
@@ -1623,40 +1660,101 @@ export function deleteBracket(db: SQLiteDatabase, eventId: string) {
   });
 }
 
+export type SlotState = { a: string | null; b: string | null; winner: string | null; loser: string | null; walkover: boolean };
+
+/**
+ * Work out every slot: who is in it (team id, NOBODY for a bye, null if not decided) and, when it's
+ * finished, who won. A slot with a team against NOBODY is a walkover — no game is played.
+ */
+export async function resolveBracket(db: SQLiteDatabase, eventId: string) {
+  const slots = await bracketSlots(db, eventId);
+  const ctx = await eventRankings(db, eventId);
+  const byId = new Map(ctx.games.map((g) => [g.id, g]));
+  const state = new Map<string, SlotState>();
+  for (const sl of slots) {
+    const result = (slotId: string) => {
+      const st = state.get(slotId);
+      return st?.winner && st.loser ? { winner: st.winner, loser: st.loser } : null;
+    };
+    const rc = { rankings: ctx.rankings, poolOrder: ctx.poolOrder, seeds: ctx.seeds, result };
+    const a = resolveSource(JSON.parse(sl.source_a), rc);
+    const b = resolveSource(JSON.parse(sl.source_b), rc);
+    let winner: string | null = null;
+    let loser: string | null = null;
+    let walkover = false;
+    if (a && b && (a === NOBODY || b === NOBODY)) {
+      walkover = true;
+      winner = a === NOBODY ? b : a;
+      loser = NOBODY;
+    } else {
+      const g = sl.game_id ? byId.get(sl.game_id) : undefined;
+      if (g && g.status === 'final' && g.score_a !== g.score_b) {
+        const aWon = g.score_a > g.score_b;
+        winner = aWon ? g.team_a_id : g.team_b_id;
+        loser = aWon ? g.team_b_id : g.team_a_id;
+      }
+    }
+    state.set(sl.id, { a, b, winner, loser, walkover });
+  }
+  return { slots, state, ...ctx };
+}
+
 /**
  * Create the playoff games whose two teams are now known. Runs after every finished or forfeited game
- * in the event, so winners advance on their own. Returns how many games were created.
+ * in the event, so teams advance on their own. Returns how many games were created.
  */
 export async function fillBracket(db: SQLiteDatabase, eventId: string) {
-  const slots = await bracketSlots(db, eventId);
+  const { slots, state } = await resolveBracket(db, eventId);
   if (!slots.length) return 0;
-  const { games, rankings } = await eventRankings(db, eventId);
   const event = await getEvent(db, eventId);
   const rules = rulesFor(event?.kind === 'league' ? 'league' : 'wfdf', event?.division ?? 'mixed');
-  const byId = new Map(games.map((g) => [g.id, g]));
-  const gameOf = new Map(slots.map((sl) => [sl.id, sl.game_id]));
-  const result = (slotId: string) => {
-    const g = byId.get(gameOf.get(slotId) ?? '');
-    if (!g || g.status !== 'final' || g.score_a === g.score_b) return null;
-    const aWon = g.score_a > g.score_b;
-    return { winner: aWon ? g.team_a_id : g.team_b_id, loser: aWon ? g.team_b_id : g.team_a_id };
-  };
   let created = 0;
   for (const sl of slots) {
-    if (gameOf.get(sl.id)) continue;
-    const a = resolveSource(JSON.parse(sl.source_a), { rankings, result });
-    const b = resolveSource(JSON.parse(sl.source_b), { rankings, result });
-    if (!a || !b || a === b) continue;
-    const id = await insertFixture(db, { eventId, homeId: a, awayId: b, scheduledAt: null, venueId: null, rules, stage: 'playoff', round: sl.round });
+    const st = state.get(sl.id)!;
+    if (sl.game_id || st.walkover || !st.a || !st.b || st.a === NOBODY || st.b === NOBODY || st.a === st.b) continue;
+    const id = await insertFixture(db, {
+      eventId,
+      homeId: st.a,
+      awayId: st.b,
+      scheduledAt: sl.scheduled_at,
+      venueId: sl.venue_id,
+      rules,
+      stage: 'playoff',
+      round: sl.round,
+    });
     await db.runAsync(`UPDATE bracket_slot SET game_id = ? WHERE id = ?`, id, sl.id);
-    gameOf.set(sl.id, id);
     created += 1;
   }
+  // New games can unlock nothing further until they're played, so one pass is enough.
   return created;
 }
 
 export function fillBracketNow(db: SQLiteDatabase, eventId: string) {
   return write(db, () => fillBracket(db, eventId));
+}
+
+/**
+ * Final placings: places decided by placing games (final, 3rd place, 5th place…), then everyone else
+ * in standings order. `decided` is false while any placing game is unfinished.
+ */
+export async function finalPlacings(db: SQLiteDatabase, eventId: string) {
+  const { slots, state, standings, teams } = await resolveBracket(db, eventId);
+  const place = new Map<string, number>();
+  let decided = slots.length > 0;
+  for (const sl of slots.filter((x) => x.place != null)) {
+    const st = state.get(sl.id)!;
+    if (!st.winner) {
+      // A placing game with nobody on either side decides nothing; otherwise we're still waiting.
+      if (st.a !== NOBODY || st.b !== NOBODY) decided = false;
+      continue;
+    }
+    if (st.winner !== NOBODY) place.set(st.winner, sl.place!);
+    if (st.loser && st.loser !== NOBODY) place.set(st.loser, sl.place! + 1);
+  }
+  const placed = [...place.entries()].sort((a, b) => a[1] - b[1]).map(([teamId, p]) => ({ teamId, place: p }));
+  let next = placed.length ? Math.max(...placed.map((p) => p.place)) + 1 : 1;
+  const rest = standings.filter((s) => !place.has(s.teamId)).map((s) => ({ teamId: s.teamId, place: next++ }));
+  return { placings: [...placed, ...rest], decided, teams, hasBracket: slots.length > 0 };
 }
 
 /** Pair and create the next Swiss round from the current standings (no rematches where possible). */

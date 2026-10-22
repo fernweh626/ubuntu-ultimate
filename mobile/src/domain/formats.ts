@@ -40,84 +40,184 @@ export function swissRound(standings: Standing[], played: Set<string>, hadBye: S
   return { pairs, bye };
 }
 
-/* ---------------- Playoff brackets ---------------- */
+/* ---------------- Standings with head-to-head ---------------- */
 
-export type Source = { type: 'rank'; pool: string | null; rank: number } | { type: 'winner'; slot: string } | { type: 'loser'; slot: string };
-
-export type SlotTemplate = { key: string; name: string; round: number; a: Source; b: Source };
-
-export type BracketTemplate = { id: string; name: string; summary: string; needs: string; slots: SlotTemplate[] };
-
-const rank = (r: number, pool: string | null = null): Source => ({ type: 'rank', pool, rank: r });
-const winner = (slot: string): Source => ({ type: 'winner', slot });
-const loser = (slot: string): Source => ({ type: 'loser', slot });
-
-export const BRACKETS: BracketTemplate[] = [
-  {
-    id: 'top4',
-    name: 'Top 4 playoffs',
-    summary: 'Semis 1 v 4 and 2 v 3, then a final and 3rd place',
-    needs: 'At least 4 teams in the standings',
-    slots: [
-      { key: 'sf1', name: 'Semi-final 1', round: 1, a: rank(1), b: rank(4) },
-      { key: 'sf2', name: 'Semi-final 2', round: 1, a: rank(2), b: rank(3) },
-      { key: 'final', name: 'Final', round: 2, a: winner('sf1'), b: winner('sf2') },
-      { key: 'third', name: '3rd place', round: 2, a: loser('sf1'), b: loser('sf2') },
-    ],
-  },
-  {
-    id: 'top8',
-    name: 'Top 8 playoffs',
-    summary: 'Quarters 1v8, 4v5, 2v7, 3v6, then semis, final and 3rd place',
-    needs: 'At least 8 teams in the standings',
-    slots: [
-      { key: 'qf1', name: 'Quarter-final 1', round: 1, a: rank(1), b: rank(8) },
-      { key: 'qf2', name: 'Quarter-final 2', round: 1, a: rank(4), b: rank(5) },
-      { key: 'qf3', name: 'Quarter-final 3', round: 1, a: rank(2), b: rank(7) },
-      { key: 'qf4', name: 'Quarter-final 4', round: 1, a: rank(3), b: rank(6) },
-      { key: 'sf1', name: 'Semi-final 1', round: 2, a: winner('qf1'), b: winner('qf2') },
-      { key: 'sf2', name: 'Semi-final 2', round: 2, a: winner('qf3'), b: winner('qf4') },
-      { key: 'final', name: 'Final', round: 3, a: winner('sf1'), b: winner('sf2') },
-      { key: 'third', name: '3rd place', round: 3, a: loser('sf1'), b: loser('sf2') },
-    ],
-  },
-  {
-    id: 'crossover2',
-    name: 'Crossovers from 2 pools',
-    summary: 'A1 v B2 and B1 v A2, then a final and 3rd place; A3 v B3 for 5th',
-    needs: 'Pools A and B with at least 2 teams each',
-    slots: [
-      { key: 'x1', name: 'Crossover 1', round: 1, a: rank(1, 'A'), b: rank(2, 'B') },
-      { key: 'x2', name: 'Crossover 2', round: 1, a: rank(1, 'B'), b: rank(2, 'A') },
-      { key: 'fifth', name: '5th place', round: 1, a: rank(3, 'A'), b: rank(3, 'B') },
-      { key: 'final', name: 'Final', round: 2, a: winner('x1'), b: winner('x2') },
-      { key: 'third', name: '3rd place', round: 2, a: loser('x1'), b: loser('x2') },
-    ],
-  },
-];
-
-/** How a side is described before its team is known: "1st overall", "2nd Pool B", "Winner of Semi-final 1". */
-export function describeSource(s: Source, slotName: (key: string) => string) {
-  if (s.type === 'rank') {
-    const ord = ['', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'][s.rank] ?? `${s.rank}th`;
-    return s.pool ? `${ord} Pool ${s.pool}` : `${ord} overall`;
-  }
-  return `${s.type === 'winner' ? 'Winner' : 'Loser'} of ${slotName(s.slot)}`;
-}
+export type Result = { a: string; b: string; scoreA: number; scoreB: number };
+export type TableRow = { teamId: string; wins: number; draws: number; losses: number; pointsFor: number; pointsAgainst: number };
 
 /**
- * Work out which team fills a side, or null if it isn't decided yet.
- * Rank sources wait until every pool-stage game in that pool (or the whole event) is finished.
+ * Order a table: most wins (a draw is half a win), then — among teams still level — head-to-head wins
+ * between just those teams, head-to-head point difference, overall point difference, points scored.
+ */
+export function orderTable(rows: TableRow[], results: Result[]): string[] {
+  const pts = (r: TableRow) => r.wins + r.draws / 2;
+  const byPts = new Map<number, TableRow[]>();
+  rows.forEach((r) => byPts.set(pts(r), [...(byPts.get(pts(r)) ?? []), r]));
+  const out: string[] = [];
+  for (const level of [...byPts.keys()].sort((x, y) => y - x)) {
+    const tied = byPts.get(level)!;
+    if (tied.length === 1) {
+      out.push(tied[0].teamId);
+      continue;
+    }
+    const ids = new Set(tied.map((t) => t.teamId));
+    const h2h = new Map<string, { w: number; d: number }>();
+    for (const r of results) {
+      if (!ids.has(r.a) || !ids.has(r.b)) continue;
+      const a = h2h.get(r.a) ?? { w: 0, d: 0 };
+      const b = h2h.get(r.b) ?? { w: 0, d: 0 };
+      if (r.scoreA > r.scoreB) a.w += 1;
+      else if (r.scoreB > r.scoreA) b.w += 1;
+      a.d += r.scoreA - r.scoreB;
+      b.d += r.scoreB - r.scoreA;
+      h2h.set(r.a, a);
+      h2h.set(r.b, b);
+    }
+    const get = (id: string) => h2h.get(id) ?? { w: 0, d: 0 };
+    tied
+      .sort(
+        (x, y) =>
+          get(y.teamId).w - get(x.teamId).w ||
+          get(y.teamId).d - get(x.teamId).d ||
+          y.pointsFor - y.pointsAgainst - (x.pointsFor - x.pointsAgainst) ||
+          y.pointsFor - x.pointsFor,
+      )
+      .forEach((t) => out.push(t.teamId));
+  }
+  return out;
+}
+
+/* ---------------- Playoff brackets ---------------- */
+
+/**
+ * Where a bracket side comes from:
+ * - rank: position in the standings, overall (pool null) or in one pool
+ * - pools: interleaved pool positions A1, B1, A2, B2, … (crossover seeding)
+ * - seed: the coordinator's seeding, for straight knockouts with no pool play
+ * - winner / loser of another slot
+ * - none: an empty spot (a bye)
+ */
+export type Source =
+  | { type: 'rank'; pool: string | null; rank: number }
+  | { type: 'pools'; rank: number }
+  | { type: 'seed'; rank: number }
+  | { type: 'winner'; slot: string }
+  | { type: 'loser'; slot: string }
+  | { type: 'none' };
+
+export type SlotTemplate = { key: string; name: string; group: string; round: number; place: number | null; a: Source; b: Source };
+
+export type SeedMode = 'standings' | 'pools' | 'seed';
+
+const ORD = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+
+/** Bracket order so 1 and 2 can only meet in the final: 8 → [1,8,4,5,2,7,3,6]. */
+function seedOrder(size: number): number[] {
+  let order = [1, 2];
+  while (order.length < size) {
+    const n = order.length * 2;
+    order = order.flatMap((x) => [x, n + 1 - x]);
+  }
+  return order;
+}
+
+const roundName = (size: number) => (size === 2 ? 'Final' : size === 4 ? 'Semi-final' : size === 8 ? 'Quarter-final' : `Round of ${size}`);
+
+/**
+ * Build a playoff bracket for `teams` entrants (byes fill it up to a power of two).
+ * full = every team plays for a final place (5th–8th, 9th–16th …); otherwise the winners' bracket plus 3rd place.
+ */
+export function buildBracket(teams: number, mode: SeedMode, full: boolean): SlotTemplate[] {
+  const size = 2 ** Math.ceil(Math.log2(Math.max(2, teams)));
+  const seedSource = (n: number): Source =>
+    n > teams ? { type: 'none' } : mode === 'pools' ? { type: 'pools', rank: n } : mode === 'seed' ? { type: 'seed', rank: n } : { type: 'rank', pool: null, rank: n };
+  const slots: SlotTemplate[] = [];
+  let key = 0;
+
+  const build = (entrants: Source[], placeLo: number, round: number, firstRound: boolean) => {
+    const m = entrants.length;
+    const group = placeLo === 1 ? 'Championship' : `${ORD(placeLo)}–${ORD(placeLo + m - 1)}`;
+    // Places past the number of teams only ever hold byes — skip them.
+    if (placeLo > teams) return;
+    if (m === 2) {
+      slots.push({
+        key: `s${key++}`,
+        name: placeLo === 1 ? 'Final' : `${ORD(placeLo)} place`,
+        group,
+        round,
+        place: placeLo,
+        a: entrants[0],
+        b: entrants[1],
+      });
+      return;
+    }
+    const pairs: [Source, Source][] = [];
+    if (firstRound) {
+      const order = seedOrder(m);
+      for (let i = 0; i < m; i += 2) pairs.push([entrants[order[i] - 1], entrants[order[i + 1] - 1]]);
+    } else {
+      for (let i = 0; i < m; i += 2) pairs.push([entrants[i], entrants[i + 1]]);
+    }
+    const games = pairs.map(([a, b], i) => {
+      const k = `s${key++}`;
+      const label = placeLo === 1 ? `${roundName(m)} ${i + 1}` : `${group} ${m === 4 ? 'semi' : 'round'} ${i + 1}`;
+      slots.push({ key: k, name: label, group, round, place: null, a, b });
+      return k;
+    });
+    build(games.map((g) => ({ type: 'winner', slot: g })), placeLo, round + 1, false);
+    if (full || m === 4) build(games.map((g) => ({ type: 'loser', slot: g })), placeLo + m / 2, round + 1, false);
+  };
+
+  build(Array.from({ length: size }, (_, i) => seedSource(i + 1)), 1, 1, true);
+  return slots;
+}
+
+/** How a side is described before its team is known: "1st overall", "A2", "Seed 3", "Winner of Semi-final 1". */
+export function describeSource(s: Source, slotName: (key: string) => string) {
+  switch (s.type) {
+    case 'rank':
+      return s.pool ? `${ORD(s.rank)} Pool ${s.pool}` : `${ORD(s.rank)} overall`;
+    case 'pools':
+      return `${ORD(s.rank)} by pool position`;
+    case 'seed':
+      return `Seed ${s.rank}`;
+    case 'none':
+      return 'Bye';
+    default:
+      return `${s.type === 'winner' ? 'Winner' : 'Loser'} of ${slotName(s.slot)}`;
+  }
+}
+
+/** Marks a side that will never have a team (a bye, or the loser of a game that was a bye). */
+export const NOBODY = '__nobody__';
+
+/**
+ * Which team fills a side: a team id, NOBODY, or null if not decided yet.
  */
 export function resolveSource(
   s: Source,
   ctx: {
     rankings: (pool: string | null) => string[] | null;
+    poolOrder: () => string[] | null;
+    seeds: () => string[];
     result: (slotKey: string) => { winner: string; loser: string } | null;
   },
-) {
-  if (s.type === 'rank') return ctx.rankings(s.pool)?.[s.rank - 1] ?? null;
-  const r = ctx.result(s.slot);
-  if (!r) return null;
-  return s.type === 'winner' ? r.winner : r.loser;
+): string | null {
+  switch (s.type) {
+    case 'none':
+      return NOBODY;
+    case 'rank':
+      return ctx.rankings(s.pool)?.[s.rank - 1] ?? null;
+    case 'pools': {
+      const order = ctx.poolOrder();
+      return order ? (order[s.rank - 1] ?? NOBODY) : null;
+    }
+    case 'seed':
+      return ctx.seeds()[s.rank - 1] ?? NOBODY;
+    default: {
+      const r = ctx.result(s.slot);
+      if (!r) return null;
+      return s.type === 'winner' ? r.winner : r.loser;
+    }
+  }
 }

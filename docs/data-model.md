@@ -94,7 +94,12 @@ dd/mm/yyyy), or add games one at a time.
 - **Swiss** — one round at a time from the current standings; no rematches where possible; with an odd
   number of teams the lowest-ranked team without a bye sits out. The next round can only be paired once
   the previous one is finished.
-- **Playoffs** — `bracket_slot` rows from a template (top 4, top 8, crossovers from pools A/B). Each side
-  has a source: a rank (overall or in a pool), or the winner/loser of another slot. Whenever a game in the
-  event finishes or is forfeited, every slot whose two teams are now known gets its game created, so
-  teams advance automatically. Rank sources wait until all pool games in that pool are finished.
+- **Playoffs** — `bracket_slot` rows built for any number of teams (top 4, top 8 or everyone), seeded by
+  standings, pool positions (A1, B1, A2, B2… = crossovers) or the coordinator's seeds, with byes filling
+  odd sizes. "Every team placed" adds placing brackets (5th–8th, 9th–16th…); each placing game records the
+  place it decides (`place`), and slots belong to a group (`grp`). Slots can be given a time and field
+  (`scheduled_at`, `venue_id`) before their teams are known. Whenever a game in the event finishes or is
+  forfeited, every slot whose two teams are now known gets its game (byes are walkovers, no game).
+- **Standings** order: wins (a draw counts half), head-to-head among tied teams, point difference,
+  points scored. **Final placings** come from placing games, then standings for everyone else.
+- **Seeding** is the order of `event_team.seed`; pools can be split from it by snake seeding.

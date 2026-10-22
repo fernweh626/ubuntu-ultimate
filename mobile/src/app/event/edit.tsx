@@ -6,7 +6,7 @@ import { Alert, View } from 'react-native';
 import { REGIONS } from '@/content/hub';
 import { useData } from '@/db/live';
 import { eventTeams, getEvent, listTeams, saveEvent, type EventInput } from '@/db/repo';
-import { Button, Choice, DateField, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
+import { Button, Choice, DateField, Field, IconButton, Footer, Screen, Section, Segmented, T } from '@/ui/components';
 import { dmyToIso, isoToDmy } from '@/domain/format';
 import { colors, space } from '@/ui/theme';
 
@@ -36,6 +36,23 @@ export default function EventEdit() {
   const selected = (tid: string) => f.teams.find((t) => t.teamId === tid);
   const toggleTeam = (tid: string) =>
     set('teams', selected(tid) ? f.teams.filter((t) => t.teamId !== tid) : [...f.teams, { teamId: tid, pool: usePools ? 'A' : null }]);
+  const move = (i: number, d: number) => {
+    const j = i + d;
+    if (j < 0 || j >= f.teams.length) return;
+    const next = [...f.teams];
+    [next[i], next[j]] = [next[j], next[i]];
+    set('teams', next);
+  };
+  /** Snake seeding: 1→A, 2→B, 3→B, 4→A (two pools), and so on for more pools. */
+  const snake = (pools: number) =>
+    set(
+      'teams',
+      f.teams.map((t, i) => {
+        const lap = Math.floor(i / pools);
+        const pos = i % pools;
+        return { ...t, pool: POOLS[lap % 2 === 0 ? pos : pools - 1 - pos] };
+      }),
+    );
   const cyclePool = (tid: string) =>
     set(
       'teams',
@@ -47,7 +64,8 @@ export default function EventEdit() {
     const start_date = start ? dmyToIso(start) : null;
     const end_date = end ? dmyToIso(end) : null;
     if ((start && !start_date) || (end && !end_date)) return Alert.alert('Check the dates', 'Use dd/mm/yyyy, for example 02/10/2026.');
-    const newId = await saveEvent(db, { ...f, start_date, end_date, id, teams: f.teams.map((t) => ({ ...t, pool: usePools ? t.pool : null })) });
+    // List order is the seeding: first = seed 1.
+    const newId = await saveEvent(db, { ...f, start_date, end_date, id, teams: f.teams.map((t, i) => ({ ...t, seed: i + 1, pool: usePools ? t.pool : null })) });
     if (id) router.back();
     else router.replace(`/event/${newId}`);
   }
@@ -121,6 +139,40 @@ export default function EventEdit() {
             })}
           </View>
         </Section>
+
+        {f.teams.length > 1 ? (
+          <Section title="Seeding">
+            <T v="small">Top = seed 1. Seeds are used for straight-knockout playoffs and to split pools fairly.</T>
+            <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+              {f.teams.map((t, i) => {
+                const team = teams.find((x) => x.id === t.teamId);
+                return (
+                  <View key={t.teamId} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingLeft: space.md, minHeight: 48, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
+                    <T v="bodyStrong" style={{ width: 24 }}>
+                      {i + 1}
+                    </T>
+                    <T style={{ flex: 1 }} numberOfLines={1}>
+                      {team?.name}
+                    </T>
+                    {usePools ? <Choice label={t.pool ?? 'A'} onPress={() => cyclePool(t.teamId)} style={{ minHeight: 36, width: 44, paddingHorizontal: 0 }} /> : null}
+                    <IconButton icon="arrow-up" label="Move up" onPress={() => move(i, -1)} />
+                    <IconButton icon="arrow-down" label="Move down" onPress={() => move(i, 1)} />
+                  </View>
+                );
+              })}
+            </View>
+            {usePools ? (
+              <>
+                <T v="small">Split into pools by seed (snake: 1, 4, 5, 8 in A; 2, 3, 6, 7 in B):</T>
+                <View style={{ flexDirection: 'row', gap: space.sm }}>
+                  {[2, 3, 4].map((n) => (
+                    <Button key={n} label={`${n} pools`} onPress={() => snake(n)} style={{ flex: 1 }} />
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </Section>
+        ) : null}
 
         <Field label="YouTube link (optional)" value={f.video_url ?? ''} onChangeText={(v) => set('video_url', v || null)} autoCapitalize="none" />
         <Field label="Photos folder link (Google Photos / Drive)" value={f.photos_url ?? ''} onChangeText={(v) => set('photos_url', v || null)} autoCapitalize="none" />
