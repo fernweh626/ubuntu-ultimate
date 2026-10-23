@@ -73,6 +73,9 @@ export default function MyLog() {
           </View>
         </Section>
         <Button label="Log a session: practice, pickup, gym, physio" icon="plus" kind="primary" onPress={() => setLogging(true)} />
+        <T v="small" style={{ textAlign: 'center', marginTop: -4 }}>
+          Games you play are logged automatically.
+        </T>
 
         {missing.length ? (
           <Section title="Tell us how these went">

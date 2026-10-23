@@ -270,7 +270,7 @@ export const GUIDE: GuideSection[] = [
         steps: [
           'Hub → Hat tournaments, and open the hat.',
           'Choose I’m in, Maybe or Can’t.',
-          'Say how good you are (1–5) and if you’d captain. Haven’t rated yourself in 6 months? Do the quick number or the full self-rating.',
+          'Say if you’d captain. Your skill comes from your self-rating in your profile: haven’t done one in 6 months? Tap Rate myself first (two minutes).',
           'Pay: tap Pay, or use the EFT details and tap Send proof of payment.',
           'Tick I’ve paid. The organiser confirms it.',
           '48 hours before, paid players are drawn into teams. You get a notification with your team and the schedule.',

@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Alert, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Platform, ScrollView, TextInput, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
@@ -10,7 +10,7 @@ import { getHomeRegion, getMeId, joinOrRequest, listPeople, listTeams, myRoles, 
 import type { Gender } from '@/db/types';
 import { displayName } from '@/domain/format';
 import { ensurePermission } from '@/notify/manager';
-import { Button, Choice, Field, Icon, Row, Screen, Segmented, T, TeamSwatch } from '@/ui/components';
+import { Button, Card, Choice, Field, Icon, Row, Screen, Segmented, T, TeamSwatch } from '@/ui/components';
 import { RegionMap } from '@/ui/region-map';
 import { colors, font, space } from '@/ui/theme';
 
@@ -239,13 +239,17 @@ function Done({ onFinish }: { onFinish: () => void }) {
         <T>• Tap Going, Late or Can’t on anything your team schedules.</T>
         <T>• Score a game from the big button on Home.</T>
       </View>
-      <Button
-        label={asked ? 'Reminders on ✓' : 'Turn on reminders'}
-        icon="bell-ring-outline"
-        disabled={!!asked}
-        onPress={async () => setAsked(await ensurePermission(true))}
-      />
-      {asked === false ? <T v="small">No problem: you can turn them on later in Me → Notifications.</T> : null}
+      {/* Reminders only exist on phones; the browser version skips this. */}
+      {Platform.OS !== 'web' ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+          <Icon name={asked ? 'bell-check' : 'bell-ring-outline'} color={colors.brand} size={28} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <T v="bodyStrong">{asked ? 'Reminders are on' : 'Get reminders?'}</T>
+            <T v="small">{asked === false ? 'No problem: turn them on any time in Me → Notifications.' : 'Practices, games and hats you’re in. You choose which in Me → Notifications.'}</T>
+          </View>
+          {asked ? null : <Button label="Turn on" kind="secondary" onPress={async () => setAsked(await ensurePermission(true))} style={{ minHeight: 40, paddingHorizontal: 14 }} />}
+        </Card>
+      ) : null}
       <Button label="Go to Home" kind="primary" big onPress={onFinish} />
       <T v="small" style={{ textAlign: 'center' }}>Stuck any time? Me → Help & how-to guide.</T>
     </View>

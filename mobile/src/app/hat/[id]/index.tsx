@@ -9,7 +9,6 @@ import { getAccess, listGamesForEvent, savePerson } from '@/db/repo';
 import { SKILL_FRESH_DAYS } from '@/domain/hat';
 import { displayName, shortDate } from '@/domain/format';
 import { whatsappLink } from '@/domain/standing';
-import { RATING_SCALE } from '@/domain/development';
 import { parseRules } from '@/domain/rules';
 import { Button, Card, Chip, Choice, Field, IconButton, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
@@ -216,13 +215,13 @@ function SignupForm({ eventId, meId, mine, drawn, ratingFresh, hasPayment, place
   const db = useSQLiteContext();
   const [attending, setAttending] = useState<Signup['attending']>(mine?.attending ?? 'yes');
   const [captain, setCaptain] = useState(!!mine?.wants_captain);
-  const [skill, setSkill] = useState<number | null>(mine?.skill ?? null);
   const [paid, setPaid] = useState(!!mine?.paid);
   const needsSkill = !ratingFresh;
 
   async function save() {
-    if (attending === 'yes' && needsSkill && !skill) return Alert.alert('One more thing', 'Rate yourself 1–5 so the teams come out even.');
-    await saveSignup(db, eventId, meId, { attending, wantsCaptain: captain, skill, paid, onTheDay: drawn && !mine });
+    if (attending !== 'no' && needsSkill) return Alert.alert('Rate yourself first', 'The draw uses your self-rating from your profile, so the teams come out even. It takes two minutes.', [{ text: 'Not now', style: 'cancel' }, { text: 'Rate myself', onPress: () => router.push('/rate') }]);
+    // Skill comes from the player's self-rating (Me → My development); nothing to store here.
+    await saveSignup(db, eventId, meId, { attending, wantsCaptain: captain, skill: mine?.skill ?? null, paid, onTheDay: drawn && !mine });
     Alert.alert(mine ? 'Updated' : 'You’re signed up! 🎩', drawn && !placed ? 'Teams are already drawn: the organiser will put you in a team on the day.' : 'Teams are drawn 48 hours before. You’ll get a notification with your team.');
   }
 
@@ -248,17 +247,15 @@ function SignupForm({ eventId, meId, mine, drawn, ratingFresh, hasPayment, place
             <Switch value={captain} onValueChange={setCaptain} trackColor={{ true: colors.brand }} />
           </View>
           {needsSkill ? (
-            <View style={{ gap: space.xs }}>
-              <T v="bodyStrong">How good are you, honestly?</T>
-              <T v="small">You haven’t rated yourself in the last 6 months. Pick a quick number for the draw, or do the full self-rating: once it’s saved, the draw uses it.</T>
-              <Button label="Do the full self-rating" icon="star-half-full" kind="ghost" onPress={() => router.push('/rate')} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
-              <View style={{ flexDirection: 'row', gap: 4 }}>
-                {RATING_SCALE.map((label, i) => (
-                  <Choice key={label} label={String(i + 1)} selected={skill === i + 1} onPress={() => setSkill(i + 1)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 0 }} />
-                ))}
-              </View>
-              {skill ? <T v="small">{RATING_SCALE[skill - 1]}</T> : null}
-            </View>
+            <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
+              <T v="bodyStrong" style={{ color: colors.warnInk }}>
+                Rate yourself first
+              </T>
+              <T v="small" style={{ color: colors.warnInk }}>
+                The draw uses your self-rating from your profile so the teams come out even. You haven’t done one in the last 6 months: it takes two minutes, then come back here to sign up.
+              </T>
+              <Button label="Rate myself" icon="star-half-full" kind="primary" onPress={() => router.push('/rate')} />
+            </Card>
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
               <T v="small" style={{ flex: 1 }}>
