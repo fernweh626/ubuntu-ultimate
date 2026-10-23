@@ -139,9 +139,21 @@ export default function Me() {
             left={<Icon name={acc && accreditationState(acc.expires_on) === 'valid' ? 'check-decagram' : 'alert-decagram-outline'} color={acc && accreditationState(acc.expires_on) === 'valid' ? colors.brand : colors.warn} />}
             onPress={() => router.push('/accreditation')}
           />
+          <Row title="Membership numbers" subtitle="SAFDA and regional numbers, fees, contact for staff" left={<Icon name="card-account-details-outline" color={colors.brand} />} onPress={() => router.push('/registration')} />
+          <Row title="My schedule" subtitle="Practices and games: going, late or can’t, and check-ins" left={<Icon name="calendar-check-outline" color={colors.brand} />} onPress={() => router.push('/schedule')} />
           <Row title="My development" subtitle="Self-rating every 6 months, fitness tests, history" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push('/development')} />
           <Row title="Report a bug or suggest an idea" subtitle="Goes straight to the people building the app" left={<Icon name="lightbulb-on-outline" color={colors.brand} />} onPress={() => router.push('/feedback')} />
         </View>
+
+        {access?.level === 'admin' || access?.level === 'coordinator' ? (
+          <Section title="Admin">
+            <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+              <Row title="Paid-up lists" subtitle="Upload SAFDA and regional member lists (CSV)" left={<Icon name="file-upload-outline" color={colors.brand} />} onPress={() => router.push('/admin/standing')} />
+              <Row title="Forms & payment links" subtitle="Where players register and pay" left={<Icon name="link-variant" color={colors.brand} />} onPress={() => router.push('/admin/links')} />
+              {access.level === 'admin' ? <Row title="Bugs & ideas inbox" subtitle="Reports from players" left={<Icon name="inbox-full-outline" color={colors.brand} />} onPress={() => router.push('/feedback-admin')} /> : null}
+            </View>
+          </Section>
+        ) : null}
 
         <Section title="Your region">
           <T v="small">Where you play, or care about most. Calendar, pickups and teams open on it — you can always switch to All of SA.</T>

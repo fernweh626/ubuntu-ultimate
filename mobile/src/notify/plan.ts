@@ -278,7 +278,7 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
           url: `/practice/${pr.id}`,
         });
       }
-      if (pr.status === 'going') {
+      if (pr.status === 'going' || pr.status === 'late') {
         out.push({
           key: `pgo:${pr.id}`,
           kind: 'practices',
@@ -288,7 +288,7 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
           url: `/practice/${pr.id}`,
         });
       }
-      if (pr.status === 'going' && !pr.answered) {
+      if ((pr.status === 'going' || pr.status === 'late') && !pr.answered) {
         out.push({
           key: `pafter:${pr.id}`,
           kind: 'practices',

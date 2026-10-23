@@ -108,7 +108,7 @@ function ForYou({ data }: { data: Awaited<ReturnType<typeof homeFeed>> }) {
         </ScrollView>
       </Section>
 
-      <Section title="This week" action={<Button label="All games" kind="ghost" onPress={() => router.push('/play')} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
+      <Section title="This week" action={<Button label="My schedule ›" kind="ghost" onPress={() => router.push('/schedule')} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
         {days.length === 0 ? (
           <Card>
             <T v="small">Nothing on in the next 7 days. Fixtures, practices and pickups you follow show up here.</T>

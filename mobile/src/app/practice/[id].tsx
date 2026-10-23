@@ -7,7 +7,8 @@ import { attendanceFor, setAttendance } from '@/db/development';
 import { useData } from '@/db/live';
 import { cancelPractice, getAccess, getVenue, practiceDetail, setRsvp, type PracticeAttendee, type RsvpStatus } from '@/db/repo';
 import { displayName, shortDate, timeOfDay } from '@/domain/format';
-import { Button, Card, Chip, Choice, Field, IconButton, Screen, Section, Sheet, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, IconButton, Screen, Section, Sheet, T } from '@/ui/components';
+import { AnswerButtons } from '@/ui/answer';
 import { Avatar } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
@@ -25,8 +26,6 @@ export default function Practice() {
     },
     [id],
   );
-  const [reasonSheet, setReasonSheet] = useState(false);
-  const [reason, setReason] = useState('');
   const [opened] = useState(() => Date.now());
   const [registerOpen, setRegisterOpen] = useState(false);
   const [ticks, setTicks] = useState<Set<string>>(new Set());
@@ -46,7 +45,7 @@ export default function Practice() {
   const started = start < opened;
   const cancelled = !!s.cancelled_at;
 
-  const going = people.filter((p) => p.status === 'going');
+  const going = people.filter((p) => p.status === 'going' || p.status === 'late');
   const notGoing = people.filter((p) => p.status === 'not_going');
   const noReply = people.filter((p) => !p.status);
   const f = going.filter((p) => p.gender === 'W').length;
@@ -62,6 +61,7 @@ export default function Practice() {
     Alert.alert(displayName(p), 'Mark their answer', [
       { text: 'Back', style: 'cancel' },
       { text: 'Going', onPress: () => setRsvp(db, s.id, p.personId, 'going') },
+      { text: 'Late', onPress: () => setRsvp(db, s.id, p.personId, 'late') },
       { text: 'Can’t make it', onPress: () => setRsvp(db, s.id, p.personId, 'not_going') },
       ...(p.status ? [{ text: 'Clear answer', style: 'destructive' as const, onPress: () => setRsvp(db, s.id, p.personId, null) }] : []),
     ]);
@@ -112,21 +112,11 @@ export default function Practice() {
 
         {onSquad && !started && !cancelled ? (
           <Section title="Are you coming?">
-            <View style={{ flexDirection: 'row', gap: space.sm }}>
-              <Button label="Going" icon="check" kind={mine?.status === 'going' ? 'primary' : 'secondary'} onPress={() => answer(mine?.status === 'going' ? null : 'going')} style={{ flex: 1 }} />
-              <Button
-                label="Can’t make it"
-                icon="close"
-                kind={mine?.status === 'not_going' ? 'danger' : 'secondary'}
-                onPress={() => {
-                  if (mine?.status === 'not_going') return answer(null);
-                  setReason('');
-                  setReasonSheet(true);
-                }}
-                style={{ flex: 1 }}
-              />
-            </View>
-            {mine?.status === 'not_going' && mine.reason ? <T v="small">Your note: {mine.reason}</T> : null}
+            <AnswerButtons
+              value={mine?.status === 'going' ? 'yes' : mine?.status === 'late' ? 'late' : mine?.status === 'not_going' ? 'no' : null}
+              onAnswer={(a, note) => answer(a === 'yes' ? 'going' : a === 'late' ? 'late' : a === 'no' ? 'not_going' : null, note)}
+            />
+            {mine?.status !== 'going' && mine?.reason ? <T v="small">Your note: {mine.reason}</T> : null}
           </Section>
         ) : null}
 
@@ -139,7 +129,7 @@ export default function Practice() {
               icon="clipboard-check-outline"
               kind={hasRegister ? 'secondary' : 'primary'}
               onPress={() => {
-                setTicks(new Set(hasRegister ? register.filter((r) => r.attended).map((r) => r.person_id) : people.filter((p) => p.status === 'going').map((p) => p.personId)));
+                setTicks(new Set(hasRegister ? register.filter((r) => r.attended).map((r) => r.person_id) : people.filter((p) => p.status === 'going' || p.status === 'late').map((p) => p.personId)));
                 setRegisterOpen(true);
               }}
             />
@@ -162,7 +152,7 @@ export default function Practice() {
                   <T style={{ fontFamily: font.bold, color: M }}>{m} male matching</T>
                 </View>
               ) : null}
-              <People list={going} onPress={staff && !ended ? markFor : undefined} />
+              <People list={going} showReason={staff} onPress={staff && !ended ? markFor : undefined} />
             </>
           ) : (
             <T v="small">Nobody yet.</T>
@@ -214,17 +204,6 @@ export default function Practice() {
         />
       </Sheet>
 
-      <Sheet visible={reasonSheet} onClose={() => setReasonSheet(false)} title="Can’t make it">
-        <Field label="Reason (optional, only staff see it)" value={reason} onChangeText={setReason} placeholder="Work, injury, away…" />
-        <Button
-          label="Send"
-          kind="primary"
-          onPress={async () => {
-            setReasonSheet(false);
-            await answer('not_going', reason.trim() || null);
-          }}
-        />
-      </Sheet>
     </>
   );
 }
@@ -238,6 +217,7 @@ function People({ list, showReason, muted, onPress }: { list: PracticeAttendee[]
           <View>
             <T v="smallStrong" style={{ color: p.gender === 'W' ? F : p.gender === 'M' ? M : colors.ink }}>
               {displayName(p)}
+              {p.status === 'late' ? ' · late' : ''}
             </T>
             {showReason && p.reason ? <T v="small">{p.reason}</T> : null}
           </View>

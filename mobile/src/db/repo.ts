@@ -135,7 +135,14 @@ export async function getAccess(db: SQLiteDatabase): Promise<Access> {
         meId,
       )
     : [];
-  const staffTeamIds = staff.map((s) => s.team_id);
+  // Club staff run every team in their club.
+  const viaClub = meId
+    ? await db.getAllAsync<{ team_id: string }>(
+        `SELECT t.id AS team_id FROM club_staff cs JOIN team t ON t.club_id = cs.club_id WHERE cs.person_id = ? AND t.deleted_at IS NULL`,
+        meId,
+      )
+    : [];
+  const staffTeamIds = [...new Set([...staff, ...viaClub].map((s) => s.team_id))];
   const signedIn = !!(await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'signed_in'`));
   // Signed in: levels come from the server (role_grant, synced). Signed out: the test switch in Me.
   let granted: Level = 'player';
@@ -191,13 +198,14 @@ export function saveTeam(db: SQLiteDatabase, t: TeamInput) {
     const ts = now();
     await db.runAsync(
       `INSERT INTO team (id, name, short_name, kind, region, city, primary_color, secondary_color, contact_name,
-         contact_phone, contact_email, website, social, about, is_sample, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         contact_phone, contact_email, website, social, about, is_sample, club_id, division, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, short_name = excluded.short_name, kind = excluded.kind,
          region = excluded.region, city = excluded.city, primary_color = excluded.primary_color,
          secondary_color = excluded.secondary_color, contact_name = excluded.contact_name,
          contact_phone = excluded.contact_phone, contact_email = excluded.contact_email, website = excluded.website,
-         social = excluded.social, about = excluded.about, updated_at = excluded.updated_at`,
+         social = excluded.social, about = excluded.about, club_id = excluded.club_id, division = excluded.division,
+         updated_at = excluded.updated_at`,
       id,
       t.name.trim(),
       t.short_name ?? null,
@@ -213,6 +221,8 @@ export function saveTeam(db: SQLiteDatabase, t: TeamInput) {
       t.social ?? null,
       t.about ?? null,
       t.is_sample ?? 0,
+      t.club_id ?? null,
+      t.division ?? null,
       ts,
       ts,
     );
@@ -1451,7 +1461,7 @@ export function cancelPractice(db: SQLiteDatabase, id: string, cancel: boolean, 
   });
 }
 
-export type RsvpStatus = 'going' | 'not_going';
+export type RsvpStatus = 'going' | 'late' | 'not_going';
 
 /** Answer for a practice; `null` clears the answer. One row per player per practice. */
 export function setRsvp(db: SQLiteDatabase, sessionId: string, personId: string, status: RsvpStatus | null, reason: string | null = null) {
@@ -1500,13 +1510,14 @@ export async function practiceDetail(db: SQLiteDatabase, id: string) {
 
 /** Upcoming (not yet finished) practices for a team, with answer counts. */
 export function upcomingPractices(db: SQLiteDatabase, teamId: string, meId: string | null, from = new Date()) {
-  return db.getAllAsync<SessionRow & { going: number; not_going: number; going_f: number; going_m: number; venue_name: string | null; my_status: RsvpStatus | null }>(
+  return db.getAllAsync<SessionRow & { going: number; late: number; not_going: number; going_f: number; going_m: number; venue_name: string | null; my_status: RsvpStatus | null }>(
     `SELECT s.*, v.name AS venue_name,
             (SELECT status FROM practice_rsvp r WHERE r.session_id = s.id AND r.person_id = ?) AS my_status,
-            (SELECT COUNT(*) FROM practice_rsvp r WHERE r.session_id = s.id AND r.status = 'going') AS going,
+            (SELECT COUNT(*) FROM practice_rsvp r WHERE r.session_id = s.id AND r.status IN ('going','late')) AS going,
+            (SELECT COUNT(*) FROM practice_rsvp r WHERE r.session_id = s.id AND r.status = 'late') AS late,
             (SELECT COUNT(*) FROM practice_rsvp r WHERE r.session_id = s.id AND r.status = 'not_going') AS not_going,
-            (SELECT COUNT(*) FROM practice_rsvp r JOIN person p ON p.id = r.person_id WHERE r.session_id = s.id AND r.status = 'going' AND p.gender = 'W') AS going_f,
-            (SELECT COUNT(*) FROM practice_rsvp r JOIN person p ON p.id = r.person_id WHERE r.session_id = s.id AND r.status = 'going' AND p.gender = 'M') AS going_m
+            (SELECT COUNT(*) FROM practice_rsvp r JOIN person p ON p.id = r.person_id WHERE r.session_id = s.id AND r.status IN ('going','late') AND p.gender = 'W') AS going_f,
+            (SELECT COUNT(*) FROM practice_rsvp r JOIN person p ON p.id = r.person_id WHERE r.session_id = s.id AND r.status IN ('going','late') AND p.gender = 'M') AS going_m
        FROM session s LEFT JOIN venue v ON v.id = s.venue_id
       WHERE s.team_id = ? AND s.kind = 'practice' AND s.deleted_at IS NULL
         AND datetime(s.started_at, '+' || s.duration_min || ' minutes') >= datetime(?)

@@ -1,28 +1,45 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
-import { squadDevelopment } from '@/db/development';
+import { REGIONS } from '@/content/hub';
+import { readiness } from '@/db/development';
 import { useData } from '@/db/live';
 import { getTeam } from '@/db/repo';
 import { ACCREDITATION_LEVELS, accreditationState, best, FITNESS_TESTS, formatFitness, RATING_AREAS, type FitnessKind } from '@/domain/development';
 import { displayName, shortDate } from '@/domain/format';
-import { Button, Card, Chip, Screen, Segmented, T } from '@/ui/components';
+import { standingCheck, whatsappLink, type Check } from '@/domain/standing';
+import { Button, Card, Icon, IconButton, Screen, Segmented, T } from '@/ui/components';
 import { colors, font, space } from '@/ui/theme';
 
-/** Staff: who's accredited (and until when), fitness benchmarks and self-ratings across the squad. */
+/** Staff: who's ready to play (accreditation, SAFDA, region), fitness benchmarks and self-ratings across the squad. */
 export default function SquadDevelopment() {
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
-  const bundle = useData(async (d) => ({ team: await getTeam(d, teamId), squad: await squadDevelopment(d, teamId) }), [teamId]);
-  const [view, setView] = useState<'accreditation' | FitnessKind | 'rating'>('accreditation');
+  const bundle = useData(async (d) => ({ team: await getTeam(d, teamId), squad: await readiness(d, teamId) }), [teamId]);
+  const [view, setView] = useState<'ready' | FitnessKind | 'rating'>('ready');
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
   const { team, squad } = bundle;
 
-  const accredited = squad.filter((p) => accreditationState(p.expires_on) === 'valid' || accreditationState(p.expires_on) === 'expiring').length;
+  const checks = (p: (typeof squad)[number]) => {
+    const st = accreditationState(p.expires_on);
+    const acc: { check: Check; text: string } = !p.level
+      ? { check: 'missing', text: 'No accreditation' }
+      : st === 'expired'
+        ? { check: 'warn', text: `${ACCREDITATION_LEVELS[p.level]} · expired ${shortDate(p.expires_on)}` }
+        : st === 'expiring'
+          ? { check: 'warn', text: `${ACCREDITATION_LEVELS[p.level]} · expires ${shortDate(p.expires_on)}` }
+          : { check: st === 'valid' ? 'ok' : 'warn', text: `${ACCREDITATION_LEVELS[p.level]}${p.expires_on ? ` · until ${shortDate(p.expires_on)}` : ' · no expiry date'}` };
+    const safda = standingCheck(p.reg?.safda_number, p.safda, p.safdaListed);
+    const body = REGIONS.find((r) => r.code === p.reg?.region_code)?.body ?? 'Region';
+    const region = standingCheck(p.reg?.region_number, p.region, p.regionListed);
+    return { acc, safda, region, body, ready: acc.check === 'ok' && safda.check === 'ok' && region.check === 'ok' };
+  };
+  const readyCount = squad.filter((p) => checks(p).ready).length;
   const rows = [...squad].map((p) => {
-    if (view === 'accreditation') {
-      const st = accreditationState(p.expires_on);
-      return { p, sort: st === 'expired' || st === 'unknown' ? 0 : st === 'expiring' ? 1 : 2, value: p.level ? ACCREDITATION_LEVELS[p.level] : '—', sub: p.expires_on ? `${st === 'expired' ? 'expired' : 'until'} ${shortDate(p.expires_on)}` : 'not added', tone: st === 'valid' ? 'brand' : st === 'expiring' ? 'warn' : 'danger' };
+    if (view === 'ready') {
+      const c = checks(p);
+      const score = [c.acc, c.safda, c.region].filter((x) => x.check === 'ok').length;
+      return { p, sort: score, value: '', sub: '', tone: 'neutral' };
     }
     if (view === 'rating') {
       const r = p.rating;
@@ -34,28 +51,30 @@ export default function SquadDevelopment() {
     const lower = FITNESS_TESTS.find((t) => t.kind === view)!.lowerIsBetter;
     return { p, sort: pb == null ? -Infinity : lower ? -pb : pb, value: pb != null ? formatFitness(view, pb) : '—', sub: vals.length ? `${vals.length} result${vals.length > 1 ? 's' : ''}` : 'no result', tone: 'neutral' };
   });
-  rows.sort((a, b) => (view === 'accreditation' ? a.sort - b.sort : b.sort - a.sort) || a.p.first_name.localeCompare(b.p.first_name));
+  rows.sort((a, b) => (view === 'ready' ? a.sort - b.sort : b.sort - a.sort) || a.p.first_name.localeCompare(b.p.first_name));
 
   return (
     <>
       <Stack.Screen options={{ title: `${team?.name ?? 'Squad'} · development` }} />
       <Screen edges={[]}>
-        <Card style={{ backgroundColor: accredited === squad.length ? colors.brandTint : colors.warnTint, borderColor: 'transparent' }}>
-          <T v="bodyStrong">
-            {accredited} of {squad.length} accredited
-          </T>
-          <T v="small">Players need a valid accreditation for leagues, regionals and nationals. Players get reminders before theirs runs out.</T>
-        </Card>
+        {view === 'ready' ? (
+          <Card style={{ backgroundColor: readyCount === squad.length ? colors.brandTint : colors.warnTint, borderColor: 'transparent' }}>
+            <T v="bodyStrong">
+              {readyCount} of {squad.length} ready to play
+            </T>
+            <T v="small">Ready = valid accreditation, and paid up with SAFDA and their region (from the lists admins upload). Tap WhatsApp to follow up with anyone who isn’t.</T>
+          </Card>
+        ) : null}
         <Segmented
-          value={view === 'accreditation' || view === 'rating' ? view : 'fitness'}
+          value={view === 'ready' || view === 'rating' ? view : 'fitness'}
           onChange={(v) => setView(v === 'fitness' ? 'beep' : v)}
           options={[
-            { value: 'accreditation', label: 'Accreditation' },
+            { value: 'ready', label: 'Ready to play' },
             { value: 'fitness', label: 'Fitness' },
             { value: 'rating', label: 'Self-rating' },
           ]}
         />
-        {view !== 'accreditation' && view !== 'rating' ? (
+        {view !== 'ready' && view !== 'rating' ? (
           <>
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               {FITNESS_TESTS.map((t) => (
@@ -66,22 +85,50 @@ export default function SquadDevelopment() {
           </>
         ) : null}
         <View style={{ borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: 'hidden' }}>
-          {rows.map(({ p, value, sub, tone }, i) => (
-            <Pressable
-              key={p.id}
-              onPress={() => router.push({ pathname: '/development', params: { personId: p.id } })}
-              accessibilityRole="button"
-              style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
-              <T style={{ width: 22, fontFamily: font.bold, color: colors.faint }}>{view === 'accreditation' ? '' : i + 1}</T>
-              <View style={{ flex: 1 }}>
-                <T v="bodyStrong" style={{ color: p.gender === 'W' ? '#6B2C91' : p.gender === 'M' ? '#1D3F8F' : colors.ink }}>
-                  {displayName(p)}
-                </T>
-                <T v="small">{sub}</T>
-              </View>
-              {view === 'accreditation' ? <Chip label={value} tone={tone as 'brand' | 'warn' | 'danger'} /> : <T style={{ fontFamily: font.display, fontSize: 22 }}>{value}</T>}
-            </Pressable>
-          ))}
+          {rows.map(({ p, value, sub }, i) => {
+            if (view === 'ready') {
+              const c = checks(p);
+              const wa = whatsappLink(p.reg?.phone, `Hi ${p.first_name}, ${team?.name ?? 'team'} here about being tournament-ready: `);
+              const line = (label: string, x: { check: Check; text: string }) => (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name={x.check === 'ok' ? 'check-circle' : x.check === 'unknown' ? 'help-circle-outline' : 'alert-circle'} size={16} color={x.check === 'ok' ? colors.brand : x.check === 'unknown' ? colors.faint : x.check === 'warn' ? colors.warn : colors.danger} />
+                  <T v="small" style={{ flex: 1 }}>
+                    {label}: {x.text}
+                  </T>
+                </View>
+              );
+              return (
+                <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
+                  <Pressable onPress={() => router.push({ pathname: '/development', params: { personId: p.id } })} accessibilityRole="button" style={{ flex: 1, gap: 3 }}>
+                    <T v="bodyStrong" style={{ color: p.gender === 'W' ? '#6B2C91' : p.gender === 'M' ? '#1D3F8F' : colors.ink }}>
+                      {c.ready ? '✓ ' : ''}
+                      {displayName(p)}
+                    </T>
+                    {line('Accreditation', c.acc)}
+                    {line('SAFDA', c.safda)}
+                    {line(c.body, c.region)}
+                  </Pressable>
+                  {wa ? <IconButton icon="whatsapp" label={`WhatsApp ${p.first_name}`} color="#25D366" onPress={() => Linking.openURL(wa)} /> : <T v="small" style={{ width: 52, textAlign: 'center' }}>no phone</T>}
+                </View>
+              );
+            }
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => router.push({ pathname: '/development', params: { personId: p.id } })}
+                accessibilityRole="button"
+                style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
+                <T style={{ width: 22, fontFamily: font.bold, color: colors.faint }}>{i + 1}</T>
+                <View style={{ flex: 1 }}>
+                  <T v="bodyStrong" style={{ color: p.gender === 'W' ? '#6B2C91' : p.gender === 'M' ? '#1D3F8F' : colors.ink }}>
+                    {displayName(p)}
+                  </T>
+                  <T v="small">{sub}</T>
+                </View>
+                <T style={{ fontFamily: font.display, fontSize: 22 }}>{value}</T>
+              </Pressable>
+            );
+          })}
         </View>
       </Screen>
     </>

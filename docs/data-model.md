@@ -76,6 +76,17 @@ Until sign-in exists, the phone stores who "me" is and a test level in `app_meta
 - After the practice, the usual check-in (`reflection` with `session_id`) and staff debrief hang off the same session.
 - Notifications: "are you coming?" the day before if unanswered, a reminder 2 h before if going, a check-in 30 min after.
 
+## Clubs, readiness and development
+
+- `club` runs several `team`s (`team.club_id`, `team.division`). `club_staff` (admin/coach/manager) act as staff on every team in the club, on the phone (`getAccess`) and on the server (`is_staff`).
+- `registration` (one per player): SAFDA number, region + regional number, and a phone number for staff to WhatsApp. Visible to the player, their staff and coordinators.
+- `association_standing`: paid-up lists uploaded by coordinators/admins as CSV (Me → Admin → Paid-up lists), matched to players' numbers ignoring spaces/dashes/case. Readable by staff, and by a player for their own number. Pull-only on phones; uploads go straight to the server and replace that association's list.
+- `org_link`: SAFDA and regional sign-up/payment form links, managed by coordinators.
+- Ready to play (team → Ready to play & development) = valid accreditation + good standing with SAFDA + good standing with the region.
+- `accreditation` (level, expiry; certificate photo/PDF stays on the phone), `self_rating` (1–5 in five areas, every six months), `fitness_test` (beep, 5-10-5, 40 m, 60 m).
+- `practice_rsvp` and `game_availability` answers: going/available, late (with a note), or can't. `practice_attendance` is the staff register; the attendance ranking uses it, falling back to RSVPs.
+- `feedback`: bug reports and ideas; anyone can send (no sign-in), admins read.
+
 ## Fixtures, postponements and forfeits
 
 A scheduled game is a `game` row with `status = 'scheduled'`, a `scheduled_at` (null = date TBC), a field

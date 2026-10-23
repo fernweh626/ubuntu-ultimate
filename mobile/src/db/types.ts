@@ -37,6 +37,23 @@ export type Team = {
   social: string | null;
   about: string | null;
   is_sample: number;
+  club_id?: string | null;
+  division?: string | null;
+};
+
+export type Club = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  region: string | null;
+  city: string | null;
+  primary_color: string | null;
+  logo_uri: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  website: string | null;
+  social: string | null;
+  about: string | null;
 };
 
 export type Membership = {

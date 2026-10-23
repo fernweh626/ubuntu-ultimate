@@ -1,12 +1,13 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { View } from 'react-native';
 
-import { gameAvailability, setAvailability, type AvailabilityStatus } from '@/db/development';
+import { gameAvailability, setAvailability } from '@/db/development';
 import { useData } from '@/db/live';
 import { getAccess, myScope } from '@/db/repo';
 import { displayName } from '@/domain/format';
 
-import { Button, Section, T } from './components';
+import { AnswerButtons } from './answer';
+import { Section, T } from './components';
 import { colors, font, space } from './theme';
 
 const F = '#6B2C91';
@@ -33,19 +34,22 @@ export function Availability({ gameId, teams }: { gameId: string; teams: { id: s
     <>
       {bundle.lists.map(({ team, staff, list }) => {
         const me = list.find((p) => p.personId === bundle.meId);
-        const yes = list.filter((p) => p.status === 'available');
+        const yes = list.filter((p) => p.status === 'available' || p.status === 'late');
         const no = list.filter((p) => p.status === 'unavailable');
         const quiet = list.filter((p) => !p.status);
         const f = yes.filter((p) => p.gender === 'W').length;
         const m = yes.filter((p) => p.gender === 'M').length;
-        const answer = (s: AvailabilityStatus) => bundle.meId && setAvailability(db, gameId, team.id, bundle.meId, me?.status === s ? null : s);
         return (
           <Section key={team.id} title={`${team.name} · available ${yes.length}`}>
             {me ? (
-              <View style={{ flexDirection: 'row', gap: space.sm }}>
-                <Button label="I can play" icon="check" kind={me.status === 'available' ? 'primary' : 'secondary'} onPress={() => answer('available')} style={{ flex: 1 }} />
-                <Button label="Can’t play" icon="close" kind={me.status === 'unavailable' ? 'danger' : 'secondary'} onPress={() => answer('unavailable')} style={{ flex: 1 }} />
-              </View>
+              <AnswerButtons
+                yesLabel="I can play"
+                noLabel="Can’t play"
+                value={me.status === 'available' ? 'yes' : me.status === 'late' ? 'late' : me.status === 'unavailable' ? 'no' : null}
+                onAnswer={(a, note) =>
+                  bundle.meId && setAvailability(db, gameId, team.id, bundle.meId, a === 'yes' ? 'available' : a === 'late' ? 'late' : a === 'no' ? 'unavailable' : null, note)
+                }
+              />
             ) : null}
             <View style={{ flexDirection: 'row', gap: space.md, flexWrap: 'wrap' }}>
               <T style={{ fontFamily: font.bold, color: F }}>{f} female matching</T>
@@ -54,7 +58,7 @@ export function Availability({ gameId, teams }: { gameId: string; teams: { id: s
                 {no.length} can’t · {quiet.length} haven’t said
               </T>
             </View>
-            {yes.length ? <T v="small">Available: {yes.map((p) => displayName(p)).join(', ')}</T> : null}
+            {yes.length ? <T v="small">Available: {yes.map((p) => `${displayName(p)}${p.status === 'late' ? ` (late${staff && p.reason ? `, ${p.reason}` : ''})` : ''}`).join(', ')}</T> : null}
             {staff && no.length ? <T v="small">Can’t: {no.map((p) => `${displayName(p)}${p.reason ? ` (${p.reason})` : ''}`).join(', ')}</T> : null}
             {staff && quiet.length ? <T v="small" style={{ color: colors.muted }}>Haven’t said: {quiet.map((p) => displayName(p)).join(', ')}</T> : null}
           </Section>

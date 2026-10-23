@@ -11,6 +11,8 @@ import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format'
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
+import { getClub } from '@/db/clubs';
+import { divisionName } from '@/domain/divisions';
 import { LogSessionSheet } from '@/ui/log-session';
 import { FormDots, GameCard } from '@/ui/game-bits';
 import { Avatar, deletePhoto, PhotoSheet, TeamLogo } from '@/ui/photo';
@@ -29,6 +31,7 @@ export default function TeamPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useSQLiteContext();
   const team = useData((d) => getTeam(d, id), [id]);
+  const club = useData(async (d) => (team?.club_id ? getClub(d, team.club_id) : null), [team?.club_id]);
   const players = useData((d) => roster(d, id), [id]);
   const access = useData(getAccess);
   const [rolesSheet, setRolesSheet] = useState(false);
@@ -98,7 +101,14 @@ export default function TeamPage() {
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
-          <Chip label={team.kind} tone="neutral" />
+          {club ? (
+            <Pressable onPress={() => router.push(`/club/${club.id}`)} accessibilityRole="link" accessibilityLabel={`Club: ${club.name}`}>
+              <Chip label={`${club.name} ›`} icon="shield-outline" />
+            </Pressable>
+          ) : (
+            <Chip label={team.kind} tone="neutral" />
+          )}
+          {team.division ? <Chip label={divisionName(team.division)} tone="neutral" /> : null}
           {team.short_name ? <Chip label={team.short_name} tone="neutral" /> : null}
           {team.is_sample ? <Chip label="Sample team" tone="warn" /> : null}
         </View>
@@ -110,7 +120,7 @@ export default function TeamPage() {
         {isStaffHere ? (
           <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
             <Row title="Attendance" subtitle="Who comes to practice, no-shows, games played" left={<Icon name="account-check-outline" color={colors.brand} />} onPress={() => router.push({ pathname: '/team/attendance', params: { teamId: id } })} />
-            <Row title="Squad development" subtitle="Accreditation, fitness tests, self-ratings" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push({ pathname: '/team/development', params: { teamId: id } })} />
+            <Row title="Ready to play & development" subtitle="Accreditation, SAFDA & region standing, fitness, self-ratings" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push({ pathname: '/team/development', params: { teamId: id } })} />
             <Row title="Export data" subtitle="Games, points and player stats as CSV" left={<Icon name="file-delimited-outline" color={colors.brand} />} onPress={() => router.push({ pathname: '/export', params: { teamId: id } })} />
           </View>
         ) : null}
@@ -242,6 +252,8 @@ export default function TeamPage() {
                   </T>
                   {pr.cancelled_at ? (
                     <Chip label="Cancelled" tone="danger" />
+                  ) : pr.my_status === 'late' ? (
+                    <Chip label="You’ll be late" icon="clock-outline" tone="neutral" />
                   ) : pr.my_status === 'going' ? (
                     <Chip label="You’re going" icon="check" />
                   ) : pr.my_status === 'not_going' ? (
@@ -251,7 +263,7 @@ export default function TeamPage() {
                   ) : null}
                 </View>
                 <T v="small">
-                  {[pr.title, pr.venue_name, pr.cancelled_at ? null : `${pr.going} going${pr.going_f + pr.going_m ? ` · ${pr.going_f}F ${pr.going_m}M` : ''}`].filter(Boolean).join(' · ')}
+                  {[pr.title, pr.venue_name, pr.cancelled_at ? null : `${pr.going} going${pr.late ? ` (${pr.late} late)` : ''}${pr.going_f + pr.going_m ? ` · ${pr.going_f}F ${pr.going_m}M` : ''}`].filter(Boolean).join(' · ')}
                 </T>
               </Card>
             ))}

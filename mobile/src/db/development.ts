@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { AccreditationLevel, FitnessKind, RatingArea } from '@/domain/development';
+import { normNumber } from '@/domain/standing';
 
 import { now, uuid, write } from './repo';
 import type { Gender } from './types';
@@ -113,7 +114,7 @@ export async function squadDevelopment(db: SQLiteDatabase, teamId: string) {
 
 /* ---------------- Game availability ---------------- */
 
-export type AvailabilityStatus = 'available' | 'unavailable';
+export type AvailabilityStatus = 'available' | 'late' | 'unavailable';
 
 export function setAvailability(db: SQLiteDatabase, gameId: string, teamId: string, personId: string, status: AvailabilityStatus | null, reason: string | null = null) {
   return write(db, async () => {
@@ -227,7 +228,7 @@ export async function attendanceRanking(db: SQLiteDatabase, teamId: string, sinc
     ...gids,
   );
   const avail = await db.getAllAsync<{ person_id: string; n: number }>(
-    `SELECT person_id, COUNT(*) AS n FROM game_availability WHERE team_id = ? AND status = 'available' AND game_id IN (${gq}) GROUP BY person_id`,
+    `SELECT person_id, COUNT(*) AS n FROM game_availability WHERE team_id = ? AND status IN ('available','late') AND game_id IN (${gq}) GROUP BY person_id`,
     teamId,
     ...gids,
   );
@@ -237,9 +238,10 @@ export async function attendanceRanking(db: SQLiteDatabase, teamId: string, sinc
     for (const pr of practices) {
       const said = rsvps.find((r) => r.session_id === pr.id && r.person_id === p.personId)?.status;
       const mark = marks.find((m) => m.session_id === pr.id && m.person_id === p.personId);
-      const was = pr.register ? !!mark?.attended : said === 'going';
+      const saidYes = said === 'going' || said === 'late';
+      const was = pr.register ? !!mark?.attended : saidYes;
       if (was) attended += 1;
-      if (pr.register && said === 'going' && !mark?.attended) noShows += 1;
+      if (pr.register && saidYes && !mark?.attended) noShows += 1;
     }
     return {
       ...p,
@@ -290,4 +292,83 @@ export function unsentFeedback(db: SQLiteDatabase) {
 
 export function markFeedbackSent(db: SQLiteDatabase, id: string) {
   return write(db, () => db.runAsync(`UPDATE feedback SET sent_at = ? WHERE id = ?`, now(), id));
+}
+
+/* ---------------- Registration numbers, good standing, form links ---------------- */
+
+export type Registration = { id: string; person_id: string; safda_number: string | null; region_code: string | null; region_number: string | null; phone: string | null };
+
+export function getRegistration(db: SQLiteDatabase, personId: string) {
+  return db.getFirstAsync<Registration>(`SELECT * FROM registration WHERE person_id = ?`, personId);
+}
+
+export function saveRegistration(db: SQLiteDatabase, personId: string, r: Omit<Registration, 'id' | 'person_id'>) {
+  return write(db, async () => {
+    const ts = now();
+    await db.runAsync(
+      `INSERT INTO registration (id, person_id, safda_number, region_code, region_number, phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(person_id) DO UPDATE SET safda_number = excluded.safda_number, region_code = excluded.region_code,
+         region_number = excluded.region_number, phone = excluded.phone, updated_at = excluded.updated_at`,
+      personId,
+      personId,
+      r.safda_number,
+      r.region_code,
+      r.region_number,
+      r.phone,
+      ts,
+      ts,
+    );
+  });
+}
+
+export type StandingRecord = { association: string; number: string; status: 'good' | 'unpaid' | 'lapsed'; paid_until: string | null; uploaded_at: string };
+
+export async function standingFor(db: SQLiteDatabase, association: string, number: string | null | undefined) {
+  if (!number) return null;
+  return db.getFirstAsync<StandingRecord>(`SELECT * FROM association_standing WHERE id = ?`, `${association}:${normNumber(number)}`);
+}
+
+/** Which association lists exist on this phone, and when each was last uploaded. */
+export async function standingLists(db: SQLiteDatabase) {
+  return db.getAllAsync<{ association: string; n: number; uploaded_at: string }>(
+    `SELECT association, COUNT(*) AS n, MAX(uploaded_at) AS uploaded_at FROM association_standing GROUP BY association`,
+  );
+}
+
+/** Staff: who's ready to play: accreditation, SAFDA and region standing, plus a phone to follow up. */
+export async function readiness(db: SQLiteDatabase, teamId: string) {
+  const squad = await squadDevelopment(db, teamId);
+  const ids = squad.map((p) => p.id);
+  const q = ids.map(() => '?').join(',') || "''";
+  const regs = await db.getAllAsync<Registration>(`SELECT * FROM registration WHERE person_id IN (${q})`, ...ids);
+  const lists = new Set((await standingLists(db)).map((l) => l.association));
+  const rows = [];
+  for (const p of squad) {
+    const reg = regs.find((r) => r.person_id === p.id) ?? null;
+    const safda = await standingFor(db, 'safda', reg?.safda_number);
+    const region = reg?.region_code ? await standingFor(db, reg.region_code, reg.region_number) : null;
+    rows.push({ ...p, reg, safda, region, safdaListed: lists.has('safda'), regionListed: !!reg?.region_code && lists.has(reg.region_code) });
+  }
+  return rows;
+}
+
+export type OrgLink = { id: string; region_code: string | null; label: string; url: string; sort: number };
+
+export function orgLinks(db: SQLiteDatabase) {
+  return db.getAllAsync<OrgLink>(`SELECT * FROM org_link WHERE deleted_at IS NULL ORDER BY region_code IS NOT NULL, region_code, sort, label`);
+}
+
+export function saveOrgLink(db: SQLiteDatabase, l: { id?: string; region_code: string | null; label: string; url: string }) {
+  return write(db, async () => {
+    const ts = now();
+    if (l.id) {
+      await db.runAsync(`UPDATE org_link SET region_code = ?, label = ?, url = ?, updated_at = ? WHERE id = ?`, l.region_code, l.label, l.url, ts, l.id);
+    } else {
+      await db.runAsync(`INSERT INTO org_link (id, region_code, label, url, sort, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)`, uuid(), l.region_code, l.label, l.url, ts, ts);
+    }
+  });
+}
+
+export function deleteOrgLink(db: SQLiteDatabase, id: string) {
+  return write(db, () => db.runAsync(`UPDATE org_link SET deleted_at = ?, updated_at = ? WHERE id = ?`, now(), now(), id));
 }

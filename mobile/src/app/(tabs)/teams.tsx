@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { Alert, ScrollView, TextInput, View } from 'react-native';
 
 import { REGIONS, regionName } from '@/content/hub';
 import { useRegionFilter } from '@/ui/region-filter';
 import { useData } from '@/db/live';
+import { listClubs } from '@/db/clubs';
 import { listTeams, myScope } from '@/db/repo';
+import { divisionName } from '@/domain/divisions';
 import { Button, Chip, Choice, EmptyState, Icon, PageTitle, Row, Screen, Section } from '@/ui/components';
 import { MeButton } from '@/ui/me-button';
 import { TeamLogo } from '@/ui/photo';
@@ -13,6 +15,8 @@ import { colors, font, space } from '@/ui/theme';
 
 export default function Teams() {
   const teams = useData(listTeams);
+  const clubs = useData(listClubs) ?? [];
+  const clubOf = new Map(clubs.map((c) => [c.id, c]));
   const scope = useData(myScope);
   const [q, setQ] = useState('');
   // Starts on the home region chosen in Me.
@@ -23,7 +27,8 @@ export default function Teams() {
     if (region !== 'all' && (region === 'sample' ? !t.is_sample : t.region !== region || t.is_sample)) return false;
     if (!q) return true;
     const s = q.toLowerCase();
-    return t.name.toLowerCase().includes(s) || (t.short_name ?? '').toLowerCase().includes(s) || (t.city ?? '').toLowerCase().includes(s);
+    const club = t.club_id ? clubOf.get(t.club_id) : null;
+    return t.name.toLowerCase().includes(s) || (t.short_name ?? '').toLowerCase().includes(s) || (t.city ?? '').toLowerCase().includes(s) || !!club?.name.toLowerCase().includes(s);
   });
 
   const groups = [
@@ -37,10 +42,20 @@ export default function Teams() {
       <View style={{ paddingHorizontal: space.lg, paddingTop: space.lg, gap: space.md }}>
         <PageTitle
           title="Teams"
-          subtitle="Clubs across South Africa, rosters and contacts"
+          subtitle="Clubs and teams across South Africa"
           right={
             <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
-              <Button label="Add" icon="plus" onPress={() => router.push('/team/edit')} />
+              <Button
+                label="Add"
+                icon="plus"
+                onPress={() =>
+                  Alert.alert('Add a…', undefined, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Club (several teams)', onPress: () => router.push('/club/edit') },
+                    { text: 'Team', onPress: () => router.push('/team/edit') },
+                  ])
+                }
+              />
               <MeButton />
             </View>
           }
@@ -72,7 +87,22 @@ export default function Teams() {
           <View key={g.key} style={{ paddingHorizontal: space.lg }}>
             <Section title={g.title}>
               <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-                {g.teams.map((t) => (
+                {[...new Set(g.teams.filter((t) => t.club_id && clubOf.has(t.club_id)).map((t) => t.club_id!))].map((cid) => {
+                  const c = clubOf.get(cid)!;
+                  const its = (teams ?? []).filter((t) => t.club_id === cid);
+                  const mine = its.some((t) => scope?.myTeamIds.has(t.id));
+                  return (
+                    <Row
+                      key={`club:${cid}`}
+                      title={c.name}
+                      subtitle={its.map((t) => divisionName(t.division) || t.name).join(' · ')}
+                      left={<TeamLogo uri={c.logo_uri} color={c.primary_color} size={32} />}
+                      right={mine ? <Chip label="My club" /> : <Chip label={`${its.length} teams`} tone="neutral" />}
+                      onPress={() => router.push(`/club/${cid}`)}
+                    />
+                  );
+                })}
+                {g.teams.filter((t) => !t.club_id || !clubOf.has(t.club_id)).map((t) => (
                   <Row
                     key={t.id}
                     title={t.name}

@@ -173,7 +173,7 @@ export async function homeFeed(db: SQLiteDatabase, now = new Date()) {
       new Date(end).toISOString(),
     );
     for (const s of sessions) {
-      const answer = s.cancelled_at ? 'Cancelled' : s.my_status === 'going' ? 'You’re going' : s.my_status === 'not_going' ? 'Not going' : 'Are you coming? Tap to answer';
+      const answer = s.cancelled_at ? 'Cancelled' : s.my_status === 'going' ? 'You’re going' : s.my_status === 'late' ? 'You’ll be late' : s.my_status === 'not_going' ? 'Not going' : 'Are you coming? Tap to answer';
       items.push({
         key: `s:${s.id}`,
         at: s.started_at,

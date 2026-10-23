@@ -1,10 +1,13 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 
 import { REGIONS } from '@/content/hub';
+import { getClub, listClubs } from '@/db/clubs';
+import { useData } from '@/db/live';
 import { getTeam, saveTeam, type TeamInput } from '@/db/repo';
+import { DIVISIONS } from '@/domain/divisions';
 import { Button, Choice, Field, Footer, Icon, Screen, Section, T } from '@/ui/components';
 import { colors, space } from '@/ui/theme';
 
@@ -23,13 +26,18 @@ const KINDS = [
 ];
 
 export default function TeamEdit() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, clubId } = useLocalSearchParams<{ id?: string; clubId?: string }>();
   const db = useSQLiteContext();
-  const [f, setF] = useState<TeamInput>({ name: '', kind: 'club', region: 'western', primary_color: PALETTE[6] });
+  const [f, setF] = useState<TeamInput>({ name: '', kind: 'club', region: 'western', primary_color: PALETTE[6], club_id: clubId ?? null });
+  const clubs = useData(listClubs) ?? [];
 
   useEffect(() => {
     if (id) getTeam(db, id).then((t) => t && setF(t));
-  }, [db, id]);
+    else if (clubId) {
+      // A new team in a club starts with the club's colours and region.
+      getClub(db, clubId).then((c) => c && setF((x) => ({ ...x, club_id: c.id, region: c.region ?? x.region, primary_color: c.primary_color ?? x.primary_color, city: c.city, name: x.name || `${c.name} ` })));
+    }
+  }, [db, id, clubId]);
 
   const set = <K extends keyof TeamInput>(k: K, v: TeamInput[K]) => setF((x) => ({ ...x, [k]: v }));
   const opt = (k: keyof TeamInput) => (v: string) => set(k, (v || null) as never);
@@ -53,6 +61,23 @@ export default function TeamEdit() {
         }>
         <Field label="Team name" value={f.name} onChangeText={(v) => set('name', v)} placeholder="e.g. Chilli Legends" />
         <Field label="Short name (3 letters)" value={f.short_name ?? ''} onChangeText={(v) => set('short_name', v.toUpperCase().slice(0, 4) || null)} autoCapitalize="characters" />
+        <Section title="Club">
+          <T v="small">Part of a club that runs several teams (Mixed, Open, Women’s…)? Link it so they show together and club staff can manage them.</T>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
+            <Choice label="No club" selected={!f.club_id} onPress={() => set('club_id', null)} style={{ minHeight: 40, paddingHorizontal: 14 }} />
+            {clubs.map((c) => (
+              <Choice key={c.id} label={c.name} selected={f.club_id === c.id} onPress={() => set('club_id', c.id)} style={{ minHeight: 40, paddingHorizontal: 14 }} />
+            ))}
+            <Choice label="+ New club" onPress={() => router.push('/club/edit')} style={{ minHeight: 40, paddingHorizontal: 14 }} />
+          </ScrollView>
+        </Section>
+        <Section title="Division">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {DIVISIONS.map((d) => (
+              <Choice key={d.value} label={d.label} selected={(f.division ?? null) === d.value} onPress={() => set('division', d.value)} style={{ minHeight: 40, paddingHorizontal: 14 }} />
+            ))}
+          </View>
+        </Section>
         <Section title="Team colour">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             {PALETTE.map((c) => (

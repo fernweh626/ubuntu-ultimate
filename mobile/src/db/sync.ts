@@ -28,7 +28,9 @@ type TableSpec = {
 // Parents before children so pushes and pulls apply cleanly.
 export const TABLES: TableSpec[] = [
   { name: 'person', pk: ['id'], pullFrom: 'person_public', localOnly: ['email', 'birth_date'] },
+  { name: 'club', pk: ['id'] },
   { name: 'team', pk: ['id'] },
+  { name: 'club_staff', pk: ['id'] },
   { name: 'membership', pk: ['id'] },
   { name: 'venue', pk: ['id'] },
   { name: 'event', pk: ['id'] },
@@ -52,6 +54,9 @@ export const TABLES: TableSpec[] = [
   { name: 'game_availability', pk: ['id'] },
   { name: 'accreditation', pk: ['id'], localOnly: ['photo_uri'] },
   { name: 'self_rating', pk: ['id'] },
+  { name: 'registration', pk: ['id'] },
+  { name: 'association_standing', pk: ['id'], push: false },
+  { name: 'org_link', pk: ['id'] },
   { name: 'fitness_test', pk: ['id'] },
   { name: 'reflection', pk: ['id'] },
   { name: 'shoutout', pk: ['id'] },
@@ -319,7 +324,7 @@ export async function prepareFirstSync(db: SQLiteDatabase) {
       await db.runAsync(`DELETE FROM game_availability WHERE team_id IN (${q})`, ...samples);
       if (drop.length) {
         const dq = drop.map(() => '?').join(',');
-        for (const t of ['practice_rsvp', 'practice_attendance', 'game_availability', 'accreditation', 'self_rating', 'fitness_test']) await db.runAsync(`DELETE FROM ${t} WHERE person_id IN (${dq})`, ...drop);
+        for (const t of ['practice_rsvp', 'practice_attendance', 'game_availability', 'accreditation', 'self_rating', 'fitness_test', 'registration', 'club_staff']) await db.runAsync(`DELETE FROM ${t} WHERE person_id IN (${dq})`, ...drop);
       }
       for (const t of ['saved_line', 'membership', 'event_team', 'session']) await db.runAsync(`DELETE FROM ${t} WHERE team_id IN (${q})`, ...samples);
       await db.runAsync(`DELETE FROM follow WHERE kind = 'team' AND target_id IN (${q})`, ...samples);
