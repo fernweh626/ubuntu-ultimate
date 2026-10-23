@@ -11,6 +11,7 @@ import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format'
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
+import { TeamFixtures } from '@/ui/team-fixtures';
 import { JoinRequests, JoinTeamBar } from '@/ui/join-team';
 import { getClub } from '@/db/clubs';
 import { divisionName } from '@/domain/divisions';
@@ -127,6 +128,8 @@ export default function TeamPage() {
             <Row title="Export data" subtitle="Games, stats, attendance, ratings, fitness, readiness (CSV)" left={<Icon name="file-delimited-outline" color={colors.brand} />} onPress={() => router.push({ pathname: '/export', params: { teamId: id } })} />
           </View>
         ) : null}
+
+        <TeamFixtures teamId={id} games={games ?? []} meId={access?.meId ?? null} onSquad={onSquad} />
 
         <Section title="Contact">
           {hasContact ? (
@@ -302,8 +305,12 @@ export default function TeamPage() {
           </Section>
         ) : null}
 
-        <Section title="Games">
-          {games && games.length ? games.slice(0, 10).map((g) => <GameCard key={g.id} g={g} />) : <T v="small">No games yet.</T>}
+        <Section title="Results">
+          {games && games.some((g) => g.status !== 'scheduled') ? (
+            games.filter((g) => g.status !== 'scheduled').slice(0, 10).map((g) => <GameCard key={g.id} g={g} />)
+          ) : (
+            <T v="small">No games played yet.</T>
+          )}
         </Section>
       </Screen>
       <Sheet
