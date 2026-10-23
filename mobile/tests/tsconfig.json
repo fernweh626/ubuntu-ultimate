@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "baseUrl": "..",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": false,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/lib/supabase": ["tests/shims/supabase.ts"],
+      "@/*": ["src/*"],
+      "expo-crypto": ["tests/shims/expo-crypto.ts"],
+      "expo-router": ["tests/shims/expo-router.ts"],
+      "expo-sqlite": ["tests/shims/expo-sqlite.ts"],
+      "expo-location": ["tests/shims/expo-location.ts"]
+    }
+  }
+}

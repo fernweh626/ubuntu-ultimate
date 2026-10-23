@@ -1,0 +1,26 @@
+import { open } from 'expo-sqlite';
+import { migrate } from '@/db/schema';
+import { ensureDemoContent, ensureStarterContent, seedIfEmpty } from '@/db/seed';
+import * as repo from '@/db/repo';
+import { DEFAULT_PREFS, getPrefs, planNotifications, setPrefs } from '@/notify/plan';
+const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
+(async () => {
+  const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
+  ok('pickups off by default', DEFAULT_PREFS.pickups === false && (await getPrefs(db)).pickups === false);
+  const me = await repo.savePerson(db, { first_name: 'Pick', last_name: 'Up', gender: 'M' });
+  await repo.setMeId(db, me);
+  const [p] = await repo.listPickups(db);
+  await repo.setFollowing(db, 'pickup', p.id, true);
+  const now = new Date('2026-10-26T06:00:00');
+  let plan = await planNotifications(db, now);
+  ok('no pickup reminders while off', !plan.some((x) => x.kind === 'pickups'));
+  await setPrefs(db, { ...(await getPrefs(db)), pickups: true });
+  plan = await planNotifications(db, now);
+  const pk = plan.filter((x) => x.kind === 'pickups');
+  ok('reminders for the pickup I go to', pk.length >= 1 && pk.every((x) => x.title.includes(p.name)), plan.map((x) => x.kind));
+  const first = pk[0];
+  const day = first.key.split(':').pop()!;
+  await repo.setPickupRsvp(db, p.id, day, me, 'not_going');
+  plan = await planNotifications(db, now);
+  ok('skips a day I said no to', !plan.some((x) => x.key === first.key));
+})();

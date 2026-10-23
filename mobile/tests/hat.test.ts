@@ -1,0 +1,44 @@
+import { open } from 'expo-sqlite';
+import { migrate } from '@/db/schema';
+import { ensureDemoContent, ensureStarterContent, seedIfEmpty } from '@/db/seed';
+import * as repo from '@/db/repo';
+import * as hats from '@/db/hats';
+import { drawTeams, recommendCaptains, suggestTeamCount } from '@/domain/hat';
+const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
+(async () => {
+  const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
+  ok('v17', (await db.getFirstAsync('PRAGMA user_version')).user_version === 20);
+  const hatId = await hats.saveHat(db, { name: 'Halloween Hat', region: 'western', location: 'Woolsack', startDate: '2026-10-31', endDate: null, startTime: '09:00', venueId: null, cost: 'R120', paymentUrl: 'https://pay.example/hat', details: 'Bring a light and a dark shirt', perSide: 5, gameMinutes: 30, pointTarget: 9, teamCount: null });
+  const people = await db.getAllAsync(`SELECT id, gender FROM person WHERE is_placeholder = 1 LIMIT 40`);
+  for (const [i, p] of people.entries()) await hats.saveSignup(db, hatId, p.id, { attending: i % 10 === 9 ? 'maybe' : 'yes', wantsCaptain: i % 7 === 0, skill: 1 + (i % 5), paid: i % 8 !== 7 });
+  const rows = await hats.hatSignups(db, hatId);
+  const pool = hats.drawPool(rows);
+  ok('draw pool: coming + paid only', pool.length === rows.filter((r: any) => r.attending === 'yes' && r.paid).length && pool.length < 40, pool.length);
+  const n = suggestTeamCount(pool.length, 5);
+  const teams = drawTeams(pool, n, recommendCaptains(pool, n));
+  const hat = (await hats.getHat(db, hatId))!;
+  await hats.commitDraw(db, hatId, teams, { startIso: hats.hatStart(hat)!, gameMinutes: 30, fields: 2, venueId: null, rules: hats.hatRules({ perSide: 5, gameMinutes: 30, pointTarget: 9 }), region: 'western' });
+  const t = await hats.hatTeams(db, hatId);
+  ok('teams saved with captains', new Set(t.map((r) => r.team_id)).size === n && t.filter((r) => r.role === 'captain').length === n);
+  const games = await repo.listGamesForEvent(db, hatId);
+  ok(`round robin: ${n} teams → ${(n * (n - 1)) / 2} games, 5-a-side rules`, games.length === (n * (n - 1)) / 2 && JSON.parse(games[0].rules_json).playersPerSide === 5);
+  ok('hat teams hidden from team list', !(await repo.listTeams(db)).some((x: any) => x.kind === 'hat'));
+  ok('status drawn', (await hats.getHat(db, hatId))!.hat_status === 'drawn');
+  const late = await repo.savePerson(db, { first_name: 'Late', last_name: 'Comer', gender: 'W' }, { teamId: (await repo.listTeams(db))[0].id });
+  const before = JSON.stringify((await hats.hatTeams(db, hatId)).map((r) => [r.team_id, r.person_id]));
+  const joined = await hats.addLatePlayer(db, hatId, late, { paid: true, skill: 3 });
+  const after = await hats.hatTeams(db, hatId);
+  ok('on-the-day player added to a team; nobody else moved', !!joined && after.some((r) => r.person_id === late && r.team_id === joined) && JSON.stringify(after.filter((r) => r.person_id !== late).map((r) => [r.team_id, r.person_id])) === before);
+  // light result on a hat game
+  await repo.setGameResult(db, games[0].id, { mode: 'score', finalA: 7, finalB: 10 });
+  await repo.setGameResult(db, games[1].id, { mode: 'winner', winnerTeamId: games[1].team_a_id });
+  await repo.setGameResult(db, games[2].id, { mode: 'none' });
+  const g2 = await repo.listGamesForEvent(db, hatId);
+  const s0 = g2.find((g) => g.id === games[0].id)!, s1 = g2.find((g) => g.id === games[1].id)!, s2 = g2.find((g) => g.id === games[2].id)!;
+  ok('final score 7–10 shows', s0.status === 'final' && s0.score_a === 7 && s0.score_b === 10);
+  ok('winner-only shows as 1–0', s1.score_a === 1 && s1.score_b === 0);
+  ok('just played shows 0–0, final', s2.status === 'final' && s2.score_a === 0);
+  ok('hat rankings load', !!(await repo.eventRankings(db, hatId)));
+  let err = ''; try { await hats.undoDraw(db, hatId); } catch (e) { err = String(e); }
+  ok('cannot redraw once games are played', err.includes('started'));
+})();

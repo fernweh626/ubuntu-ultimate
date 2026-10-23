@@ -1,0 +1,25 @@
+import { open } from 'expo-sqlite';
+import { migrate } from '@/db/schema';
+import { seedIfEmpty } from '@/db/seed';
+import * as repo from '@/db/repo';
+import * as dev from '@/db/development';
+import { fitnessCsv, ratingsCsv, readinessCsv } from '@/domain/export';
+const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x));
+(async () => {
+  const db: any = open(); await migrate(db); await seedIfEmpty(db);
+  const chilli = (await repo.listTeams(db)).find((t) => t.name === 'Chilli Legends')!;
+  const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'B', gender: 'W' }, { teamId: chilli.id });
+  const kid = await repo.savePerson(db, { first_name: 'Zoë', last_name: 'Young', gender: 'W', birth_date: '2012-05-05' } as any, { teamId: chilli.id });
+  await dev.addSelfRating(db, me, { experience: 3, throwing: 4, receiving: 3, defence: 2, athleticism: 5, notes: 'forehand, hucks' });
+  await dev.addFitnessResults(db, [{ personId: me, kind: 'beep', value: 10.05, testedOn: '2026-10-01', recordedById: me }, { personId: kid, kind: 'sprint_40', value: 5.6, testedOn: '2026-10-01', recordedById: me }]);
+  await dev.saveAccreditation(db, me, { level: 'advanced', expiresOn: '2027-12-31', photoUri: null });
+  await dev.saveRegistration(db, me, { safda_number: 'SA1', region_code: 'western', region_number: 'C1', phone: '0821234567' });
+  const ready = await dev.readiness(db, chilli.id);
+  const r = ratingsCsv(ready, await db.getAllAsync('SELECT * FROM self_rating')).split('\r\n');
+  ok('ratings csv', r.length === 3 && r[1].includes(',3,4,3,2,5,3.4,"forehand, hucks"'), r[1]);
+  const f = fitnessCsv(ready, await db.getAllAsync('SELECT * FROM fitness_test')).split('\r\n');
+  ok('fitness csv: beep as level/shuttle, sprint seconds', f.some((l) => l.includes('beep_test,2026-10-01,,10,5,')) && f.some((l) => l.includes('sprint_40m,2026-10-01,5.6,,,')), f);
+  ok('minor shown as first name + initial', f.join().includes('Zoë Y') && !f.join().includes('Young'));
+  const rd = readinessCsv(ready);
+  ok('readiness csv has numbers but never phone', rd.includes('SA1') && !rd.includes('0821234567') && rd.includes('list_not_uploaded'));
+})();

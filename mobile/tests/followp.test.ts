@@ -1,0 +1,23 @@
+import { open } from 'expo-sqlite';
+import { migrate } from '@/db/schema';
+import { ensureDemoContent, ensureStarterContent, seedIfEmpty } from '@/db/seed';
+import * as repo from '@/db/repo';
+import { homeFeed } from '@/db/home';
+const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
+(async () => {
+  const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
+  const me = await repo.savePerson(db, { first_name: 'Fan', last_name: 'Partner', gender: 'W' });
+  await repo.setMeId(db, me);
+  const g = await db.getFirstAsync(`SELECT id, team_a_id, scheduled_at FROM game WHERE status = 'scheduled' AND scheduled_at > '2026-10-24' ORDER BY scheduled_at LIMIT 1`);
+  const partner = await db.getFirstAsync(`SELECT p.id, p.first_name FROM membership m JOIN person p ON p.id = m.person_id WHERE m.team_id = ? AND m.end_date IS NULL LIMIT 1`, g.team_a_id);
+  const now = new Date(Date.parse(g.scheduled_at) - 2 * 86400_000);
+  let feed: any = await homeFeed(db, now);
+  ok('not on Home before following', !feed.timeline.some((t: any) => t.key === `g:${g.id}`));
+  await repo.setFollowing(db, 'player', partner.id, true);
+  feed = await homeFeed(db, now);
+  const item = feed.timeline.find((t: any) => t.key === `g:${g.id}`);
+  ok('partner’s game on Home, named', !!item && item.subtitle.startsWith(`${partner.first_name} playing`), item);
+  const scope = await repo.myScope(db);
+  ok('For you scope includes their team', scope.teamIds.has(g.team_a_id));
+  ok('follow queued to sync', !!(await db.getFirstAsync(`SELECT 1 FROM sync_outbox WHERE tbl = 'follow'`)));
+})();

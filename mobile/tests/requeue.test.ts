@@ -1,0 +1,25 @@
+import { open } from 'expo-sqlite';
+import { migrate } from '@/db/schema';
+import { ensureDemoContent, ensureStarterContent, seedIfEmpty } from '@/db/seed';
+import * as repo from '@/db/repo';
+import { requeueMine } from '@/db/sync';
+const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
+(async () => {
+  const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
+  const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'Test', gender: 'W' });
+  await repo.setMeId(db, me);
+  const t = (await repo.listTeams(db)).find((x: any) => x.name === 'Chilli Legends');
+  await repo.joinTeam(db, me, t.id, 'core', null);
+  const s = await db.getFirstAsync(`SELECT id FROM session WHERE team_id = ? LIMIT 1`, t.id);
+  await repo.setRsvp(db, s.id, me, 'late', 'traffic');
+  await repo.setFollowing(db, 'team', t.id, true);
+  await db.runAsync('DELETE FROM sync_outbox');
+  await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('signed_in', 'u1')`);
+  await requeueMine(db);
+  const q = await db.getAllAsync('SELECT tbl, COUNT(*) n FROM sync_outbox GROUP BY tbl');
+  const has = (t: string) => q.some((r: any) => r.tbl === t);
+  ok('re-sends me, my team, my answer and my follow', has('person') && has('membership') && has('practice_rsvp') && has('follow'), q);
+  ok('nothing else', q.reduce((a: number, r: any) => a + r.n, 0) <= 5, q);
+  await db.runAsync('DELETE FROM sync_outbox'); await requeueMine(db);
+  ok('only once per account', (await db.getFirstAsync('SELECT COUNT(*) n FROM sync_outbox')).n === 0);
+})();

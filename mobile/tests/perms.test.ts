@@ -1,0 +1,23 @@
+import { open } from 'expo-sqlite';
+import { migrate } from '@/db/schema';
+import { seedIfEmpty } from '@/db/seed';
+import * as repo from '@/db/repo';
+import { canSetTeamRole, grantsFor } from '@/domain/permissions';
+const ok = (n: string, c: boolean) => console.log(c ? 'ok  ' : 'FAIL', n);
+(async () => {
+  ok('scorekeeper grants nothing', grantsFor('scorekeeper').length === 0 && grantsFor('player').length === 0);
+  ok('coordinator cannot make coordinators', !grantsFor('coordinator').includes('coordinator') && grantsFor('admin').includes('coordinator'));
+  ok('staff only own team', canSetTeamRole('staff', ['t1'], 't1', 'coach') && !canSetTeamRole('staff', ['t1'], 't2', 'coach'));
+  ok('coordinator any team', canSetTeamRole('coordinator', [], 't9', 'captain'));
+  ok('scorekeeper no team roles', !canSetTeamRole('scorekeeper', [], 't1', 'captain'));
+  const db: any = open(); await migrate(db); await seedIfEmpty(db);
+  const t = (await repo.listTeams(db)).find((x) => x.is_sample)!; const p = (await repo.roster(db, t.id))[0];
+  await repo.setMeId(db, p.id);
+  ok('default player', (await repo.getAccess(db)).level === 'player');
+  await repo.setTestLevel(db, 'coordinator');
+  ok('coordinator via test switch', (await repo.getAccess(db)).level === 'coordinator');
+  await repo.setMembershipRole(db, p.id, t.id, 'captain');
+  ok('coordinator outranks staff role', (await repo.getAccess(db)).level === 'coordinator');
+  await repo.setTestLevel(db, 'scorekeeper');
+  ok('staff role outranks scorekeeper', (await repo.getAccess(db)).level === 'staff');
+})();

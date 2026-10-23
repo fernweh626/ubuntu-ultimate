@@ -1,0 +1,1 @@
+import { seedId } from '@/db/seed-ids'; seedId('team','UCT Flying Tigers').then((i) => console.log(i === 'ee513285-b9a1-3d5e-6e0b-99db294282d9' ? 'ok   seed id matches the live server' : 'FAIL ' + i));

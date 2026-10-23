@@ -1,0 +1,23 @@
+import { open } from 'expo-sqlite';
+import { migrate } from '@/db/schema';
+import { seedIfEmpty } from '@/db/seed';
+import * as repo from '@/db/repo';
+import { deriveState } from '@/domain/engine';
+import { computeGameStats } from '@/domain/stats';
+import { rulesFor } from '@/domain/rules';
+const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
+(async () => {
+  const db: any = open(); await migrate(db); await seedIfEmpty(db);
+  const ts = await repo.listTeams(db); const a = ts.find(t => t.name === 'Sample Light')!, b = ts.find(t => t.name === 'Sample Dark')!;
+  const gid = await repo.createGame(db, { eventId: null, venueId: null, teamAId: a.id, teamBId: b.id, trackingMode: 'lite', rules: rulesFor('wfdf','mixed'), firstPullTeamId: a.id, ratioPoint1: 'M', squads: [] });
+  let d = (await repo.loadGameData(db, gid))!;
+  await repo.pull(db, gid, d.points[0].id); d = (await repo.loadGameData(db, gid))!;
+  await repo.scorePoint(db, d, b.id); d = (await repo.loadGameData(db, gid))!;
+  await repo.pull(db, gid, deriveState(d).point!.id); d = (await repo.loadGameData(db, gid))!;
+  await repo.endGame(db, d, 'weather'); d = (await repo.loadGameData(db, gid))!;
+  const s = computeGameStats(d);
+  ok('ended early for weather', d.game.status === 'final' && d.events.find((e) => e.type === 'end')?.value === 'weather');
+  ok('score 1–0', s.teams[b.id].score === 1 && s.teams[a.id].score === 0);
+  ok('unfinished point not counted as an O point', s.teams[b.id].oPoints === 1 && s.teams[a.id].oPoints === 0);
+  ok('pulled point kept, waiting point dropped', d.points.length === 2, d.points.length);
+})();
