@@ -7,7 +7,7 @@ import { drawTeams, recommendCaptains, suggestTeamCount } from '@/domain/hat';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
 (async () => {
   const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
-  ok('v17', (await db.getFirstAsync('PRAGMA user_version')).user_version === 20);
+  ok('v17', (await db.getFirstAsync('PRAGMA user_version')).user_version === 21);
   const hatId = await hats.saveHat(db, { name: 'Halloween Hat', region: 'western', location: 'Woolsack', startDate: '2026-10-31', endDate: null, startTime: '09:00', venueId: null, cost: 'R120', paymentUrl: 'https://pay.example/hat', details: 'Bring a light and a dark shirt', perSide: 5, gameMinutes: 30, pointTarget: 9, teamCount: null });
   const people = await db.getAllAsync(`SELECT id, gender FROM person WHERE is_placeholder = 1 LIMIT 40`);
   for (const [i, p] of people.entries()) await hats.saveSignup(db, hatId, p.id, { attending: i % 10 === 9 ? 'maybe' : 'yes', wantsCaptain: i % 7 === 0, skill: 1 + (i % 5), paid: i % 8 !== 7 });

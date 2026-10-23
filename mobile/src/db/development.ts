@@ -296,7 +296,7 @@ export function markFeedbackSent(db: SQLiteDatabase, id: string) {
 
 /* ---------------- Registration numbers, good standing, form links ---------------- */
 
-export type Registration = { id: string; person_id: string; safda_number: string | null; region_code: string | null; region_number: string | null; phone: string | null };
+export type Registration = { id: string; person_id: string; safda_number: string | null; region_code: string | null; region_number: string | null; phone: string | null; emergency_name: string | null; emergency_phone: string | null };
 
 export function getRegistration(db: SQLiteDatabase, personId: string) {
   return db.getFirstAsync<Registration>(`SELECT * FROM registration WHERE person_id = ?`, personId);
@@ -306,15 +306,17 @@ export function saveRegistration(db: SQLiteDatabase, personId: string, r: Omit<R
   return write(db, async () => {
     const ts = now();
     await db.runAsync(
-      `INSERT INTO registration (id, person_id, safda_number, region_code, region_number, phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO registration (id, person_id, safda_number, region_code, region_number, phone, emergency_name, emergency_phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(person_id) DO UPDATE SET safda_number = excluded.safda_number, region_code = excluded.region_code,
-         region_number = excluded.region_number, phone = excluded.phone, updated_at = excluded.updated_at`,
+         region_number = excluded.region_number, phone = excluded.phone, emergency_name = excluded.emergency_name, emergency_phone = excluded.emergency_phone, updated_at = excluded.updated_at`,
       personId,
       personId,
       r.safda_number,
       r.region_code,
       r.region_number,
       r.phone,
+      r.emergency_name,
+      r.emergency_phone,
       ts,
       ts,
     );

@@ -107,6 +107,15 @@ export default function SquadDevelopment() {
                     {line('Accreditation', c.acc)}
                     {line('SAFDA', c.safda)}
                     {line(c.body, c.region)}
+                    {p.reg?.emergency_phone ? (
+                      <Pressable onPress={() => Linking.openURL(`tel:${p.reg!.emergency_phone!.replace(/\s/g, '')}`)} accessibilityRole="link" accessibilityLabel={`Call emergency contact ${p.reg.emergency_name ?? ''}`}>
+                        <T v="small" style={{ color: colors.danger }}>
+                          ✚ Emergency: {[p.reg.emergency_name, p.reg.emergency_phone].filter(Boolean).join(' · ')} (tap to call)
+                        </T>
+                      </Pressable>
+                    ) : (
+                      <T v="small">✚ No emergency contact</T>
+                    )}
                   </Pressable>
                   {wa ? <IconButton icon="whatsapp" label={`WhatsApp ${p.first_name}`} color="#25D366" onPress={() => Linking.openURL(wa)} /> : <T v="small" style={{ width: 52, textAlign: 'center' }}>no phone</T>}
                 </View>

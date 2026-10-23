@@ -38,6 +38,8 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
   const [region, setRegion] = useState<string | null>(reg?.region_code ?? home);
   const [regionNo, setRegionNo] = useState(reg?.region_number ?? '');
   const [phone, setPhone] = useState(reg?.phone ?? '');
+  const [emName, setEmName] = useState(reg?.emergency_name ?? '');
+  const [emPhone, setEmPhone] = useState(reg?.emergency_phone ?? '');
   const standing = useData(
     async (d) => ({
       safda: await standingFor(d, 'safda', reg?.safda_number),
@@ -54,6 +56,8 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
       region_code: region,
       region_number: regionNo.trim() || null,
       phone: phone.trim() || null,
+      emergency_name: emName.trim() || null,
+      emergency_phone: emPhone.trim() || null,
     });
     router.back();
   }
@@ -104,6 +108,10 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
           placeholder="082 123 4567"
           hint="Only your team staff and coordinators see it, so they can reach you about the team."
         />
+        <T v="smallStrong">Emergency contact</T>
+        <T v="small">Who should we call if you get hurt at a game or practice? Only your team staff and coordinators see it.</T>
+        <Field label="Name" value={emName} onChangeText={setEmName} placeholder="e.g. Thandi (mom)" autoCapitalize="words" />
+        <Field label="Cell number" value={emPhone} onChangeText={setEmPhone} keyboardType="phone-pad" placeholder="082 123 4567" />
 
         <Section title="Get your numbers, pay fees">
           {myLinks.length ? (

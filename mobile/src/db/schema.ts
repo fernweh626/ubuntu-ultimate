@@ -1151,6 +1151,11 @@ const MIGRATIONS: string[] = [
     WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
     BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('session', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
   `,
+  // v21: an emergency contact (name and cell) with the player's membership details; staff can see it.
+  `
+  ALTER TABLE registration ADD COLUMN emergency_name TEXT;
+  ALTER TABLE registration ADD COLUMN emergency_phone TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

@@ -5,7 +5,7 @@ import * as repo from '@/db/repo';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
 (async () => {
   const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
-  ok('v20 and FKs hold after rebuild', (await db.getFirstAsync('PRAGMA user_version')).user_version === 20 && (await db.getAllAsync('PRAGMA foreign_key_check')).length === 0);
+  ok('v20 and FKs hold after rebuild', (await db.getFirstAsync('PRAGMA user_version')).user_version === 21 && (await db.getAllAsync('PRAGMA foreign_key_check')).length === 0);
   ok('practices kept through the rebuild', (await db.getFirstAsync(`SELECT COUNT(*) n FROM session WHERE kind = 'practice'`)).n > 10);
   ok('sync triggers back', (await db.getAllAsync(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'sync_session_%'`)).length === 3);
   const me = await repo.savePerson(db, { first_name: 'Gym', last_name: 'Rat', gender: 'W' });
