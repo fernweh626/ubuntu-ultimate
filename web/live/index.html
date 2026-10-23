@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Live game · SA Ultimate</title>
+<title>Live game · Ubuntu Ultimate</title>
 <meta name="description" content="Follow an ultimate frisbee game live, point by point.">
 <meta name="theme-color" content="#14181A">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -71,7 +71,7 @@ const ratioCode = (r, n) => (r === 'W' || r === 'M') ? `${r === 'W' ? 'F' : 'M'}
 const DEFAULT_RULES = { pointTarget: 15, halftimeTarget: 8, timeoutSeconds: 75, pullWithinSeconds: 75, halftimeMinutes: 7 };
 
 if (!gameId) {
-  app.innerHTML = '<p class="empty">This link is missing a game. Ask the scorer to share the live link from the SA Ultimate app.</p>';
+  app.innerHTML = '<p class="empty">This link is missing a game. Ask the scorer to share the live link from the Ubuntu Ultimate app.</p>';
 } else {
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
   let state = null;
@@ -109,7 +109,7 @@ if (!gameId) {
     if (game.forfeit_team_id) { if (game.forfeit_team_id === game.team_a_id) { a = 0; b = rules.pointTarget; } else { a = rules.pointTarget; b = 0; } }
     const live = game.status === 'live';
     const final = game.status === 'final';
-    document.title = `${A.name} ${a}–${b} ${B.name} · ${live ? 'LIVE' : final ? 'Final' : 'SA Ultimate'}`;
+    document.title = `${A.name} ${a}–${b} ${B.name} · ${live ? 'LIVE' : final ? 'Final' : 'Ubuntu Ultimate'}`;
 
     // The stoppage running now (same rules as the app's sideline clock).
     let clk = '';
@@ -178,7 +178,7 @@ if (!gameId) {
       ${clk}${nowLine}
       <h2>Point by point</h2>
       <div class="pts">${rows || '<div class="empty">No points yet. Updates appear here as the scorer records them.</div>'}</div>
-      <div class="foot"><b>SA ULTIMATE</b><br>Updates by itself — no need to refresh.<br>Scores come from the scorer’s phone and may lag a few seconds.</div>`;
+      <div class="foot"><b>UBUNTU ULTIMATE</b><br>Updates by itself — no need to refresh.<br>Scores come from the scorer’s phone and may lag a few seconds.</div>`;
   }
 
   load();

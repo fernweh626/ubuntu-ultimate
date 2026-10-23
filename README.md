@@ -1,9 +1,8 @@
-# SA Ultimate (working name)
+# Ubuntu Ultimate
 
 Scoring, line management, stats and team admin for the South African ultimate community. It's built for Android first, with a web version to follow, and is meant to replace the current Stall Count app.
 
 - **Product spec:** https://claude.ai/artifact/3Qjhbogiimn1v5tHmGkfQt
-- **Name candidates:** U-mzansi, Ubuntu Ultimate
 
 ---
 
@@ -22,8 +21,8 @@ You run a small development server on a computer, and the **Expo Go** app on you
 ### 1. Get the code (first time only)
 
 ```bash
-git clone https://github.com/fernweh626/sa-ultimate.git
-cd sa-ultimate/mobile
+git clone https://github.com/fernweh626/ubuntu-ultimate.git
+cd ubuntu-ultimate/mobile
 npm install
 ```
 
@@ -32,7 +31,7 @@ The repo is private, so you need to be added as a collaborator on GitHub first.
 ### 2. Start the dev server
 
 ```bash
-cd sa-ultimate/mobile
+cd ubuntu-ultimate/mobile
 npx expo start --lan
 ```
 
@@ -46,7 +45,7 @@ After a few seconds it prints a **QR code** and an address like `exp://192.168.0
 
 ### Every time after that
 
-- On the computer: `cd sa-ultimate/mobile`, then `git pull` (to get the latest), then `npx expo start --lan`.
+- On the computer: `cd ubuntu-ultimate/mobile`, then `git pull` (to get the latest), then `npx expo start --lan`.
 - On the phone: open Expo Go and tap the project under **Recently opened**. If the computer's Wi-Fi changed, the address changes too, so scan the new QR code.
 - To reload: **shake the phone** and tap **Reload**, or press `r` in the terminal.
 
@@ -116,7 +115,7 @@ npx eslint src       # lint
 
 ### Online database (maintainers only)
 
-The Supabase project is `sa-ultimate` (ref `fcsdtbvcvlmspjcfnfto`). The app only contains the **publishable** key, which is safe to ship because row-level security decides what anyone can read or write. Database changes go in a new file in `supabase/migrations/` and are applied with:
+The Supabase project is `sa-ultimate` (ref `fcsdtbvcvlmspjcfnfto`; the name is from before the rename and only shows in the Supabase dashboard). The app only contains the **publishable** key, which is safe to ship because row-level security decides what anyone can read or write. Database changes go in a new file in `supabase/migrations/` and are applied with:
 
 ```bash
 npx supabase db push -p "$SUPABASE_DB_PASSWORD"

@@ -51,6 +51,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemeProvider value={theme}>
       <StatusBar style="dark" />
+      {/* File name kept from the app's working name so existing phones keep their data. */}
       <SQLiteProvider databaseName="sa-ultimate.db" onInit={init}>
         <SyncManager />
         <NotificationManager />

@@ -1,4 +1,4 @@
-# SA Ultimate — mobile app
+# Ubuntu Ultimate — mobile app
 
 Expo (React Native) app, Android first. Everything is stored on the phone in SQLite and works offline.
 

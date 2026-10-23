@@ -9,6 +9,7 @@ import { detectEvents } from './events';
 import { Notify as Notifications } from './native';
 import { planNotifications } from './plan';
 
+// Kept from the working name: changing it would orphan reminders already scheduled on phones.
 const TAG = 'sa-ultimate';
 
 Notifications?.setNotificationHandler({

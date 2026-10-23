@@ -32,7 +32,9 @@ export default function Home() {
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View>
-          <T style={{ fontFamily: font.display, fontSize: 30, lineHeight: 34, letterSpacing: 0.5 }}>SA ULTIMATE</T>
+          <T numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: font.display, fontSize: 28, lineHeight: 32, letterSpacing: 0.5 }}>
+            UBUNTU ULTIMATE
+          </T>
           <T v="small">{DAYS_LONG[weekdayIndex()]}</T>
         </View>
         <MeButton />

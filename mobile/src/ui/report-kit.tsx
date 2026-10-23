@@ -39,7 +39,7 @@ export const Page = forwardRef<ComponentRef<typeof View>, PageProps>(function Pa
       </View>
       {children}
       <View style={{ flex: 1 }} />
-      <Text style={{ fontFamily: font.display, fontSize: 11, letterSpacing: 2, color: p.muted, textAlign: 'right' }}>SA ULTIMATE</Text>
+      <Text style={{ fontFamily: font.display, fontSize: 11, letterSpacing: 2, color: p.muted, textAlign: 'right' }}>UBUNTU ULTIMATE</Text>
     </View>
   );
 });
