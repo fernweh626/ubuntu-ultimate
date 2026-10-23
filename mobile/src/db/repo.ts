@@ -394,6 +394,65 @@ export function joinTeam(
   return write(db, () => addMembership(db, personId, teamId, kind, jersey, 'player'));
 }
 
+export type JoinKind = 'core' | 'guest' | 'mercenary';
+
+/**
+ * Join a team, or ask to. Signed-in players who aren't staff there send a request that the team's
+ * staff (or a coordinator) approve, since the server only lets staff add people. Without an account,
+ * everything is on this phone, so you just join.
+ */
+export async function joinOrRequest(db: SQLiteDatabase, personId: string, teamId: string, kind: JoinKind, message?: string | null): Promise<'joined' | 'requested'> {
+  const access = await getAccess(db);
+  const direct = !access.signedIn || LEVEL_RANK[access.level] >= LEVEL_RANK.coordinator || access.staffTeamIds.includes(teamId);
+  if (direct) {
+    const p = await db.getFirstAsync<{ preferred_number: string | null }>(`SELECT preferred_number FROM person WHERE id = ?`, personId);
+    await joinTeam(db, personId, teamId, kind, p?.preferred_number ?? null);
+    return 'joined';
+  }
+  await write(db, async () => {
+    const ts = now();
+    // One open request per team: asking again updates it.
+    const open = await db.getFirstAsync<{ id: string }>(`SELECT id FROM join_request WHERE person_id = ? AND team_id = ? AND status = 'pending'`, personId, teamId);
+    if (open) await db.runAsync(`UPDATE join_request SET kind = ?, message = ?, updated_at = ? WHERE id = ?`, kind, message ?? null, ts, open.id);
+    else
+      await db.runAsync(
+        `INSERT INTO join_request (id, person_id, team_id, kind, message, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
+        uuid(), personId, teamId, kind, message ?? null, ts, ts,
+      );
+  });
+  return 'requested';
+}
+
+export function myJoinRequest(db: SQLiteDatabase, personId: string, teamId: string) {
+  return db.getFirstAsync<{ id: string; kind: JoinKind; created_at: string }>(
+    `SELECT id, kind, created_at FROM join_request WHERE person_id = ? AND team_id = ? AND status = 'pending'`,
+    personId,
+    teamId,
+  );
+}
+
+export function cancelJoinRequest(db: SQLiteDatabase, id: string) {
+  return write(db, () => db.runAsync(`UPDATE join_request SET status = 'cancelled', updated_at = ? WHERE id = ?`, now(), id));
+}
+
+/** Who's asking to join this team, for its staff. */
+export function pendingJoinRequests(db: SQLiteDatabase, teamId: string) {
+  return db.getAllAsync<{ id: string; person_id: string; kind: JoinKind; message: string | null; created_at: string; first_name: string; last_name: string; nickname: string | null; birth_date: string | null }>(
+    `SELECT r.id, r.person_id, r.kind, r.message, r.created_at, p.first_name, p.last_name, p.nickname, p.birth_date
+       FROM join_request r JOIN person p ON p.id = r.person_id
+      WHERE r.team_id = ? AND r.status = 'pending' ORDER BY r.created_at`,
+    teamId,
+  );
+}
+
+/** Without an account the decision is local: approving adds them to the team. */
+export async function decideJoinLocally(db: SQLiteDatabase, id: string, approve: boolean) {
+  const r = await db.getFirstAsync<{ person_id: string; team_id: string; kind: JoinKind }>(`SELECT person_id, team_id, kind FROM join_request WHERE id = ?`, id);
+  if (!r) return;
+  await write(db, () => db.runAsync(`UPDATE join_request SET status = ?, updated_at = ? WHERE id = ?`, approve ? 'approved' : 'declined', now(), id));
+  if (approve) await joinTeam(db, r.person_id, r.team_id, r.kind, null);
+}
+
 /** Leaving keeps the history: the membership gets an end date instead of being deleted. */
 export function leaveTeam(db: SQLiteDatabase, membershipId: string) {
   return write(db, () =>

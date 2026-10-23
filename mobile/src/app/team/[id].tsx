@@ -11,6 +11,7 @@ import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format'
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
+import { JoinRequests, JoinTeamBar } from '@/ui/join-team';
 import { getClub } from '@/db/clubs';
 import { divisionName } from '@/domain/divisions';
 import { LogSessionSheet } from '@/ui/log-session';
@@ -116,7 +117,9 @@ export default function TeamPage() {
           <FollowButton kind="team" id={id} />
           {agg && agg.games ? <Button label="Team report" icon="chart-box-outline" onPress={() => router.push({ pathname: '/team/report', params: { id } })} /> : null}
         </View>
+        <JoinTeamBar teamId={id} teamName={team.name} onSquad={onSquad} />
         {team.about ? <T v="small">{team.about}</T> : null}
+        {canManage ? <JoinRequests teamId={id} /> : null}
         {isStaffHere ? (
           <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
             <Row title="Attendance" subtitle="Who comes to practice, no-shows, games played" left={<Icon name="account-check-outline" color={colors.brand} />} onPress={() => router.push({ pathname: '/team/attendance', params: { teamId: id } })} />

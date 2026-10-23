@@ -117,7 +117,7 @@ export default function Me() {
           {roles.length === 0 ? (
             <Card onPress={() => router.push('/teams')}>
               <T v="bodyStrong">Join your team</T>
-              <T v="small">Find your club in Teams and tap “Join”. Your games and practices then show up here.</T>
+              <T v="small">Open Teams, find your club and tap “Join this team”. Your games and practices then show up here.</T>
             </Card>
           ) : (
             <View style={GROUP}>

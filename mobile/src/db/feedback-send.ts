@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { supabase } from '@/lib/supabase';
 
-import { markFeedbackSent, unsentFeedback } from './development';
+import { markFeedbackSent, saveFeedback, unsentFeedback } from './development';
 
 /**
  * Send any feedback still waiting on this phone. Works without signing in (the server only lets
@@ -57,4 +57,13 @@ export async function allFeedback() {
 export async function setFeedbackStatus(id: string, status: ServerFeedback['status'], note: string | null) {
   const { error } = await supabase.from('feedback').update({ status, admin_note: note }).eq('id', id);
   if (error) throw error;
+}
+
+/**
+ * A request to the admins (access, or a privacy request): goes through the feedback inbox with the
+ * player's name attached so an admin can reply. Returns true if it went now, false if it's queued.
+ */
+export async function sendRequest(db: SQLiteDatabase, title: string, body: string, personId: string | null) {
+  await saveFeedback(db, { kind: 'other', title: title.slice(0, 200), body: body.slice(0, 5000), screen: null, app_version: null, device: null, contact_ok: 1, person_id: personId });
+  return (await sendPendingFeedback(db).catch(() => 0)) > 0;
 }

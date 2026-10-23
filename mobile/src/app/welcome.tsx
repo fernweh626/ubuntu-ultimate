@@ -2,11 +2,11 @@ import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { Alert, ScrollView, TextInput, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
-import { getHomeRegion, getMeId, joinTeam, listPeople, listTeams, myRoles, savePerson, setHomeRegion, setMeId, setOnboarded } from '@/db/repo';
+import { getHomeRegion, getMeId, joinOrRequest, listPeople, listTeams, myRoles, savePerson, setHomeRegion, setMeId, setOnboarded } from '@/db/repo';
 import type { Gender } from '@/db/types';
 import { displayName } from '@/domain/format';
 import { ensurePermission } from '@/notify/manager';
@@ -166,7 +166,9 @@ function Teams({ meId, onNext }: { meId: string; onNext: () => void }) {
   const shown = teams.filter((t) => !t.is_sample && (!s || `${t.name} ${t.city ?? ''}`.toLowerCase().includes(s))).slice(0, s ? 30 : 12);
 
   async function next() {
-    for (const id of picked) if (!mine.some((r) => r.team_id === id)) await joinTeam(db, meId, id, 'core', null);
+    let asked = 0;
+    for (const id of picked) if (!mine.some((r) => r.team_id === id)) asked += (await joinOrRequest(db, meId, id, 'core')) === 'requested' ? 1 : 0;
+    if (asked) Alert.alert('Request sent', 'Your captain approves it, then the team’s games and practices show up for you.');
     // Region follows your first team unless you change it next.
     const first = teams.find((t) => t.id === (picked[0] ?? mine[0]?.team_id));
     if (first?.region && !(await getHomeRegion(db))) await setHomeRegion(db, first.region);

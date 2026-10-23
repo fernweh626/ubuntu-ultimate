@@ -5,7 +5,7 @@ import { Alert, Pressable, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
-import { getPerson, joinTeam, leaveTeam, listGamesForPerson, listTeams, personHistory } from '@/db/repo';
+import { getPerson, joinOrRequest, leaveTeam, listGamesForPerson, listTeams, personHistory } from '@/db/repo';
 import { displayName, shortDate } from '@/domain/format';
 import { Button, Card, Chip, Choice, IconButton, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
@@ -179,7 +179,7 @@ export default function PlayerProfile() {
                 label={t.name}
                 dot={t.primary_color ?? undefined}
                 onPress={async () => {
-                  await joinTeam(db, id, t.id, joinKind, person.preferred_number);
+                  if ((await joinOrRequest(db, id, t.id, joinKind)) === 'requested') Alert.alert('Request sent', `${t.name}’s captain approves it.`);
                   setJoining(false);
                 }}
                 style={{ paddingHorizontal: 14 }}
