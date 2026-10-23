@@ -1,14 +1,15 @@
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
-import { listCalendar } from '@/db/repo';
+import { getAccess, listCalendar } from '@/db/repo';
+import { isMeeting, KIND_LABEL } from '@/domain/calendar';
 import type { CalendarEntry } from '@/db/types';
 import { dateRange } from '@/domain/format';
 import { RegionChips, useRegionFilter } from '@/ui/region-filter';
-import { Card, Chip, EmptyState, IconButton, Screen, Section, Segmented, T } from '@/ui/components';
+import { Button, Card, Chip, EmptyState, IconButton, Screen, Section, Segmented, T } from '@/ui/components';
 import { colors, font, space } from '@/ui/theme';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -23,6 +24,8 @@ const LEVEL_TONE: Record<string, 'brand' | 'neutral' | 'warn' | 'dark'> = {
 
 export default function Calendar() {
   const all = useData(listCalendar) ?? [];
+  const access = useData(getAccess);
+  const runs = access?.level === 'admin' || access?.level === 'coordinator';
   const region = useRegionFilter();
   // National, international and all-region events matter to everyone, so they show in every region.
   const entries = all.filter((e) => region.value === 'all' || !e.region || e.region === region.value || e.level === 'national' || e.level === 'international');
@@ -46,7 +49,7 @@ export default function Calendar() {
       <Stack.Screen
         options={{
           title: 'Competitive calendar',
-          headerRight: () => <IconButton icon="plus" label="Add to calendar" onPress={() => router.push('/hub/calendar-edit')} />,
+          headerRight: () => (runs ? <IconButton icon="plus" label="Add to calendar" onPress={() => router.push('/hub/calendar-edit')} /> : null),
         }}
       />
       <Screen edges={[]}>
@@ -62,12 +65,22 @@ export default function Calendar() {
           ]}
         />
         {list.length === 0 ? (
-          <EmptyState icon="calendar-blank" title="Nothing here yet" body="Tap + to add a tournament, league or national event." />
+          <EmptyState icon="calendar-blank" title="Nothing here yet" body={runs ? 'Tap + to add a tournament, league, AGM or meeting.' : 'Coordinators add tournaments, leagues and meetings here.'} />
         ) : (
           [...byMonth.entries()].map(([month, items]) => (
             <Section key={month} title={month}>
               {items.map((e) => (
-                <Card key={e.id} onPress={() => router.push({ pathname: '/hub/calendar-edit', params: { id: e.id } })}>
+                <Card
+                  key={e.id}
+                  onPress={
+                    isMeeting(e.kind)
+                      ? () => router.push(`/hub/meeting/${e.id}`)
+                      : runs
+                        ? () => router.push({ pathname: '/hub/calendar-edit', params: { id: e.id } })
+                        : e.url
+                          ? () => Linking.openURL(e.url!)
+                          : undefined
+                  }>
                   <View style={{ flexDirection: 'row', gap: space.md }}>
                     {e.start_date ? (
                       <View style={{ width: 52, alignItems: 'center', borderRadius: 10, backgroundColor: colors.brandTint, paddingVertical: 6 }}>
@@ -87,10 +100,14 @@ export default function Calendar() {
                           .join(' · ')}
                       </T>
                       <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
-                        {e.level ? <Chip label={e.level} tone={LEVEL_TONE[e.level] ?? 'neutral'} /> : null}
+                        {isMeeting(e.kind) ? <Chip label={KIND_LABEL[e.kind]} icon="account-group-outline" tone="dark" /> : e.level ? <Chip label={e.level} tone={LEVEL_TONE[e.level] ?? 'neutral'} /> : null}
+                        {isMeeting(e.kind) && e.start_time ? <Chip label={`${e.start_time}${e.end_time ? `–${e.end_time}` : ''}`} icon="clock-outline" tone="neutral" /> : null}
                         {e.status === 'tbc' ? <Chip label="Dates TBC" tone="warn" /> : null}
                       </View>
                       {e.notes ? <T v="small">{e.notes}</T> : null}
+                      {e.meeting_url && (e.end_date ?? e.start_date ?? '') >= today ? (
+                        <Button label="Join meeting" icon="video-outline" kind="primary" onPress={() => Linking.openURL(e.meeting_url!)} style={{ alignSelf: 'flex-start', minHeight: 40 }} />
+                      ) : null}
                     </View>
                   </View>
                 </Card>

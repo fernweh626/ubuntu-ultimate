@@ -220,4 +220,19 @@ export type CalendarEntry = {
   status: 'confirmed' | 'tbc';
   url: string | null;
   notes: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  meeting_url?: string | null;
+};
+
+export type Announcement = {
+  id: string;
+  region_code: string | null;
+  title: string;
+  body: string | null;
+  link_url: string | null;
+  link_label: string | null;
+  pinned: number;
+  published_at: string;
+  created_by_id: string | null;
 };

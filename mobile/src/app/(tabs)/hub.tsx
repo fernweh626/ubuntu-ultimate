@@ -6,6 +6,7 @@ import { MeButton } from '@/ui/me-button';
 import { colors, space } from '@/ui/theme';
 
 const TILES: { title: string; body: string; icon: IconName; href: Href }[] = [
+  { title: 'Announcements', body: 'Nationals dates, AGMs, constitution reviews and other news', icon: 'bullhorn-outline', href: '/hub/announcements' },
   { title: 'Merch & links', body: 'Kit and discs, join your association, pickup groups, socials', icon: 'tshirt-crew-outline', href: '/hub/links' },
   { title: 'Find pickup', body: 'Flick through the week to find games near you', icon: 'map-marker-radius', href: '/hub/pickups' },
   { title: 'Fields', body: 'Saved fields, nearest first — add the one you’re on', icon: 'map-marker-multiple', href: '/hub/fields' },

@@ -6,7 +6,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { regionName } from '@/content/hub';
 import { dayLabel, homeFeed, type Competition, type TimelineItem } from '@/db/home';
 import { useData } from '@/db/live';
-import { getHomeRegion, listCalendar, listGames, listPickups, type GameListItem } from '@/db/repo';
+import { getHomeRegion, listAnnouncements, listCalendar, listGames, listPickups, type GameListItem } from '@/db/repo';
 import { DAYS_LONG, dateRange, timeOfDay, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, Icon, IconButton, Section, Screen, Segmented, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
@@ -63,8 +63,38 @@ export default function Home() {
         <IconButton icon="book-open-variant" label="Rules" onPress={() => router.push('/hub/rules')} />
       </View>
 
+      <News region={home ?? null} />
+
       {feed === 'you' ? feedData ? <ForYou data={feedData} /> : null : <Area region={feed === 'region' ? home ?? null : null} />}
     </Screen>
+  );
+}
+
+/* ------------------------------ Announcements ------------------------------ */
+
+/** Pinned and recent (two weeks) announcements for your region and nationally: at most two, newest first. */
+function News({ region }: { region: string | null }) {
+  const list = useData(listAnnouncements) ?? [];
+  const [opened] = useState(() => Date.now());
+  const fresh = list.filter((a) => (!a.region_code || !region || a.region_code === region) && (a.pinned || opened - Date.parse(a.published_at) < 14 * 86400_000)).slice(0, 2);
+  if (!fresh.length) return null;
+  return (
+    <>
+      {fresh.map((a) => (
+        <Card key={a.id} onPress={() => router.push('/hub/announcements')} style={{ backgroundColor: colors.night, borderColor: colors.night, gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <Icon name="bullhorn-outline" color="#F0A27E" size={18} />
+            <T style={{ fontFamily: font.bold, fontSize: 12, letterSpacing: 1, color: '#F0A27E' }}>ANNOUNCEMENT</T>
+          </View>
+          <T style={{ fontFamily: font.bold, fontSize: 17, color: '#fff' }}>{a.title}</T>
+          {a.body ? (
+            <T numberOfLines={2} style={{ color: colors.nightMuted }}>
+              {a.body}
+            </T>
+          ) : null}
+        </Card>
+      ))}
+    </>
   );
 }
 

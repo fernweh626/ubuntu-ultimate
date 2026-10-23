@@ -57,6 +57,8 @@ export const TABLES: TableSpec[] = [
   { name: 'registration', pk: ['id'] },
   { name: 'association_standing', pk: ['id'], push: false },
   { name: 'org_link', pk: ['id'] },
+  { name: 'announcement', pk: ['id'] },
+  { name: 'meeting_rsvp', pk: ['id'] },
   { name: 'fitness_test', pk: ['id'] },
   { name: 'reflection', pk: ['id'] },
   { name: 'shoutout', pk: ['id'] },

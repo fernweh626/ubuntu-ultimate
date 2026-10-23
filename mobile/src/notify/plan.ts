@@ -1,5 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { getAccess, getHomeRegion } from '@/db/repo';
+import { meetingStart } from '@/domain/calendar';
 import { shortDate, timeOfDay } from '@/domain/format';
 
 /*
@@ -14,6 +16,10 @@ export type NotifyPrefs = {
   practices: boolean;
   accreditation: boolean;
   development: boolean;
+  fees: boolean;
+  meetings: boolean;
+  announcements: boolean;
+  admin: boolean;
   spirit: boolean;
   roster: boolean;
   shoutouts: boolean;
@@ -30,6 +36,10 @@ export const DEFAULT_PREFS: NotifyPrefs = {
   practices: true,
   accreditation: true,
   development: true,
+  fees: true,
+  meetings: true,
+  announcements: true,
+  admin: true,
   spirit: true,
   roster: true,
   shoutouts: true,
@@ -95,8 +105,49 @@ const nextMorning = (d: Date) => {
 export async function planNotifications(db: SQLiteDatabase, now = new Date()): Promise<Planned[]> {
   const prefs = await getPrefs(db);
   const me = (await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_person_id'`))?.value;
-  if (!me) return [];
   const out: Planned[] = [];
+
+  // Yearly admin: coordinators and admins update the registration/payment form links every Monday in
+  // January; everyone is reminded to pay SAFDA and regional fees on 1 February.
+  const nextYearly = (month: number, day: number) => {
+    const d = new Date(now.getFullYear(), month, day, 9, 0, 0, 0);
+    if (d <= now) d.setFullYear(d.getFullYear() + 1);
+    return d;
+  };
+  const access = await getAccess(db);
+  if (prefs.admin && (access.level === 'admin' || access.level === 'coordinator')) {
+    const jan = now.getMonth() === 0 ? now.getFullYear() : now.getFullYear() + 1;
+    for (let day = 1; day <= 31; day++) {
+      const d = new Date(jan, 0, day, 9, 0, 0, 0);
+      if (d.getDay() !== 1) continue; // Mondays
+      out.push({ key: `adminlinks:${jan}-${day}`, kind: 'admin', at: d, title: `Update the ${jan} registration & payment links`, body: 'New season: check the SAFDA and regional forms, fees and merch links are current before 1 February.', url: '/admin/links' });
+    }
+  }
+  if (prefs.fees) {
+    const feb = nextYearly(1, 1);
+    out.push({ key: `fees:${feb.getFullYear()}`, kind: 'fees', at: feb, title: `Time to pay your ${feb.getFullYear()} fees`, body: 'Register and pay with SAFDA and your region so you can play leagues, regionals and nationals.', url: '/registration' });
+  }
+
+  // Meetings (AGM, SGM…) for your region or national: the evening before, and 15 minutes before with the link.
+  if (prefs.meetings) {
+    const home = await getHomeRegion(db);
+    const meetings = await db.getAllAsync<{ id: string; name: string; kind: string; region: string | null; start_date: string; start_time: string | null; meeting_url: string | null }>(
+      `SELECT id, name, kind, region, start_date, start_time, meeting_url FROM calendar_entry
+        WHERE deleted_at IS NULL AND kind IN ('agm','sgm','meeting') AND start_date >= ?`,
+      now.toISOString().slice(0, 10),
+    );
+    for (const m of meetings.filter((x) => !x.region || !home || x.region === home)) {
+      const start = meetingStart(m);
+      if (!start) continue;
+      const eve = new Date(start);
+      eve.setDate(eve.getDate() - 1);
+      eve.setHours(18, 0, 0, 0);
+      out.push({ key: `meet1:${m.id}:${m.start_date}${m.start_time}`, kind: 'meetings', at: eve, title: `Tomorrow ${m.start_time}: ${m.name}`, body: m.meeting_url ? 'Online: the join link is in the app. Tap to see the agenda and RSVP.' : 'Tap to see the agenda and RSVP.', url: `/hub/meeting/${m.id}` });
+      out.push({ key: `meet2:${m.id}:${m.start_date}${m.start_time}`, kind: 'meetings', at: new Date(start.getTime() - 15 * 60_000), title: `${m.name} starts in 15 minutes`, body: m.meeting_url ? 'Tap to join.' : 'Tap for details.', url: `/hub/meeting/${m.id}`, gameDay: true });
+    }
+  }
+
+  if (!me) return out.filter((p) => p.at > now);
 
   // Accreditation: 6 months, 1 month and 1 week before it expires, and on the day.
   const acc = await db.getFirstAsync<{ level: string; expires_on: string | null }>(`SELECT level, expires_on FROM accreditation WHERE person_id = ?`, me);

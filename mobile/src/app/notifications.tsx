@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, Switch, View } from 'react-native';
 
 import { useData } from '@/db/live';
+import { getAccess } from '@/db/repo';
 import { ensurePermission, notificationsAvailable, refreshNotifications } from '@/notify/manager';
 import { Notify } from '@/notify/native';
 import { describeWhen, getPrefs, planNotifications, setPrefs, type NotifyPrefs } from '@/notify/plan';
@@ -16,6 +17,10 @@ const ITEMS: { key: keyof NotifyPrefs; title: string; body: string }[] = [
   { key: 'practices', title: 'Practices', body: 'Are you coming? the day before, a reminder if you are, and a 1-minute check-in after.' },
   { key: 'accreditation', title: 'Accreditation expiry', body: '6 months, 1 month and 1 week before it runs out.' },
   { key: 'development', title: 'Self-rating check-in', body: 'Every six months, a nudge to rate yourself again.' },
+  { key: 'admin', title: 'Yearly admin (coordinators)', body: 'Mondays in January: update the registration, fees and merch links.' },
+  { key: 'announcements', title: 'Announcements', body: 'News from SAFDA and your region: Nationals dates, AGMs, reviews.' },
+  { key: 'meetings', title: 'Meetings (AGM, SGM)', body: 'The evening before, and 15 minutes before with the join link.' },
+  { key: 'fees', title: 'Annual fees', body: '1 February: time to register and pay SAFDA and regional fees.' },
   { key: 'shoutouts', title: 'Shout-outs', body: 'When a teammate shouts you out.' },
   { key: 'fixtureChanges', title: 'Fixture changes', body: 'Your team’s game moves, is postponed or forfeited.' },
   { key: 'spirit', title: 'Spirit score due', body: 'Captains and spirit captains, 2 hours after a game.' },
@@ -36,6 +41,8 @@ export default function NotificationSettings() {
   const upcoming = useData((d) => planNotifications(d)) ?? [];
   const [prefs, setLocal] = useState<NotifyPrefs | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const access = useData(getAccess);
+  const runs = access?.level === 'admin' || access?.level === 'coordinator';
 
   useEffect(() => {
     ensurePermission(false).then(setAllowed);
@@ -73,7 +80,7 @@ export default function NotificationSettings() {
         ) : null}
         <T v="small">Only what you need to act on. At most three a day — game days excepted.</T>
         <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
-          {ITEMS.map((it, i) => (
+          {ITEMS.filter((it) => it.key !== 'admin' || runs).map((it, i) => (
             <Pressable
               key={it.key}
               onPress={() => update({ ...p, [it.key]: !p[it.key] })}

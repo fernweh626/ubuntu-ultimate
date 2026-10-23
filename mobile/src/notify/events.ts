@@ -19,6 +19,7 @@ type Seen = {
   status: string[];
   results: string[];
   cancelled?: string[];
+  announcements?: string[];
   fixtures: Record<string, string>;
 };
 
@@ -33,7 +34,7 @@ async function load(db: SQLiteDatabase) {
 
 async function save(db: SQLiteDatabase, s: Seen) {
   const trim = (xs: string[]) => xs.slice(-500);
-  const v = { ...s, cancelled: trim(s.cancelled ?? []), shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
+  const v = { ...s, announcements: trim(s.announcements ?? []), cancelled: trim(s.cancelled ?? []), shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
   await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('notify:seen', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, JSON.stringify(v));
 }
 
@@ -166,6 +167,22 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
       seen.cancelled.push(c.id);
       if (!first && c.status !== 'not_going') {
         out.push({ key: `pcx:${c.id}`, title: `${c.team} practice cancelled`, body: `${shortDate(c.started_at)} ${timeOfDay(c.started_at)} is off.`, url: `/practice/${c.id}` });
+      }
+    }
+  }
+
+  // New announcements for my region or national.
+  if (prefs.announcements) {
+    seen.announcements ??= [];
+    const home = (await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'home_region'`))?.value ?? null;
+    const anns = await db.getAllAsync<{ id: string; title: string; body: string | null; region_code: string | null }>(
+      `SELECT id, title, body, region_code FROM announcement WHERE deleted_at IS NULL ORDER BY published_at DESC LIMIT 50`,
+    );
+    for (const a of anns) {
+      if (seen.announcements.includes(a.id)) continue;
+      seen.announcements.push(a.id);
+      if (!first && (!a.region_code || !home || home === 'all' || a.region_code === home)) {
+        out.push({ key: `ann:${a.id}`, title: `📣 ${a.title}`, body: a.body ? a.body.slice(0, 140) : 'Tap to read.', url: '/hub/announcements' });
       }
     }
   }

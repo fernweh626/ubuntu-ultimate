@@ -953,6 +953,59 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE org_link ADD COLUMN kind TEXT;
   `,
+  // v14: meetings on the calendar (AGM, SGM… with a time and a Zoom/Meet link) and announcements.
+  `
+  ALTER TABLE calendar_entry ADD COLUMN start_time TEXT;
+  ALTER TABLE calendar_entry ADD COLUMN end_time TEXT;
+  ALTER TABLE calendar_entry ADD COLUMN meeting_url TEXT;
+  -- Posted by coordinators/admins. region_code NULL = national.
+  CREATE TABLE announcement (
+    id TEXT PRIMARY KEY NOT NULL,
+    region_code TEXT,
+    title TEXT NOT NULL,
+    body TEXT,
+    link_url TEXT,
+    link_label TEXT,
+    pinned INTEGER NOT NULL DEFAULT 0,
+    published_at TEXT NOT NULL,
+    created_by_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+  CREATE INDEX idx_announcement_published ON announcement (published_at);
+  CREATE TRIGGER sync_announcement_insert AFTER INSERT ON announcement
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('announcement', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_announcement_update AFTER UPDATE ON announcement
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('announcement', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_announcement_delete AFTER DELETE ON announcement
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('announcement', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
+  // v15: RSVPs for meetings (AGM, SGM…). id = calendar_entry_id:person_id.
+  `
+  CREATE TABLE meeting_rsvp (
+    id TEXT PRIMARY KEY NOT NULL,
+    calendar_entry_id TEXT NOT NULL REFERENCES calendar_entry(id),
+    person_id TEXT NOT NULL REFERENCES person(id),
+    status TEXT NOT NULL CHECK (status IN ('going','late','not_going')),
+    note TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX idx_meeting_rsvp_entry ON meeting_rsvp (calendar_entry_id);
+  CREATE TRIGGER sync_meeting_rsvp_insert AFTER INSERT ON meeting_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('meeting_rsvp', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_meeting_rsvp_update AFTER UPDATE ON meeting_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('meeting_rsvp', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_meeting_rsvp_delete AFTER DELETE ON meeting_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('meeting_rsvp', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

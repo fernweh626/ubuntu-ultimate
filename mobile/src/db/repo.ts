@@ -11,6 +11,7 @@ import { parseRules, ratioForPoint, rulesFor, type Rules } from '@/domain/rules'
 
 import { notifyChanged } from './live';
 import type {
+  Announcement,
   CalendarEntry,
   Division,
   EventKind,
@@ -1318,12 +1319,13 @@ export function saveCalendarEntry(db: SQLiteDatabase, c: Omit<CalendarEntry, 'id
     const ts = now();
     await db.runAsync(
       `INSERT INTO calendar_entry (id, name, kind, level, region, location, start_date, end_date, month_hint, status, url,
-         notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         notes, start_time, end_time, meeting_url, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, level = excluded.level,
          region = excluded.region, location = excluded.location, start_date = excluded.start_date,
          end_date = excluded.end_date, month_hint = excluded.month_hint, status = excluded.status, url = excluded.url,
-         notes = excluded.notes, updated_at = excluded.updated_at`,
+         notes = excluded.notes, start_time = excluded.start_time, end_time = excluded.end_time,
+         meeting_url = excluded.meeting_url, updated_at = excluded.updated_at`,
       id,
       c.name.trim(),
       c.kind,
@@ -1336,6 +1338,9 @@ export function saveCalendarEntry(db: SQLiteDatabase, c: Omit<CalendarEntry, 'id
       c.status,
       c.url,
       c.notes,
+      c.start_time ?? null,
+      c.end_time ?? null,
+      c.meeting_url ?? null,
       ts,
       ts,
     );
@@ -1345,6 +1350,74 @@ export function saveCalendarEntry(db: SQLiteDatabase, c: Omit<CalendarEntry, 'id
 
 export function deleteCalendarEntry(db: SQLiteDatabase, id: string) {
   return write(db, () => db.runAsync(`UPDATE calendar_entry SET deleted_at = ? WHERE id = ?`, now(), id));
+}
+
+/* ---------------- Meeting RSVPs ---------------- */
+
+export function setMeetingRsvp(db: SQLiteDatabase, entryId: string, personId: string, status: RsvpStatus | null, note: string | null = null) {
+  return write(db, async () => {
+    const id = `${entryId}:${personId}`;
+    if (!status) return void (await db.runAsync(`DELETE FROM meeting_rsvp WHERE id = ?`, id));
+    const ts = now();
+    await db.runAsync(
+      `INSERT INTO meeting_rsvp (id, calendar_entry_id, person_id, status, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET status = excluded.status, note = excluded.note, updated_at = excluded.updated_at`,
+      id,
+      entryId,
+      personId,
+      status,
+      status === 'going' ? null : note,
+      ts,
+      ts,
+    );
+  });
+}
+
+export function meetingRsvps(db: SQLiteDatabase, entryId: string) {
+  return db.getAllAsync<{ person_id: string; status: RsvpStatus; note: string | null; first_name: string; last_name: string; birth_date: string | null }>(
+    `SELECT r.person_id, r.status, r.note, p.first_name, p.last_name, p.birth_date FROM meeting_rsvp r JOIN person p ON p.id = r.person_id
+      WHERE r.calendar_entry_id = ? ORDER BY p.first_name COLLATE NOCASE`,
+    entryId,
+  );
+}
+
+/* ---------------- Announcements ---------------- */
+
+export function listAnnouncements(db: SQLiteDatabase) {
+  return db.getAllAsync<Announcement>(`SELECT * FROM announcement WHERE deleted_at IS NULL ORDER BY pinned DESC, published_at DESC`);
+}
+
+export function getAnnouncement(db: SQLiteDatabase, id: string) {
+  return db.getFirstAsync<Announcement>(`SELECT * FROM announcement WHERE id = ?`, id);
+}
+
+export function saveAnnouncement(db: SQLiteDatabase, a: Omit<Announcement, 'id' | 'published_at'> & { id?: string }) {
+  return write(db, async () => {
+    const id = a.id ?? uuid();
+    const ts = now();
+    await db.runAsync(
+      `INSERT INTO announcement (id, region_code, title, body, link_url, link_label, pinned, published_at, created_by_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET region_code = excluded.region_code, title = excluded.title, body = excluded.body,
+         link_url = excluded.link_url, link_label = excluded.link_label, pinned = excluded.pinned, updated_at = excluded.updated_at`,
+      id,
+      a.region_code,
+      a.title.trim(),
+      a.body,
+      a.link_url,
+      a.link_label,
+      a.pinned,
+      ts,
+      a.created_by_id,
+      ts,
+      ts,
+    );
+    return id;
+  });
+}
+
+export function deleteAnnouncement(db: SQLiteDatabase, id: string) {
+  return write(db, () => db.runAsync(`UPDATE announcement SET deleted_at = ?, updated_at = ? WHERE id = ?`, now(), now(), id));
 }
 
 /* ---------------- Sessions (practices, pickups) ---------------- */
