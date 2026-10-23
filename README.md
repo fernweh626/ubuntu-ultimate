@@ -1,144 +1,115 @@
 # Ubuntu Ultimate
 
-Scoring, line management, stats and team admin for the South African ultimate community. It's built for Android first, with a web version to follow, and is meant to replace the current Stall Count app.
+A free app for the whole South African ultimate community. It started as a replacement for Stall Count (scoring and stats) and grew into everything around the game: your team's week, pickups, hat tournaments, leagues, AGMs and your own development.
+
+Android first (Expo / React Native), with a web version for desk work. Works offline; syncs when there's signal.
 
 - **Product spec:** https://claude.ai/artifact/3Qjhbogiimn1v5tHmGkfQt
+- **In the app:** Me → **Help & how-to guide** explains every feature, with screenshots.
 
 ---
 
-## Try it on your phone with Expo Go
+## Run it in 5 minutes
 
-You run a small development server on a computer, and the **Expo Go** app on your phone loads the app from it. Nothing needs to be installed from the Play Store apart from Expo Go itself. When you save a code change, the phone reloads within a second or two.
-
-### What you need
-
-| | |
-| --- | --- |
-| **Android phone** | With **Expo Go** from the Play Store. It must support **SDK 57**: if Expo Go says "update Expo Go" or "incompatible SDK", update it, or install the SDK 57 build from https://expo.dev/go |
-| **A computer** | Mac, Windows or Linux, with **Node.js 20 or newer** (https://nodejs.org, LTS version) and **git** |
-| **Same Wi-Fi** | The phone and the computer must be on the same network (or use tunnel mode, below) |
-
-### 1. Get the code (first time only)
+You need **Node.js 20+**, **git**, and **Expo Go** (SDK 57) on an Android phone on the same Wi-Fi as your computer.
 
 ```bash
 git clone https://github.com/fernweh626/ubuntu-ultimate.git
 cd ubuntu-ultimate/mobile
 npm install
-```
-
-The repo is private, so you need to be added as a collaborator on GitHub first.
-
-### 2. Start the dev server
-
-```bash
-cd ubuntu-ultimate/mobile
 npx expo start --lan
 ```
 
-After a few seconds it prints a **QR code** and an address like `exp://192.168.0.112:8081`.
+On the phone: open **Expo Go** → **Scan QR code** (or **Enter URL manually**: the `exp://…:8081` address it prints). The first load takes up to a minute.
 
-### 3. Open it on your phone
+**On a computer instead:** with the server running, open **http://localhost:8081** in Chrome, Edge or Brave. It must be `localhost`, and Safari doesn't work yet.
 
-1. Open **Expo Go**.
-2. Tap **Scan QR code** and scan the code in the terminal, **or** tap **Enter URL manually** and type the `exp://…:8081` address.
-3. The first load takes 20–60 seconds while the app is bundled. After that it's quick.
-
-### Every time after that
-
-- On the computer: `cd ubuntu-ultimate/mobile`, then `git pull` (to get the latest), then `npx expo start --lan`.
-- On the phone: open Expo Go and tap the project under **Recently opened**. If the computer's Wi-Fi changed, the address changes too, so scan the new QR code.
-- To reload: **shake the phone** and tap **Reload**, or press `r` in the terminal.
-
-### If it doesn't connect
+<details>
+<summary>If it doesn't connect</summary>
 
 | Problem | Fix |
 | --- | --- |
-| Phone can't reach the computer (spinner or "could not connect") | Check both are on the **same Wi-Fi**. Guest, office and campus networks often block devices from seeing each other. Use tunnel mode instead: `npx expo start --tunnel` (slower, works over any network). |
-| The address changed (new Wi-Fi, laptop moved) | Stop the server (`Ctrl+C`), start it again and scan the new QR code. |
-| "Incompatible SDK" or "update Expo Go" | The app uses **Expo SDK 57**: update Expo Go to the SDK 57 version. |
-| Red error screen after pulling new code | Run `npm install` (new libraries may have been added), then `npx expo start --lan --clear`. |
-| Something looks stuck or out of date | `npx expo start --lan --clear` clears the bundler cache. |
-| Want to start over with fresh sample data | In Android settings → Apps → Expo Go → Storage → **Clear data**. This wipes everything saved in Expo Go, for all projects. |
+| Phone can't reach the computer | Same Wi-Fi? Guest and campus networks often block it. Use `npx expo start --tunnel`. |
+| "Incompatible SDK" | Update Expo Go to the SDK 57 version (https://expo.dev/go). |
+| Red error after pulling | `npm install`, then `npx expo start --lan --clear`. |
+| Want fresh sample data | Android settings → Apps → Expo Go → Storage → Clear data. |
 
----
+</details>
 
-### On a computer (web version)
+## A 10-minute tour
 
-Handy for staff and coordinators doing bulk work (fixtures, CSV uploads, exports, readiness checks).
+The app ships with the real SA clubs and fields, real (anonymised) results from Western Regionals 2026 and the Stellenbosch Residence League, and a made-up Cape Town Mixed League with practices, a hat and an AGM. **Every player name in the demo is invented.**
 
-1. Start the dev server as above (`npx expo start --lan`, from `mobile/`).
-2. On **the same computer**, open **http://localhost:8081** in **Chrome, Edge or Brave**.
+1. **First run:** the welcome flow asks who you are, your team and your region. Pick **Chilli Legends** to see a busy week.
+2. **Home:** your week (games, practices, pickups, hats, meetings) with a type icon on the left, news, and recent results.
+3. **Score a game:** Home → **Score a game**. Try **Lite** tracking: disc flip, pick a line, PULL, tap the scorer. Undo works all the way back. End it to see the report.
+4. **My schedule:** Me → **My schedule**. Going / Late / Can't on practices and fixtures.
+5. **Hats:** Hub → **Hat tournaments** → the Clifton Beach Hat. Sign up, then look at the drawn Winter Hat for the result.
+6. **Teams → Players:** search someone and tap the star to follow them.
+7. **Try other roles:** Me → Settings → **Access level** → *Try a level on this phone* (Player, Scorekeeper, Team staff, Coordinator, Admin). This switch only exists while signed out. Signed in, the server decides your level.
+   - As **Team staff** on a team page: practices, the register, readiness, exports.
+   - As **Coordinator**: Games → **Tournaments & leagues** (round robin, Swiss, playoffs), **Set up a hat** (payments, the draw), calendar and announcements.
 
-Notes:
-- It must be `localhost` (not the `192.168…` address): browsers only allow the in-browser database on `localhost` or https.
-- **Safari** isn't working yet (the in-browser database doesn't start in our tests); use a Chromium browser for now.
-- The browser keeps its own data, separate from your phone, like a second device. **Me → Go online** syncs them.
-- Notifications are phone-only.
+## What's in it
 
-## Playing around: what to try
-
-The app starts with the SA clubs, fields, the competitive calendar and two **sample teams** (Sample Light, Sample Dark) with made-up players, so you can score a game straight away. Everything is saved on the phone and works offline.
-
-**Pick who you are and what you can do.** Tap the person icon at the top right of Home (that's **Me**):
-- **Which player are you?** Pick yourself, or add yourself to a team. Your teams, schedule and stats follow from this.
-- **Try a level on this phone:** switch between **Player, Scorekeeper, Team staff, Coordinator and Admin** to see what each can do. This is only for testing. Once you sign in, your level comes from the server.
-
-**Things worth trying:**
-
-| Area | Where |
+| Area | Highlights |
 | --- | --- |
-| Score a game (Lite, Standard or Full tracking), lines with fitness, F1/F2/M1/M2 ratio, timeouts with the big countdown, injury subs | Home → **Score a game** |
-| Game reports, share cards, PDF and image report packs | Any finished game → **Full report** |
-| Leagues, round robin, Swiss draw, playoffs and brackets, postponements and forfeits | Hub → Calendar → a competition, as **Coordinator** |
-| Teams and clubs with several teams (Mixed, Open, Women's…) | **Teams** tab → **Add** |
-| Schedule practices, "are you coming?" (Going / Late / Can't), take the register, attendance ranking | A team page, as **Team staff** |
-| My schedule, accreditation, membership numbers, self-rating, fitness tests | **Me** |
-| Ready to play (accreditation + SAFDA + region), WhatsApp follow-ups, testing day, CSV exports | A team page → **Ready to play & development**, as **Team staff** |
-| Paid-up list upload, form & payment links, bug/idea inbox | **Me → Admin**, as **Coordinator** or **Admin** |
-| Pickups by weekday, fields, rules, info hub | **Hub** tab, and Home |
-| Notifications (reminders, quiet hours) | **Me → Notifications**: use **Send me a test** |
-| Report a bug or an idea | **Me → Report a bug or suggest an idea** |
+| **Scoring** | Lite / Standard / Full tracking, F1/F2/M1/M2 ratio (ABBA), lines with fitness, timeouts and halftime countdowns, injury subs, light results (final score, winner, or none), spirit scores with the WFDF examples |
+| **Reports** | Live stats, game reports, share cards, PDF and image packs, team and player stats, CSV exports |
+| **Competitions** | Leagues and tournaments, round robin, pools, Swiss, playoff brackets, postponements, forfeits, standings |
+| **Teams** | Clubs with several teams, join requests approved by staff, roles, practices with RSVP and register, attendance, readiness (accreditation, SAFDA and regional standing) |
+| **Community** | Pickups by weekday, hat tournaments (sign-up, payment link or EFT with proof of payment, balanced draw), calendar with AGMs and RSVPs, announcements, links, fields |
+| **You** | My schedule, ultimate log (games, practices, pickups, gym, physio), check-ins, shout-outs, self-rating every 6 months, fitness tests, accreditation reminders, following teams and players |
+| **Privacy** | Download my data, fix or delete requests, clear rules about who sees what |
 
-**Good to know in Expo Go**
-- **Notifications:** reminders scheduled by the phone itself work (game reminders, check-ins, practice reminders, accreditation expiry). Pushes sent *from the server* when the app is closed need the installed app (APK), not Expo Go.
-- **Going online is optional.** **Me → Go online** creates an account and syncs to the shared database, so several phones see the same teams and games. Without it, everything stays on that phone.
-- **The spectator live link** is built but not hosted yet, so the broadcast button on the scoring screen says "coming soon".
+## How it's built
 
----
+```
+Phone (Expo / React Native)                Supabase (London)
+┌───────────────────────────┐   sync    ┌──────────────────────────┐
+│ Screens (Expo Router)     │ ───────▶  │ Postgres + row-level     │
+│ SQLite: the source of     │  outbox   │ security on every table  │
+│ truth, works offline      │ ◀───────  │ (who may read / write)   │
+└───────────────────────────┘   pull    └──────────────────────────┘
+```
 
-## How it's put together
+- **Offline-first.** Every write goes to SQLite on the phone. Triggers queue it in an outbox, and sync pushes it when online, then pulls what changed (`mobile/src/db/sync.ts`).
+- **Versioned migrations** on both sides: `mobile/src/db/schema.ts` (PRAGMA user_version) and `supabase/migrations/`.
+- **Pure TypeScript domain logic** (game engine, stats, formats, the hat draw) in `mobile/src/domain/`, with no React, so it's easy to test.
+- **Shared seed IDs** (`md5('kind:name')`), so starter content matches across phones and the server.
 
 | Path | What |
 | --- | --- |
-| `mobile/` | The Expo (React Native) app: see `mobile/README.md` |
 | `mobile/src/app/` | Screens (Expo Router: every file is a screen) |
-| `mobile/src/db/` | On-phone SQLite database: migrations, queries, sync with the server |
-| `mobile/src/domain/` | Game engine, stats, rules, formats, reports: plain TypeScript |
-| `supabase/migrations/` | The shared online database (Supabase, London region): tables and row-level security |
-| `web/live/` | Spectator page that follows a game live (not hosted yet) |
-| `docs/data-model.md` | How the data, permissions, fixtures and formats work |
+| `mobile/src/db/` | SQLite schema, queries, sync, seed and demo content |
+| `mobile/src/domain/` | Game engine, stats, rules, formats, hats, notifications planning |
+| `mobile/src/content/` | Static content: clubs, links, the in-app guide, spirit examples |
+| `supabase/migrations/` | Server tables, row-level security, functions |
+| `tools/demo/` | Builds the anonymised demo content from Stall Count exports (exports never committed) |
+| `docs/data-model.md` | Data, permissions, fixtures and formats in more depth |
 
-**Before committing:**
+**Before committing:** `cd mobile && npx tsc --noEmit && npx eslint src`
 
-```bash
-cd mobile
-npx tsc --noEmit     # type check
-npx eslint src       # lint
-```
+## Known gaps
 
-### Online database (maintainers only)
+- **Safari** (web) doesn't start the in-browser database yet. Use a Chromium browser.
+- **Pushes when the app is closed** need an installed build (APK). Expo Go only does on-phone reminders.
+- **The spectator live link** (`web/live/`) is built but not hosted.
+- **No automated test runner in the repo yet.** The domain and database logic has been tested with scripts outside the repo. Moving them in is a good first task.
 
-The Supabase project is `sa-ultimate` (ref `fcsdtbvcvlmspjcfnfto`; the name is from before the rename and only shows in the Supabase dashboard). The app only contains the **publishable** key, which is safe to ship because row-level security decides what anyone can read or write. Database changes go in a new file in `supabase/migrations/` and are applied with:
+## Feedback
 
-```bash
-npx supabase db push -p "$SUPABASE_DB_PASSWORD"
-```
+In the app: Me → **Report a bug or suggest an idea**. It goes straight to the admins' inbox. GitHub issues work too.
 
-**Backups:** every night at 02:30 an encrypted copy of the database goes to the private repo `ubuntu-ultimate-backups` (separate on purpose, so code collaborators can't reach the backup login). Its README explains how to check them and how to restore. Opening a backup needs the private backup key, which is kept outside git.
+---
 
-The database password lives only in `.env.local` at the repo root. That file is git-ignored: **never commit it**, and never put the password or any secret key in the app.
+<details>
+<summary>Maintainers: database, backups and data rules</summary>
 
-## Data and privacy
+- **Supabase project** `sa-ultimate` (ref `fcsdtbvcvlmspjcfnfto`, London). The app only holds the **publishable** key, which is safe because row-level security decides access. New database changes go in a new file in `supabase/migrations/`, applied with `npx supabase db push -p "$SUPABASE_DB_PASSWORD"`.
+- **The database password** lives only in the git-ignored `.env.local` at the repo root. Never commit it or put any secret key in the app.
+- **Backups:** a nightly encrypted copy to the private repo `ubuntu-ultimate-backups`, kept separate so code collaborators can't reach the backup login. The workflow is ready and needs a one-off GitHub permission to be switched on. Opening a backup needs the private key, kept outside git.
+- **Personal data (POPIA):** Stall Count exports and CSVs are git-ignored. Never commit real names. Demo content uses invented names only.
+- **First sign-in becomes admin** (`claim_first_admin`). After that, admins hand out levels.
 
-- Stall Count exports, screenshots and CSVs (`*.zip`, `*.csv`) are git-ignored because they contain personal information (POPIA). Don't commit them.
-- In the app, emails are never shown to anyone. Under-18s appear as first name + surname initial. Phone numbers, membership numbers, accreditation, ratings and fitness results are visible only to the player, their team staff and coordinators.
+</details>
