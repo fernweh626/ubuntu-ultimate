@@ -1156,6 +1156,11 @@ const MIGRATIONS: string[] = [
   ALTER TABLE registration ADD COLUMN emergency_name TEXT;
   ALTER TABLE registration ADD COLUMN emergency_phone TEXT;
   `,
+  // v22: who may edit a pickup: whoever added it, up to 10 people they pick (JSON array), and admins.
+  `
+  ALTER TABLE pickup_spot ADD COLUMN created_by_person TEXT;
+  ALTER TABLE pickup_spot ADD COLUMN editor_ids TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

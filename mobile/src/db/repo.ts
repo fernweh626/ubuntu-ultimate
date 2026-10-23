@@ -1352,14 +1352,14 @@ export function savePickup(db: SQLiteDatabase, p: Omit<PickupSpot, 'id' | 'is_sa
     const ts = now();
     await db.runAsync(
       `INSERT INTO pickup_spot (id, name, region, city, area, day_of_week, start_time, end_time, venue_text, map_url,
-         contact_name, contact_phone, whatsapp_url, level, cost, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         contact_name, contact_phone, whatsapp_url, level, cost, notes, created_by_person, editor_ids, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, region = excluded.region, city = excluded.city,
          area = excluded.area, day_of_week = excluded.day_of_week, start_time = excluded.start_time,
          end_time = excluded.end_time, venue_text = excluded.venue_text, map_url = excluded.map_url,
          contact_name = excluded.contact_name, contact_phone = excluded.contact_phone,
          whatsapp_url = excluded.whatsapp_url, level = excluded.level, cost = excluded.cost, notes = excluded.notes,
-         is_sample = 0, updated_at = excluded.updated_at`,
+         editor_ids = excluded.editor_ids, is_sample = 0, updated_at = excluded.updated_at`,
       id,
       p.name.trim(),
       p.region,
@@ -1376,6 +1376,8 @@ export function savePickup(db: SQLiteDatabase, p: Omit<PickupSpot, 'id' | 'is_sa
       p.level,
       p.cost,
       p.notes,
+      p.created_by_person ?? (await getMeId(db)),
+      p.editor_ids ?? null,
       ts,
       ts,
     );

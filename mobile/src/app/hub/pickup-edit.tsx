@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 
 import { REGIONS } from '@/content/hub';
-import { deletePickup, getPickup, savePickup } from '@/db/repo';
+import { useData } from '@/db/live';
+import { deletePickup, getAccess, getPickup, listPeople, savePickup } from '@/db/repo';
+import { canChoosePickupEditors, canEditPickup, MAX_PICKUP_EDITORS, pickupEditors } from '@/domain/permissions';
 import type { PickupSpot } from '@/db/types';
 import { DAYS } from '@/domain/format';
 import { Button, Choice, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
@@ -34,6 +36,10 @@ export default function PickupEdit() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const db = useSQLiteContext();
   const [f, setF] = useState<Form>(EMPTY);
+  const access = useData(getAccess);
+  const people = useData(listPeople) ?? [];
+  const [q, setQ] = useState('');
+  const editors = pickupEditors(f);
 
   useEffect(() => {
     if (id) getPickup(db, id).then((p) => p && setF(p));
@@ -43,6 +49,7 @@ export default function PickupEdit() {
   const text = (k: keyof Form) => (v: string) => set(k, (v || null) as never);
 
   async function save() {
+    if (!id && !access?.meId) return Alert.alert('Pick who you are first', 'Tap the person button at the top of Home, so the pickup knows who added it.');
     if (!f.name.trim() || !f.city.trim()) {
       Alert.alert('Add a name and a city');
       return;
@@ -69,6 +76,22 @@ export default function PickupEdit() {
       },
     ]);
   }
+
+  if (id && access && f.name && !canEditPickup(f, access.level, access.meId)) {
+    return (
+      <>
+        <Stack.Screen options={{ title: 'Edit pickup' }} />
+        <Screen edges={[]}>
+          <T v="bodyStrong">Only the organisers can edit this pickup</T>
+          <T v="small">Whoever added it, the people they chose, and admins. Spotted something wrong? Message the contact on the pickup, or report it in Me → Report a bug.</T>
+        </Screen>
+      </>
+    );
+  }
+  const chooser = !id || (access ? canChoosePickupEditors(f, access.level, access.meId) : false);
+  const s = q.trim().toLowerCase();
+  const found = s.length >= 2 ? people.filter((p) => !editors.includes(p.id) && p.id !== (f.created_by_person ?? access?.meId) && `${p.first_name} ${p.last_name}`.toLowerCase().includes(s)).slice(0, 6) : [];
+  const setEditors = (ids: string[]) => set('editor_ids', ids.length ? JSON.stringify(ids) : null);
 
   return (
     <>
@@ -129,8 +152,34 @@ export default function PickupEdit() {
         </Section>
         <Field label="Cost (optional)" value={f.cost ?? ''} onChangeText={text('cost')} placeholder="Free, R20…" />
         <Field label="Notes" value={f.notes ?? ''} onChangeText={text('notes')} multiline placeholder="Bring a light and a dark shirt…" />
+        {chooser ? (
+          <Section title={`Who else can edit · ${editors.length}/${MAX_PICKUP_EDITORS}`}>
+            <T v="small">You can always edit the pickups you add. Pick up to {MAX_PICKUP_EDITORS} others to help keep it up to date (admins can too).</T>
+            {editors.map((pid) => {
+              const p = people.find((x) => x.id === pid);
+              return (
+                <Choice key={pid} label={p ? `${p.first_name} ${p.last_name}`.trim() : 'Someone'} sublabel="Tap to remove" selected onPress={() => setEditors(editors.filter((x) => x !== pid))} style={{ alignItems: 'flex-start' }} />
+              );
+            })}
+            {editors.length < MAX_PICKUP_EDITORS ? (
+              <>
+                <Field label="Add an editor" value={q} onChangeText={setQ} placeholder="Search by name" />
+                {found.map((p) => (
+                  <Choice
+                    key={p.id}
+                    label={`${p.first_name} ${p.last_name}`.trim()}
+                    onPress={() => {
+                      setEditors([...editors, p.id]);
+                      setQ('');
+                    }}
+                    style={{ alignItems: 'flex-start' }}
+                  />
+                ))}
+              </>
+            ) : null}
+          </Section>
+        ) : null}
         {id ? <Button label="Delete pickup" kind="danger" icon="delete-outline" onPress={remove} /> : null}
-        <T v="small">Pickups are saved on this phone for now. Sharing them with everyone comes with the online version.</T>
       </Screen>
     </>
   );

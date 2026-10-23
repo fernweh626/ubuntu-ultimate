@@ -209,6 +209,10 @@ export type PickupSpot = {
   cost: string | null;
   notes: string | null;
   is_sample: number;
+  /** Who added it; they and up to 10 editors (and admins) can change it. */
+  created_by_person?: string | null;
+  /** JSON array of person ids. */
+  editor_ids?: string | null;
 };
 
 export type CalendarEntry = {

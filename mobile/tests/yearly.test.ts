@@ -7,7 +7,7 @@ import { detectEvents } from '@/notify/events';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x));
 (async () => {
   const db: any = open(); await migrate(db); await seedIfEmpty(db);
-  ok('v17', (await db.getFirstAsync('PRAGMA user_version')).user_version === 21);
+  ok('v17', (await db.getFirstAsync('PRAGMA user_version')).user_version === 22);
   const now = new Date('2026-10-24T10:00:00');
   let plan = await planNotifications(db, now);
   ok('fees reminder 1 Feb 2027 09:00 even without picking yourself', plan.some((p) => p.key === 'fees:2027' && p.at.getMonth() === 1 && p.at.getDate() === 1 && p.at.getHours() === 9));

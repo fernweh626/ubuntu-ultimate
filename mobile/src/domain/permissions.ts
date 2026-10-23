@@ -61,3 +61,23 @@ export function grantSummary(level: Level) {
       return 'Players can’t give access to anyone.';
   }
 }
+
+/** Pickups: whoever added it, the (up to 10) editors they picked, and admins. */
+export const MAX_PICKUP_EDITORS = 10;
+export function pickupEditors(p: { editor_ids?: string | null }): string[] {
+  try {
+    const v = p.editor_ids ? JSON.parse(p.editor_ids) : [];
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+export function canEditPickup(p: { created_by_person?: string | null; editor_ids?: string | null; is_sample?: number }, level: Level, meId: string | null) {
+  if (level === 'admin') return true;
+  if (!meId) return false;
+  return p.created_by_person === meId || pickupEditors(p).includes(meId);
+}
+/** Only whoever added it (and admins) choose the editors. */
+export function canChoosePickupEditors(p: { created_by_person?: string | null }, level: Level, meId: string | null) {
+  return level === 'admin' || (!!meId && p.created_by_person === meId);
+}

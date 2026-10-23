@@ -5,7 +5,8 @@ import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { useData } from '@/db/live';
-import { listFollows, listPickups, setFollowing } from '@/db/repo';
+import { getAccess, listFollows, listPickups, setFollowing } from '@/db/repo';
+import { canEditPickup } from '@/domain/permissions';
 import { DAYS, DAYS_LONG, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, Choice, EmptyState, IconButton, Screen, T } from '@/ui/components';
 import { RegionChips, useRegionFilter } from '@/ui/region-filter';
@@ -21,6 +22,7 @@ export default function Pickups() {
   const db = useSQLiteContext();
   const pickups = useData(listPickups);
   const going = useData(async (d) => new Set((await listFollows(d)).filter((f) => f.kind === 'pickup').map((f) => f.target_id))) ?? new Set<string>();
+  const access = useData(getAccess);
   const [day, setDay] = useState(weekdayIndex());
   const [city, setCity] = useState<string>('all');
   const region = useRegionFilter();
@@ -143,7 +145,9 @@ export default function Pickups() {
                       onPress={() => Linking.openURL(p.map_url || mapsUrl([p.venue_text, p.area, p.city].filter(Boolean).join(', ')))}
                     />
                     {p.contact_phone ? <Button label="Call" icon="phone" onPress={() => Linking.openURL(`tel:${p.contact_phone}`)} /> : null}
-                    <Button label="Edit" icon="pencil" kind="ghost" onPress={() => router.push({ pathname: '/hub/pickup-edit', params: { id: p.id } })} />
+                    {access && canEditPickup(p, access.level, access.meId) ? (
+                      <Button label="Edit" icon="pencil" kind="ghost" onPress={() => router.push({ pathname: '/hub/pickup-edit', params: { id: p.id } })} />
+                    ) : null}
                   </View>
                 </Card>
               ))

@@ -7,7 +7,7 @@ import { rulesFor } from '@/domain/rules';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x));
 (async () => {
   const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db);
-  ok('v9', (await db.getFirstAsync('PRAGMA user_version')).user_version === 21);
+  ok('v9', (await db.getFirstAsync('PRAGMA user_version')).user_version === 22);
   const ts = await repo.listTeams(db); const T = (n: string) => ts.find((t) => t.name === n)!;
   const chilli = T('Chilli Legends'), ghost = T('Ghost'), catch22 = T('Catch 22'), nomad = T('Nomad'), sky = T('Skyveld');
   const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'B', gender: 'W' }, { teamId: chilli.id });
