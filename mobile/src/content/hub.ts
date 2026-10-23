@@ -190,7 +190,7 @@ export const SPIRIT_CATEGORIES = [
   { key: 'communication', label: 'Communication' },
 ] as const;
 
-export const SPIRIT_SCALE = ['Poor', 'Not good', 'Good', 'Very good', 'Excellent'];
+export const SPIRIT_SCALE = ['Bad', 'Not good', 'Good', 'Very good', 'Excellent'];
 
 export const RULES_URL = 'https://rules.wfdf.sport';
 
