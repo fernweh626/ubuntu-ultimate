@@ -3,7 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 
-import { REGIONS } from '@/content/hub';
+import { LINK_KINDS, REGIONS } from '@/content/hub';
 import { deleteOrgLink, orgLinks, saveOrgLink, type OrgLink } from '@/db/development';
 import { useData } from '@/db/live';
 import { Button, Card, Choice, Field, IconButton, Screen, Sheet, T } from '@/ui/components';
@@ -20,7 +20,7 @@ export default function Links() {
     <>
       <Stack.Screen options={{ title: 'Forms & payment links', headerRight: () => <IconButton icon="plus" label="Add link" onPress={() => setEdit({ region_code: null, label: '', url: '' })} /> }} />
       <Screen edges={[]}>
-        <T v="small">Players see SAFDA’s links plus their own region’s, under Me → Membership numbers.</T>
+        <T v="small">Everyone sees these in Hub → Merch & links (their region first), and registration links under Me → Membership numbers.</T>
         {groups.map((g) => {
           const mine = links.filter((l) => l.region_code === g.code);
           return (
@@ -50,6 +50,11 @@ export default function Links() {
                 <Choice key={g.code ?? 'safda'} label={g.name} selected={(edit.region_code ?? null) === g.code} onPress={() => setEdit({ ...edit, region_code: g.code })} style={{ minHeight: 40, paddingHorizontal: 12 }} />
               ))}
             </ScrollView>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+              {LINK_KINDS.map((k) => (
+                <Choice key={k.kind} label={k.title} selected={(edit.kind ?? 'website') === k.kind} onPress={() => setEdit({ ...edit, kind: k.kind })} style={{ minHeight: 36, paddingHorizontal: 10 }} />
+              ))}
+            </View>
             <Field label="What is it?" value={edit.label ?? ''} onChangeText={(v) => setEdit({ ...edit, label: v })} placeholder="e.g. 2027 registration & fees" />
             <Field label="Link" value={edit.url ?? ''} onChangeText={(v) => setEdit({ ...edit, url: v })} autoCapitalize="none" keyboardType="url" placeholder="https://…" />
             <Button
@@ -57,8 +62,8 @@ export default function Links() {
               kind="primary"
               onPress={async () => {
                 const url = (edit.url ?? '').trim();
-                if (!edit.label?.trim() || !/^https?:\/\//i.test(url)) return Alert.alert('Add a name and a link starting with https://');
-                await saveOrgLink(db, { id: edit.id, region_code: edit.region_code ?? null, label: edit.label.trim(), url });
+                if (!edit.label?.trim() || !/^(https?:\/\/|mailto:)/i.test(url)) return Alert.alert('Add a name and a link starting with https:// (or mailto: for email)');
+                await saveOrgLink(db, { id: edit.id, region_code: edit.region_code ?? null, kind: edit.kind ?? 'website', label: edit.label.trim(), url });
                 setEdit(null);
               }}
             />

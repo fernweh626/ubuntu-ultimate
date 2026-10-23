@@ -6,13 +6,14 @@ import { MeButton } from '@/ui/me-button';
 import { colors, space } from '@/ui/theme';
 
 const TILES: { title: string; body: string; icon: IconName; href: Href }[] = [
+  { title: 'Merch & links', body: 'Kit and discs, join your association, pickup groups, socials', icon: 'tshirt-crew-outline', href: '/hub/links' },
   { title: 'Find pickup', body: 'Flick through the week to find games near you', icon: 'map-marker-radius', href: '/hub/pickups' },
   { title: 'Fields', body: 'Saved fields, nearest first — add the one you’re on', icon: 'map-marker-multiple', href: '/hub/fields' },
   { title: 'Competitive calendar', body: 'Nationals, regionals, leagues and big tournaments', icon: 'calendar-star', href: '/hub/calendar' },
   { title: 'Teams & contacts', body: 'Every club by region, and how to reach them', icon: 'account-group', href: '/teams' },
   { title: 'Rules quick reference', body: 'The essentials, in plain words', icon: 'book-open-variant', href: '/hub/rules' },
   { title: 'What is ultimate?', body: 'New here? Start with this', icon: 'disc', href: '/hub/about' },
-  { title: 'Who runs the sport', body: 'WFDF, AAFDF, SAFDA and the regions', icon: 'sitemap', href: '/hub/governance' },
+  { title: 'Who runs the sport', body: 'WFDF, AAFDF, SAFDA and its four regions', icon: 'sitemap', href: '/hub/governance' },
 ];
 
 export default function Hub() {

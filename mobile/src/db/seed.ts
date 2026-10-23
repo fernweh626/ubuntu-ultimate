@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { SEED_CLUBS } from '@/content/hub';
+import { CONTENT_VERSION, pickupSeedKey, SEED_CLUBS, STARTER_LINKS, STARTER_PICKUPS } from '@/content/hub';
 
 import { now, uuid } from './repo';
 import { seedId } from './seed-ids';
@@ -84,12 +84,6 @@ const CALENDAR: {
   { name: 'All-Africa Club Championships', kind: 'tournament', level: 'international', region: null, location: null, start: null, end: null, month: 'TBC', status: 'tbc', notes: 'The WFDF-sanctioned continental club event.' },
 ];
 
-const PICKUPS: [string, string, string, number, string, string][] = [
-  // name, city, region, day (Mon=0), start, notes
-  ['Sample: weekday pickup', 'Cape Town', 'western', 1, '18:00', 'Sample entry — edit with the real venue, time and WhatsApp link, or delete it.'],
-  ['Sample: Saturday social', 'Johannesburg', 'northern', 5, '09:00', 'Sample entry — edit or delete.'],
-  ['Sample: beach ultimate', 'Durban', 'kzn', 6, '15:00', 'Sample entry — edit or delete.'],
-];
 
 export async function seedIfEmpty(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM team`);
@@ -185,21 +179,57 @@ export async function seedIfEmpty(db: SQLiteDatabase) {
         ts,
       );
     }
-    for (const [name, city, region, day, start, notes] of PICKUPS) {
-      await db.runAsync(
-        `INSERT INTO pickup_spot (id, name, region, city, day_of_week, start_time, notes, is_sample, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-        uuid(),
-        name,
-        region,
-        city,
-        day,
-        start,
-        notes,
-        ts,
-        ts,
-      );
-    }
   });
   await db.runAsync(`DELETE FROM app_meta WHERE key = 'sync_pulling'`);
+}
+
+/**
+ * Real content from the associations' sites (pickups, links). Runs every start-up but only does
+ * work when CONTENT_VERSION goes up, so existing phones get new content too. Ids are seed ids, so the
+ * rows match the server's copy (supabase/migrations/*_starter_content.sql) and never sync as edits.
+ */
+export async function ensureStarterContent(db: SQLiteDatabase) {
+  const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'content_version'`);
+  if (Number(row?.value ?? 0) >= CONTENT_VERSION) return;
+  const ts = now();
+  await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sync_pulling', '1')`);
+  try {
+    await db.withTransactionAsync(async () => {
+      // The made-up sample pickups are replaced by real ones.
+      await db.runAsync(`DELETE FROM pickup_spot WHERE is_sample = 1`);
+      for (const p of STARTER_PICKUPS) {
+        await db.runAsync(
+          `INSERT OR IGNORE INTO pickup_spot (id, name, region, city, area, day_of_week, start_time, venue_text, whatsapp_url, level, cost, notes, is_sample, created_at, updated_at)
+           VALUES (?, ?, 'western', ?, ?, ?, ?, ?, ?, 'all', 'Free', ?, 0, ?, ?)`,
+          await seedId('pickup', pickupSeedKey(p)),
+          p.name,
+          p.city,
+          p.area,
+          p.day,
+          p.start,
+          p.venue,
+          p.whatsapp,
+          p.notes,
+          ts,
+          ts,
+        );
+      }
+      for (const [i, l] of STARTER_LINKS.entries()) {
+        await db.runAsync(
+          `INSERT OR IGNORE INTO org_link (id, region_code, kind, label, url, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          await seedId('link', l.url),
+          l.region,
+          l.kind,
+          l.label,
+          l.url,
+          i,
+          ts,
+          ts,
+        );
+      }
+      await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('content_version', ?)`, String(CONTENT_VERSION));
+    });
+  } finally {
+    await db.runAsync(`DELETE FROM app_meta WHERE key = 'sync_pulling'`);
+  }
 }

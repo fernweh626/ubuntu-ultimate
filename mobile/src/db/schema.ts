@@ -949,6 +949,10 @@ const MIGRATIONS: string[] = [
     WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
     BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('club_staff', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
   `,
+  // v13: what kind of link (merch, registration, community…), so the Hub can group them.
+  `
+  ALTER TABLE org_link ADD COLUMN kind TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

@@ -352,19 +352,19 @@ export async function readiness(db: SQLiteDatabase, teamId: string) {
   return rows;
 }
 
-export type OrgLink = { id: string; region_code: string | null; label: string; url: string; sort: number };
+export type OrgLink = { id: string; region_code: string | null; kind: string | null; label: string; url: string; sort: number };
 
 export function orgLinks(db: SQLiteDatabase) {
   return db.getAllAsync<OrgLink>(`SELECT * FROM org_link WHERE deleted_at IS NULL ORDER BY region_code IS NOT NULL, region_code, sort, label`);
 }
 
-export function saveOrgLink(db: SQLiteDatabase, l: { id?: string; region_code: string | null; label: string; url: string }) {
+export function saveOrgLink(db: SQLiteDatabase, l: { id?: string; region_code: string | null; kind: string | null; label: string; url: string }) {
   return write(db, async () => {
     const ts = now();
     if (l.id) {
-      await db.runAsync(`UPDATE org_link SET region_code = ?, label = ?, url = ?, updated_at = ? WHERE id = ?`, l.region_code, l.label, l.url, ts, l.id);
+      await db.runAsync(`UPDATE org_link SET region_code = ?, kind = ?, label = ?, url = ?, updated_at = ? WHERE id = ?`, l.region_code, l.kind, l.label, l.url, ts, l.id);
     } else {
-      await db.runAsync(`INSERT INTO org_link (id, region_code, label, url, sort, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)`, uuid(), l.region_code, l.label, l.url, ts, ts);
+      await db.runAsync(`INSERT INTO org_link (id, region_code, kind, label, url, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1000, ?, ?)`, uuid(), l.region_code, l.kind, l.label, l.url, ts, ts);
     }
   });
 }

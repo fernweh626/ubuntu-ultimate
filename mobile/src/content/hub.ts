@@ -1,6 +1,7 @@
 // Static info-hub content. Club and region lists come from the community hub in the current Stall Count
 // app (Oct 2026). Contact details are filled in per team in the app.
 
+// SAFDA's four regions: Northern, Eastern (KwaZulu-Natal), Southern (Eastern Cape) and Western.
 export type Region = { code: string; name: string; body: string; area: string };
 
 export const REGIONS: Region[] = [
@@ -18,13 +19,13 @@ export const REGIONS: Region[] = [
   },
   {
     code: 'kzn',
-    name: 'KwaZulu-Natal',
+    name: 'Eastern (KZN)',
     body: 'KZN',
     area: 'Durban, Pietermaritzburg and the Midlands, with several long-standing competitive clubs.',
   },
   {
     code: 'eastern-cape',
-    name: 'Eastern Cape',
+    name: 'Southern (EC)',
     body: 'EC',
     area: 'Gqeberha, East London and surrounds — a developing region with a growing set of teams.',
   },
@@ -192,3 +193,75 @@ export const SPIRIT_CATEGORIES = [
 export const SPIRIT_SCALE = ['Poor', 'Not good', 'Good', 'Very good', 'Excellent'];
 
 export const RULES_URL = 'https://rules.wfdf.sport';
+
+/*
+ * Real starting content from the associations' own sites (checked Oct 2026):
+ * capetownultimate.co.za (CTFDA, Western) and safda.org.za (SAFDA, national).
+ * Other regions' links get added by coordinators in the app (Me → Admin → Forms & payment links).
+ * Bump CONTENT_VERSION when this changes so existing phones pick it up.
+ */
+export const CONTENT_VERSION = 1;
+
+export type LinkKind = 'merch' | 'register' | 'website' | 'community' | 'social' | 'calendar' | 'contact' | 'policy' | 'rules';
+
+export const LINK_KINDS: { kind: LinkKind; title: string; icon: string }[] = [
+  { kind: 'merch', title: 'Merch & discs', icon: 'tshirt-crew-outline' },
+  { kind: 'register', title: 'Join, register & pay', icon: 'card-account-details-outline' },
+  { kind: 'community', title: 'Pickup & community groups', icon: 'whatsapp' },
+  { kind: 'calendar', title: 'Leagues, events & standings', icon: 'calendar-star' },
+  { kind: 'website', title: 'Websites', icon: 'web' },
+  { kind: 'social', title: 'Follow', icon: 'instagram' },
+  { kind: 'contact', title: 'Contact & committee', icon: 'email-outline' },
+  { kind: 'rules', title: 'Rules & accreditation', icon: 'book-open-variant' },
+  { kind: 'policy', title: 'Policies & guidelines', icon: 'shield-check-outline' },
+];
+
+/** region_code null = national (SAFDA / WFDF). */
+export const STARTER_LINKS: { region: string | null; kind: LinkKind; label: string; url: string }[] = [
+  // Western · CTFDA
+  { region: 'western', kind: 'merch', label: 'CTFDA merch: discs, Cape Town Ultimate & club kit', url: 'https://www.capetownultimate.co.za/contact/merch' },
+  { region: 'western', kind: 'merch', label: 'Order Cape Town Ultimate kit', url: 'https://forms.gle/8zNjKxduqwJVDVz47' },
+  { region: 'western', kind: 'register', label: 'CTFDA membership registration', url: 'https://forms.gle/rqDCVoVC5RP317tV6' },
+  { region: 'western', kind: 'community', label: 'Cape Town pickup WhatsApp community', url: 'https://chat.whatsapp.com/H9zDUGxsezM8nDM2IBzlOI' },
+  { region: 'western', kind: 'calendar', label: 'Cape Town league & tournament calendar', url: 'https://www.capetownultimate.co.za/league/team-schedules' },
+  { region: 'western', kind: 'calendar', label: 'CTFDA announcements', url: 'https://www.capetownultimate.co.za/contact/announcements' },
+  { region: 'western', kind: 'website', label: 'Cape Town Ultimate (CTFDA)', url: 'https://www.capetownultimate.co.za/' },
+  { region: 'western', kind: 'website', label: 'Cape Town clubs & teams', url: 'https://www.capetownultimate.co.za/league/clubs' },
+  { region: 'western', kind: 'social', label: 'Instagram @capetownultimate', url: 'https://www.instagram.com/capetownultimate/' },
+  { region: 'western', kind: 'social', label: 'Facebook: Cape Town Ultimate', url: 'https://www.facebook.com/capetownultimate/' },
+  { region: 'western', kind: 'contact', label: 'Email CTFDA', url: 'mailto:helloctfda@gmail.com' },
+  { region: 'western', kind: 'contact', label: 'CTFDA committee', url: 'https://www.capetownultimate.co.za/contact/committee' },
+  { region: 'western', kind: 'policy', label: 'CTFDA policies, code of conduct & anti-harassment', url: 'https://www.capetownultimate.co.za/contact/policies-guidelines' },
+  { region: 'western', kind: 'policy', label: 'CTFDA inclusion guidelines', url: 'https://drive.google.com/open?id=1p3uxGXHeD2Wl8N0Hwao5fKE23jF-9bDPYepqDxxdKo4' },
+  { region: 'western', kind: 'policy', label: 'CTFDA constitution', url: 'https://drive.google.com/open?id=1M6J8if-22sOxGus-Ut3syubY3mKEIGZmmNDvSZYT-ho' },
+  { region: 'western', kind: 'website', label: 'Jula iSitya NPO (development)', url: 'https://www.capetownultimate.co.za/what-is-ultimate/development/jula-isitya-npo' },
+  // National · SAFDA & WFDF
+  { region: null, kind: 'website', label: 'SAFDA: South African Flying Disc Association', url: 'https://safda.org.za/' },
+  { region: null, kind: 'calendar', label: 'SAFDA events', url: 'https://safda.org.za/new-safda-events/' },
+  { region: null, kind: 'calendar', label: 'SAFDA standings', url: 'https://safda.org.za/new-standings/' },
+  { region: null, kind: 'calendar', label: 'Road to Nationals', url: 'https://docs.google.com/document/d/1sqGRiItAwXSNKzZOwN4yZy7I7M6ad1Y0newAAg9oRwg/edit' },
+  { region: null, kind: 'website', label: 'SAFDA clubs across the regions', url: 'https://safda.org.za/new-clubs/' },
+  { region: null, kind: 'website', label: 'National teams', url: 'https://safda.org.za/new-national-teams/' },
+  { region: null, kind: 'rules', label: 'WFDF Rules of Ultimate', url: 'https://rules.wfdf.org/' },
+  { region: null, kind: 'rules', label: 'WFDF rules accreditation', url: 'https://rules.wfdf.org/accreditation' },
+  { region: null, kind: 'merch', label: 'Custom discs: Discraft (US)', url: 'https://www.discraft.com/' },
+  { region: null, kind: 'merch', label: 'Custom discs: Eurodisc (UK)', url: 'https://www.eurodisc.biz/en/' },
+];
+
+const CT_PICKUP_GROUP = 'https://chat.whatsapp.com/H9zDUGxsezM8nDM2IBzlOI';
+const NO_STUDS = 'No soccer boots or studs. Confirm on the day in the WhatsApp community.';
+
+/** Cape Town's regular pickups (capetownultimate.co.za/pickup). Day: Monday = 0. Free, all levels, no membership needed. */
+export const STARTER_PICKUPS: { name: string; day: number; start: string; venue: string; area: string; notes: string; whatsapp: string; city: string }[] = [
+  { name: 'Rondebosch pickup', day: 0, start: '17:15', venue: 'Rondebosch Boys’ High sports fields, Oakhurst Ave', area: 'Rondebosch', notes: NO_STUDS },
+  { name: 'Rondebosch pickup', day: 6, start: '15:00', venue: 'Rondebosch Boys’ High sports fields, Oakhurst Ave', area: 'Rondebosch', notes: NO_STUDS },
+  { name: 'Pinelands pickup', day: 3, start: '17:15', venue: 'Scoville Cricket Oval, bottom field', area: 'Pinelands', notes: NO_STUDS },
+  { name: 'Maties pickup', day: 2, start: '17:50', venue: 'Coetzenburg B fields', area: 'Stellenbosch', notes: 'Student-run: quieter in holidays, extra games in exam periods (June, November).' },
+  { name: 'Maties pickup', day: 6, start: '16:00', venue: 'Coetzenburg B fields', area: 'Stellenbosch', notes: 'Student-run: quieter in holidays, extra games in exam periods (June, November).' },
+  { name: 'UCT social', day: 4, start: '17:00', venue: 'Woolsack Cricket Oval, Middle Campus', area: 'UCT', notes: 'Student-run: may be quieter in holidays.' },
+  { name: 'Clifton beach pickup', day: 6, start: '09:00', venue: 'Clifton 1st or 2nd beach (whichever has space)', area: 'Clifton', notes: 'First pull 9–10am, earlier in summer. Barefoot. Details in the WhatsApp community a few days before.' },
+  { name: 'Muizenberg beach pickup', day: 5, start: '09:30', venue: 'Behind the colourful huts', area: 'Muizenberg', notes: 'Park at the water slides. Barefoot. Details in the WhatsApp community a few days before.' },
+  { name: 'Muizenberg beach pickup', day: 6, start: '09:30', venue: 'Behind the colourful huts', area: 'Muizenberg', notes: 'Park at the water slides. Barefoot. Details in the WhatsApp community a few days before.' },
+].map((p) => ({ ...p, whatsapp: CT_PICKUP_GROUP, city: p.area === 'Stellenbosch' ? 'Stellenbosch' : 'Cape Town' }));
+
+export const pickupSeedKey = (p: { name: string; day: number }) => `${p.name}|${p.day}`;

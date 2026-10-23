@@ -14,7 +14,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { migrate } from '@/db/schema';
-import { seedIfEmpty } from '@/db/seed';
+import { ensureStarterContent, seedIfEmpty } from '@/db/seed';
 import { SyncManager } from '@/db/sync-manager';
 import { NotificationManager } from '@/notify/manager';
 import { colors, font } from '@/ui/theme';
@@ -24,6 +24,7 @@ SplashScreen.preventAutoHideAsync();
 async function init(db: SQLiteDatabase) {
   await migrate(db);
   await seedIfEmpty(db);
+  await ensureStarterContent(db);
 }
 
 const theme = {
