@@ -25,6 +25,8 @@ export type Hat = {
   venue_name?: string | null;
   cost: string | null;
   payment_url: string | null;
+  eft_details?: string | null;
+  pop_contact?: string | null;
   details: string | null;
   rules_json: string | null;
   hat_status: 'signups' | 'drawn' | 'done' | null;
@@ -42,6 +44,8 @@ export type HatInput = {
   venueId: string | null;
   cost: string | null;
   paymentUrl: string | null;
+  eftDetails: string | null;
+  popContact: string | null;
   details: string | null;
   perSide: number;
   gameMinutes: number;
@@ -79,10 +83,11 @@ export function saveHat(db: SQLiteDatabase, i: HatInput) {
     const ts = now();
     await db.runAsync(
       `INSERT INTO event (id, name, kind, level, division, region, location, start_date, end_date, rules_json, is_hat, cost, payment_url, details,
-         start_time, venue_id, hat_status, team_count, created_at, updated_at)
-       VALUES (?, ?, 'tournament', 'social', 'mixed', ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 'signups', ?, ?, ?)
+         start_time, venue_id, hat_status, team_count, eft_details, pop_contact, created_at, updated_at)
+       VALUES (?, ?, 'tournament', 'social', 'mixed', ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 'signups', ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, region = excluded.region, location = excluded.location, start_date = excluded.start_date,
          end_date = excluded.end_date, rules_json = excluded.rules_json, cost = excluded.cost, payment_url = excluded.payment_url, details = excluded.details,
+         eft_details = excluded.eft_details, pop_contact = excluded.pop_contact,
          start_time = excluded.start_time, venue_id = excluded.venue_id, team_count = excluded.team_count, updated_at = excluded.updated_at`,
       id,
       i.name.trim(),
@@ -97,6 +102,8 @@ export function saveHat(db: SQLiteDatabase, i: HatInput) {
       i.startTime,
       i.venueId,
       i.teamCount,
+      i.eftDetails,
+      i.popContact,
       ts,
       ts,
     );

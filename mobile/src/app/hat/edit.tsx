@@ -27,6 +27,8 @@ export default function HatEdit() {
   const [location, setLocation] = useState('');
   const [cost, setCost] = useState('');
   const [payment, setPayment] = useState('');
+  const [eft, setEft] = useState('');
+  const [pop, setPop] = useState('');
   const [details, setDetails] = useState('');
   const [perSide, setPerSide] = useState('7');
   const [minutes, setMinutes] = useState('45');
@@ -49,6 +51,8 @@ export default function HatEdit() {
       setLocation(h.location ?? '');
       setCost(h.cost ?? '');
       setPayment(h.payment_url ?? '');
+      setEft(h.eft_details ?? '');
+      setPop(h.pop_contact ?? '');
       setDetails(h.details ?? '');
       setPerSide(String(r.playersPerSide ?? 7));
       setMinutes(String(r.hardCapMinutes ?? 45));
@@ -74,6 +78,8 @@ export default function HatEdit() {
       venueId,
       cost: cost.trim() || null,
       paymentUrl: payment.trim() || null,
+      eftDetails: eft.trim() || null,
+      popContact: pop.trim() || null,
       details: details.trim() || null,
       perSide: Number(perSide),
       gameMinutes: Math.max(10, Number(minutes) || 45),
@@ -115,7 +121,12 @@ export default function HatEdit() {
         <FieldPicker value={venueId} onChange={setVenueId} />
         <Field label="Or describe where" value={location} onChangeText={setLocation} placeholder="e.g. Clifton 2nd beach" />
         <Field label="Cost" value={cost} onChangeText={setCost} placeholder="e.g. R120, includes a disc" />
-        <Field label="Payment link" value={payment} onChangeText={setPayment} autoCapitalize="none" keyboardType="url" placeholder="SnapScan, Zapper, PayFast or banking-details page" hint="Players tap this to pay, then tick “I’ve paid”. You confirm payments on the hat page." />
+        <Section title="Payment">
+          <T v="small">Use a pay link, EFT details, or both. Players tick “I’ve paid”; you confirm payments on the hat page.</T>
+          <Field label="Pay link (optional)" value={payment} onChangeText={setPayment} autoCapitalize="none" keyboardType="url" placeholder="SnapScan, Zapper, PayFast…" />
+          <Field label="EFT details (optional)" value={eft} onChangeText={setEft} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + HAT'} />
+          <Field label="Send proof of payment to" value={pop} onChangeText={setPop} autoCapitalize="none" placeholder="Email or WhatsApp number" hint="Players get a button that opens WhatsApp or email to you, ready to attach their PoP." />
+        </Section>
         <Section title="Games">
           <T v="smallStrong">Players a side</T>
           <Segmented

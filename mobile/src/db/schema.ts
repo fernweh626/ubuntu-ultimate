@@ -1090,6 +1090,11 @@ const MIGRATIONS: string[] = [
     WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
     BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('event', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
   `,
+  // v18: hats paid by EFT: bank details, and where to send proof of payment (email or WhatsApp number).
+  `
+  ALTER TABLE event ADD COLUMN eft_details TEXT;
+  ALTER TABLE event ADD COLUMN pop_contact TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

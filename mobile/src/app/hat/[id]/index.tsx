@@ -8,6 +8,7 @@ import { useData } from '@/db/live';
 import { getAccess, listGamesForEvent, savePerson } from '@/db/repo';
 import { SKILL_FRESH_DAYS } from '@/domain/hat';
 import { displayName, shortDate } from '@/domain/format';
+import { whatsappLink } from '@/domain/standing';
 import { RATING_SCALE } from '@/domain/development';
 import { parseRules } from '@/domain/rules';
 import { Button, Card, Chip, Choice, Field, IconButton, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
@@ -70,13 +71,34 @@ export default function HatPage() {
           </T>
           {hat.cost ? <T style={{ fontFamily: font.bold, fontSize: 18, color: '#fff' }}>{hat.cost}</T> : null}
           {hat.payment_url ? <Button label="Pay" icon="credit-card-outline" kind="primary" onPress={() => Linking.openURL(hat.payment_url!)} /> : null}
+          {hat.eft_details ? (
+            <View style={{ backgroundColor: colors.nightRaised, borderRadius: 10, padding: space.md, gap: 4 }}>
+              <T style={{ fontFamily: font.bold, fontSize: 12, letterSpacing: 1, color: '#F0A27E' }}>PAY BY EFT</T>
+              <T selectable style={{ color: '#fff', lineHeight: 22 }}>
+                {hat.eft_details}
+              </T>
+            </View>
+          ) : null}
+          {hat.pop_contact ? (
+            <Button
+              label="Send proof of payment"
+              icon={hat.pop_contact.includes('@') ? 'email-outline' : 'whatsapp'}
+              kind="dark"
+              onPress={() => {
+                const me = signups.find((s) => s.person_id === access.meId);
+                const text = `Hi! Proof of payment for ${hat.name}${me ? ` from ${displayName(me)}` : ''}. (Attached.)`;
+                const url = hat.pop_contact!.includes('@') ? `mailto:${hat.pop_contact}?subject=${encodeURIComponent(`PoP: ${hat.name}`)}&body=${encodeURIComponent(text)}` : whatsappLink(hat.pop_contact, text);
+                if (url) Linking.openURL(url);
+              }}
+            />
+          ) : null}
           {hat.details ? <T style={{ color: '#fff' }}>{hat.details}</T> : null}
         </Card>
 
         {myTeamId ? <MyTeam teamId={myTeamId} rows={teams} meId={access.meId} /> : null}
 
         {access.meId ? (
-          <SignupForm key={mine?.id ?? 'new'} eventId={id} meId={access.meId} mine={mine} drawn={drawn} ratingFresh={ratingFresh} hasPayment={!!hat.payment_url} placed={!!myTeamId} />
+          <SignupForm key={mine?.id ?? 'new'} eventId={id} meId={access.meId} mine={mine} drawn={drawn} ratingFresh={ratingFresh} hasPayment={!!hat.payment_url || !!hat.eft_details} placed={!!myTeamId} />
         ) : (
           <Card>
             <T v="small">Pick yourself in Me to sign up.</T>
@@ -228,7 +250,8 @@ function SignupForm({ eventId, meId, mine, drawn, ratingFresh, hasPayment, place
           {needsSkill ? (
             <View style={{ gap: space.xs }}>
               <T v="bodyStrong">How good are you, honestly?</T>
-              <T v="small">You haven’t rated yourself in the last 6 months. Quick one for the draw, or do the full self-rating in Me → My development.</T>
+              <T v="small">You haven’t rated yourself in the last 6 months. Pick a quick number for the draw, or do the full self-rating: once it’s saved, the draw uses it.</T>
+              <Button label="Do the full self-rating" icon="star-half-full" kind="ghost" onPress={() => router.push('/rate')} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
               <View style={{ flexDirection: 'row', gap: 4 }}>
                 {RATING_SCALE.map((label, i) => (
                   <Choice key={label} label={String(i + 1)} selected={skill === i + 1} onPress={() => setSkill(i + 1)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 0 }} />
@@ -237,12 +260,17 @@ function SignupForm({ eventId, meId, mine, drawn, ratingFresh, hasPayment, place
               {skill ? <T v="small">{RATING_SCALE[skill - 1]}</T> : null}
             </View>
           ) : (
-            <T v="small">Your self-rating is recent, so the draw uses it.</T>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+              <T v="small" style={{ flex: 1 }}>
+                Your self-rating is recent, so the draw uses it.
+              </T>
+              <Button label="Update it" kind="ghost" onPress={() => router.push('/rate')} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+            </View>
           )}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <View style={{ flex: 1 }}>
               <T v="bodyStrong">I’ve paid</T>
-              <T v="small">{hasPayment ? 'Pay with the button above first. Only paid players are drawn into teams.' : 'Only paid players are drawn into teams.'}</T>
+              <T v="small">{hasPayment ? 'Pay above first (and send your proof of payment if asked). Only paid players are drawn into teams.' : 'Only paid players are drawn into teams.'}</T>
             </View>
             <Switch value={paid} onValueChange={setPaid} trackColor={{ true: colors.brand }} />
           </View>
