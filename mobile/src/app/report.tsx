@@ -288,7 +288,7 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
       {turnRows.map(([lbl, v]) => (
         <View key={lbl} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ width: 84, fontFamily: font.semibold, fontSize: 12, color: palette('paper').ink }}>{lbl}</Text>
-          <View style={{ width: (v / maxTurn) * 210, height: 12, backgroundColor: color || '#1F6B4A' }} />
+          <View style={{ width: (v / maxTurn) * 210, height: 12, backgroundColor: color || '#B4532C' }} />
           <Text style={{ fontFamily: font.display, fontSize: 16, color: palette('paper').ink }}>{v}</Text>
         </View>
       ))}
@@ -312,7 +312,7 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
         <Headline tone="paper">Who put the disc away</Headline>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <View style={{ width: 10, height: 10, backgroundColor: color || '#1F6B4A' }} />
+            <View style={{ width: 10, height: 10, backgroundColor: color || '#B4532C' }} />
             <Text style={{ fontFamily: font.regular, fontSize: 11, color: palette('paper').muted }}>Goals</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -321,7 +321,7 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
           </View>
         </View>
         {scorers.map((s) => (
-          <SplitBar key={s.personId} tone="paper" label={full(s.personId)} a={s.goals} b={s.assists} max={maxGA} aColor={color || '#1F6B4A'} bColor="#141414" />
+          <SplitBar key={s.personId} tone="paper" label={full(s.personId)} a={s.goals} b={s.assists} max={maxGA} aColor={color || '#B4532C'} bColor="#141414" />
         ))}
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
           <Tile tone="paper" teamColor={color} value={top.goals + top.assists} label={`G + A for ${nm(top.personId)} (${top.goals}G ${top.assists}A)`} />
@@ -449,7 +449,7 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
               <Text numberOfLines={1} style={{ flex: 1, fontFamily: font.semibold, fontSize: 11, color: palette('paper').ink }}>
                 {full(s.personId)}
               </Text>
-              <Text style={{ fontFamily: font.display, fontSize: 13, color: any ? color || '#1F6B4A' : palette('paper').muted }}>
+              <Text style={{ fontFamily: font.display, fontSize: 13, color: any ? color || '#B4532C' : palette('paper').muted }}>
                 {any ? `${s.goals}G ${s.assists}A${s.intercepts ? ` ${s.intercepts}D` : ''}` : '–'}
               </Text>
             </View>
@@ -670,7 +670,7 @@ function eventPages(b: Bundle, nm: (id: string) => string, full: (id: string) =>
       ).map(([title, list, k]) =>
         list.length ? (
           <View key={title} style={{ gap: 3 }}>
-            <Text style={{ fontFamily: font.bold, fontSize: 11, letterSpacing: 1.5, color: '#1F6B4A' }}>{title.toUpperCase()}</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: 11, letterSpacing: 1.5, color: '#B4532C' }}>{title.toUpperCase()}</Text>
             {list.map((p, idx) => (
               <View key={p.personId} style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: idx === 0 ? palette('paper').card : 'transparent', padding: 5 }}>
                 <Text style={{ fontFamily: font.semibold, fontSize: 12, color: palette('paper').ink }}>

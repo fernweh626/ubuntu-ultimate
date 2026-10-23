@@ -79,13 +79,16 @@ export function Screen({
     <View style={[{ flex: 1 }, padded && styles.padded, WIDE]}>{children}</View>
   );
   return (
-    <SafeAreaView style={styles.screen} edges={edges}>
+    <SafeAreaView style={[styles.screen, Platform.OS === 'web' && edges.includes('top') && { paddingTop: WEB_TAB_BAR }]} edges={edges}>
       {header}
       <View style={{ flex: 1 }}>{body}</View>
       {footer ? <View style={WIDE}>{footer}</View> : null}
     </SafeAreaView>
   );
 }
+
+/** On web the tab bar floats over the top of tab pages (screens with a top edge); leave it room. */
+const WEB_TAB_BAR = 72;
 
 /** On a computer screen, keep pages at a readable width in the middle instead of edge to edge. */
 const WIDE = Platform.OS === 'web' ? ({ width: '100%', maxWidth: 820, alignSelf: 'center' } as const) : undefined;

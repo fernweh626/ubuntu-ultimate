@@ -75,7 +75,7 @@ export function ShareCardSheet({ visible, onClose, data }: { visible: boolean; o
             </View>
           ) : null}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <T style={{ fontFamily: font.display, fontSize: 18, color: '#7FD1A6', letterSpacing: 1 }}>UBUNTU ULTIMATE</T>
+            <T style={{ fontFamily: font.display, fontSize: 18, color: '#F0A27E', letterSpacing: 1 }}>UBUNTU ULTIMATE</T>
             <T style={{ fontFamily: font.regular, fontSize: 12, color: colors.nightMuted }}>{data.footer}</T>
           </View>
         </View>

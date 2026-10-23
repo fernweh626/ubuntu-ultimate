@@ -142,7 +142,7 @@ function SpiritForm({
             <View style={{ backgroundColor: colors.night, borderRadius: 10, padding: space.md, gap: 4 }}>
               <T style={{ fontFamily: font.regular, fontSize: 14, color: '#fff' }}>{HINTS[c.key]}</T>
               {SPIRIT_SCALE.map((s, i) => (
-                <T key={s} style={{ fontFamily: i === scores[c.key] ? font.bold : font.regular, fontSize: 13, color: i === scores[c.key] ? '#7FD1A6' : colors.nightMuted }}>
+                <T key={s} style={{ fontFamily: i === scores[c.key] ? font.bold : font.regular, fontSize: 13, color: i === scores[c.key] ? '#F0A27E' : colors.nightMuted }}>
                   {i} · {s}
                 </T>
               ))}

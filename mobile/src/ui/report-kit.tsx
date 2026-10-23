@@ -15,14 +15,14 @@ export const PAGE_W = 380;
 
 export type Tone = 'team' | 'dark' | 'paper';
 
-export const ACCENT = '#5ED39A';
-const NIGHT = '#0C1513';
+export const ACCENT = '#F0A27E';
+const NIGHT = '#1E2A40';
 const PAPER = '#F7F5F0';
 
 export function palette(tone: Tone, teamColor?: string | null) {
-  if (tone === 'paper') return { bg: PAPER, ink: '#141414', muted: '#5C5C55', accent: teamColor || '#1F6B4A', card: '#ECE9E1', line: '#D8D4CA' };
-  if (tone === 'team') return { bg: teamColor || '#0B4D33', ink: '#FFFFFF', muted: 'rgba(255,255,255,0.75)', accent: '#FFFFFF', card: 'rgba(0,0,0,0.22)', line: 'rgba(255,255,255,0.25)' };
-  return { bg: NIGHT, ink: '#F4F4EF', muted: '#A5ABA6', accent: ACCENT, card: '#18221F', line: '#26322E' };
+  if (tone === 'paper') return { bg: PAPER, ink: '#141414', muted: '#5C5C55', accent: teamColor || '#B4532C', card: '#ECE9E1', line: '#D8D4CA' };
+  if (tone === 'team') return { bg: teamColor || '#293750', ink: '#FFFFFF', muted: 'rgba(255,255,255,0.75)', accent: '#FFFFFF', card: 'rgba(0,0,0,0.22)', line: 'rgba(255,255,255,0.25)' };
+  return { bg: NIGHT, ink: '#F4F4EF', muted: '#A5ABA6', accent: ACCENT, card: '#2A3954', line: '#34435F' };
 }
 
 type PageProps = { tone: Tone; teamColor?: string | null; header: string; index: number; total: number; children: ReactNode };
@@ -206,7 +206,7 @@ export function ConnectionWeb({
 export function ResultChip({ result }: { result: 'W' | 'L' | 'D' }) {
   return (
     <View style={{ backgroundColor: result === 'W' ? '#FFFFFF' : 'rgba(0,0,0,0.35)', paddingHorizontal: 10, paddingVertical: 4 }}>
-      <Text style={{ fontFamily: font.display, fontSize: 15, color: result === 'W' ? '#0B4D33' : '#FFFFFF' }}>{result === 'W' ? 'WIN' : result === 'L' ? 'LOSS' : 'DRAW'}</Text>
+      <Text style={{ fontFamily: font.display, fontSize: 15, color: result === 'W' ? '#293750' : '#FFFFFF' }}>{result === 'W' ? 'WIN' : result === 'L' ? 'LOSS' : 'DRAW'}</Text>
     </View>
   );
 }

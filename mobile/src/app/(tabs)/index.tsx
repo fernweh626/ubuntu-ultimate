@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -11,6 +12,8 @@ import { Button, Card, Chip, EmptyState, Icon, IconButton, Section, Screen, Segm
 import { GameCard } from '@/ui/game-bits';
 import { MeButton } from '@/ui/me-button';
 import { colors, font, space } from '@/ui/theme';
+
+const LOGO = require('../../../assets/images/logo-mark.png');
 
 /*
  * Home stays short however big things get:
@@ -31,11 +34,14 @@ export default function Home() {
   return (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View>
-          <T numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: font.display, fontSize: 28, lineHeight: 32, letterSpacing: 0.5 }}>
-            UBUNTU ULTIMATE
-          </T>
-          <T v="small">{DAYS_LONG[weekdayIndex()]}</T>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexShrink: 1 }}>
+          <Image source={LOGO} style={{ width: 48, height: 48, borderRadius: 24 }} accessibilityIgnoresInvertColors accessible={false} />
+          <View style={{ flexShrink: 1 }}>
+            <T numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: font.display, fontSize: 28, lineHeight: 30, letterSpacing: 0.5, color: colors.night }}>
+              UBUNTU ULTIMATE
+            </T>
+            <T v="small">{DAYS_LONG[weekdayIndex()]}</T>
+          </View>
         </View>
         <MeButton />
       </View>

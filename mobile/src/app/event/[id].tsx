@@ -228,7 +228,7 @@ export default function EventPage() {
                 </View>
               ))}
               {spiritByTeam[0]?.avg != null ? (
-                <T style={{ fontFamily: font.medium, fontSize: 14, color: '#7FD1A6', marginTop: 4 }}>
+                <T style={{ fontFamily: font.medium, fontSize: 14, color: '#F0A27E', marginTop: 4 }}>
                   Spirit award: {spiritByTeam[0].team.name} ({round1(spiritByTeam[0].avg!)}/20)
                 </T>
               ) : null}
