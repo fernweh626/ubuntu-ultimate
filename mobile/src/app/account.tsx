@@ -59,7 +59,12 @@ export default function Account() {
       ) : !signedIn ? (
         <LinkPlayer me={me ?? null} busy={busy} email={user.email ?? ''} onLink={(pid) => run(async () => {
           const admin = await linkAccount(db, pid);
-          Alert.alert('You’re online', admin ? 'You’re the first account, so you’re the admin. You can give others coordinator and scorekeeper access from their profiles.' : 'Your games, teams and stats now sync and are backed up.');
+          Alert.alert(
+            'You’re part of Ubuntu now 🥏',
+            admin
+              ? 'You’re the very first account, so you’re the admin. Give others coordinator and scorekeeper access from their profiles.'
+              : 'Your games, teams and stats are backed up and follow you to any phone. Welcome to the community!',
+          );
           router.back();
         })} />
       ) : (
@@ -158,8 +163,14 @@ function LinkPlayer({ me, busy, email, onLink }: { me: { id: string; first_name:
 
   return (
     <Screen edges={[]}>
+      <View style={{ backgroundColor: colors.night, borderRadius: 14, padding: space.lg, gap: 6, alignItems: 'center' }}>
+        <T style={{ fontSize: 40, lineHeight: 46 }}>🎉</T>
+        <T style={{ fontFamily: font.display, fontSize: 28, lineHeight: 30, color: '#fff', textAlign: 'center' }}>WELCOME TO UBUNTU!</T>
+        <T style={{ color: colors.nightMuted, textAlign: 'center' }}>Your account is ready: {email}</T>
+        <T style={{ color: '#F0A27E', fontFamily: font.semibold, textAlign: 'center' }}>One last step: tell us which player you are.</T>
+      </View>
       <T v="title">Which player are you?</T>
-      <T v="small">Signed in as {email}. Link your account to your player so your stats, teams and levels follow you to any phone.</T>
+      <T v="small">So your stats, teams and levels follow you to any phone.</T>
       {me ? (
         <Card>
           <T v="bodyStrong">That’s me: {displayName(me)}</T>
