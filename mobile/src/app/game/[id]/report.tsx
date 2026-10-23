@@ -12,6 +12,7 @@ import { deriveState } from '@/domain/engine';
 import { computeGameStats, type TeamGameStats } from '@/domain/stats';
 import { weatherLine, type Weather } from '@/domain/weather';
 import { Bars, ScoreProgression } from '@/ui/charts';
+import { shareLiveLink } from '@/lib/live';
 import { BreakClock } from '@/ui/break-clock';
 import { Button, Card, Chip, Field, Icon, IconButton, RatioBadge, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
 import { PlayerTable } from '@/ui/player-table';
@@ -110,7 +111,12 @@ export default function GameReport() {
       <Stack.Screen
         options={{
           title: final ? 'Game report' : 'Live stats',
-          headerRight: () => <IconButton icon="dots-vertical" label="More" onPress={() => setMenu(true)} />,
+          headerRight: () => (
+            <View style={{ flexDirection: 'row' }}>
+              {!final ? <IconButton icon="broadcast" label="Share live link" onPress={() => shareLiveLink(game.id, `${ta.name} v ${tb.name}`, access.signedIn)} /> : null}
+              <IconButton icon="dots-vertical" label="More" onPress={() => setMenu(true)} />
+            </View>
+          ),
         }}
       />
       <Screen edges={[]} header={!final ? <BreakClock data={data} state={deriveState(data)} teamName={(tid) => (tid === ta.id ? ta.name : tb.name)} /> : undefined}>

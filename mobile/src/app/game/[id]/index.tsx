@@ -29,6 +29,7 @@ import type { GameEventType, Person, PullOutcome, Team } from '@/db/types';
 import { deriveState, fitness, lineFor, otherTeam, type GameData } from '@/domain/engine';
 import { clock, shortName } from '@/domain/format';
 import { fetchWeather } from '@/domain/weather';
+import { shareLiveLink } from '@/lib/live';
 import { BreakClock } from '@/ui/break-clock';
 import { Button, Chip, Choice, Icon, IconButton, RatioBadge, Sheet, T } from '@/ui/components';
 import { colors, DEFAULT_TEAM_COLOR, font, space } from '@/ui/theme';
@@ -63,6 +64,7 @@ export default function ScoreGame() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useSQLiteContext();
   const now = useNow();
+  const signedIn = useData(async (d) => !!(await d.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'signed_in'`)));
   const bundle = useData<Bundle | null>(
     async (d) => {
       const data = await loadGameData(d, id);
@@ -230,6 +232,7 @@ export default function ScoreGame() {
         </T>
         <View style={{ flexDirection: 'row' }}>
           <IconButton icon="flag-checkered" label="End game early" color="#fff" onPress={() => setEndSheet(true)} />
+          <IconButton icon="broadcast" label="Share live link" color="#fff" onPress={() => shareLiveLink(game.id, `${ta.name} v ${tb.name}`, !!signedIn)} />
           <IconButton icon="dots-vertical" label="Game menu" color="#fff" onPress={() => setMenu(true)} />
         </View>
       </View>
