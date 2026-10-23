@@ -65,11 +65,11 @@ export default function Home() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
         {(
           [
-            ['map-marker-radius', 'Pickups', '/hub/pickups'],
-            ['hat-fedora', 'Hats', '/hat'],
-            ['calendar', 'Calendar', '/hub/calendar'],
             ['calendar-check-outline', 'My schedule', '/schedule'],
+            ['calendar', 'Calendar', '/hub/calendar'],
+            ['map-marker-radius', 'Pick ups', '/hub/pickups'],
             ['book-open-variant', 'Rules', '/hub/rules'],
+            ['hat-fedora', 'Hats', '/hat'],
           ] as const
         ).map(([icon, label, href]) => (
           <Pressable
