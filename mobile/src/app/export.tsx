@@ -8,7 +8,8 @@ import { ActivityIndicator, Alert, View } from 'react-native';
 import { useData } from '@/db/live';
 import { loadFinishedGames, peopleById } from '@/db/reports';
 import { getEvent, getTeam, listGamesForEvent, listGamesForTeam } from '@/db/repo';
-import { attendanceCsv, eventsCsv, gamesCsv, playerGamesCsv, pointsCsv } from '@/domain/export';
+import { readiness } from '@/db/development';
+import { attendanceCsv, eventsCsv, fitnessCsv, gamesCsv, playerGamesCsv, pointsCsv, ratingsCsv, readinessCsv } from '@/domain/export';
 import { displayName } from '@/domain/format';
 import { Button, Card, Screen, T } from '@/ui/components';
 import { colors, space } from '@/ui/theme';
@@ -41,13 +42,19 @@ export default function Export() {
       const people = await peopleById(d, [...ids]);
       const label = teamId ? ((await getTeam(d, teamId))?.name ?? 'team') : ((await getEvent(d, eventId!))?.name ?? 'event');
       const attendance = teamId ? await attendanceRows(d, teamId) : [];
-      return { games, people, label, attendance };
+      // Player development (team exports only): the staff of this team can see it in the app already.
+      const ready = teamId ? await readiness(d, teamId) : [];
+      const ids2 = ready.map((p) => p.id);
+      const q = ids2.map(() => '?').join(',') || "''";
+      const ratings = teamId ? await d.getAllAsync<Parameters<typeof ratingsCsv>[1][number]>(`SELECT * FROM self_rating WHERE person_id IN (${q}) ORDER BY person_id, rated_on`, ...ids2) : [];
+      const tests = teamId ? await d.getAllAsync<Parameters<typeof fitnessCsv>[1][number]>(`SELECT * FROM fitness_test WHERE person_id IN (${q}) ORDER BY person_id, kind, tested_on`, ...ids2) : [];
+      return { games, people, label, attendance, ready, ratings, tests };
     },
     [teamId, eventId],
   );
   const [busy, setBusy] = useState<string | null>(null);
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
-  const { games, people, label, attendance } = bundle;
+  const { games, people, label, attendance, ready, ratings, tests } = bundle;
   const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const stamp = new Date().toISOString().slice(0, 10);
 
@@ -78,6 +85,9 @@ export default function Export() {
       make: () => attendanceCsv(attendance.map((r) => ({ ...r, name: displayName(r) }))),
       show: !!teamId,
     },
+    { name: 'self-ratings', title: 'Self-ratings', body: `Every check-in, 1–5 in five areas, with each player’s history (${ratings.length} ratings).`, make: () => ratingsCsv(ready, ratings), show: !!teamId },
+    { name: 'fitness-tests', title: 'Fitness benchmarks', body: `Beep test, 5-10-5, 40 m and 60 m results with dates (${tests.length} results).`, make: () => fitnessCsv(ready, tests), show: !!teamId },
+    { name: 'readiness', title: 'Ready to play', body: 'Accreditation level and expiry, SAFDA and region numbers and standing. No phone numbers.', make: () => readinessCsv(ready), show: !!teamId },
   ];
 
   return (
@@ -87,7 +97,7 @@ export default function Export() {
         <Card>
           <T v="bodyStrong">{label}</T>
           <T v="small">
-            {games.length} finished game{games.length === 1 ? '' : 's'}. CSV files open in Excel, Google Sheets, pandas or R; they join on game_id and person_id. No emails or birth dates are included, and under-18s show as first name + initial.
+            {games.length} finished game{games.length === 1 ? '' : 's'}{teamId ? `, ${ready.length} players` : ''}. CSV files open in Excel, Google Sheets, pandas or R; they join on game_id and person_id. No emails or birth dates are included, and under-18s show as first name + initial.
           </T>
         </Card>
         {files
@@ -99,7 +109,7 @@ export default function Export() {
                   <T v="bodyStrong">{f.title}</T>
                   <T v="small">{f.body}</T>
                 </View>
-                {busy === f.name ? <ActivityIndicator color={colors.brand} /> : <Button label="Share" icon="file-delimited-outline" onPress={() => share(f.name, f.make)} disabled={!!busy || (!games.length && f.name !== 'practice-attendance')} />}
+                {busy === f.name ? <ActivityIndicator color={colors.brand} /> : <Button label="Share" icon="file-delimited-outline" onPress={() => share(f.name, f.make)} disabled={!!busy || (!games.length && ['games', 'player-games', 'points', 'events'].includes(f.name))} />}
               </View>
             </Card>
           ))}

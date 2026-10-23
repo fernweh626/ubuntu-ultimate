@@ -102,3 +102,62 @@ export function attendanceCsv(rows: { date: string; title: string | null; cancel
     ...rows.map((r) => [r.date, r.title, r.cancelled ? 1 : 0, r.personId, r.name, r.gender, r.rsvp, r.attended]),
   ]);
 }
+
+type DevPerson = { id: string; first_name: string; last_name: string; birth_date: string | null; gender: string | null };
+
+/** Every self-rating in the history, one row per player per check-in (1–5). */
+export function ratingsCsv(people: DevPerson[], ratings: { person_id: string; rated_on: string; experience: number; throwing: number; receiving: number; defence: number; athleticism: number; notes: string | null }[]) {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  return csv([
+    ['person_id', 'player', 'gender', 'rated_on', 'experience', 'throwing', 'cutting_catching', 'defence', 'fitness_athleticism', 'average', 'working_on'],
+    ...ratings
+      .filter((r) => byId.has(r.person_id))
+      .map((r) => {
+        const p = byId.get(r.person_id)!;
+        const avg = (r.experience + r.throwing + r.receiving + r.defence + r.athleticism) / 5;
+        return [r.person_id, displayName(p), p.gender, r.rated_on.slice(0, 10), r.experience, r.throwing, r.receiving, r.defence, r.athleticism, avg.toFixed(1), r.notes];
+      }),
+  ]);
+}
+
+/** Every benchmark result. Beep is given as level and shuttle; the rest in seconds. */
+export function fitnessCsv(people: DevPerson[], tests: { person_id: string; kind: string; value: number; tested_on: string; notes: string | null }[]) {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const label: Record<string, string> = { beep: 'beep_test', agility_5105: 'agility_5_10_5', sprint_40: 'sprint_40m', sprint_60: 'sprint_60m' };
+  return csv([
+    ['person_id', 'player', 'gender', 'test', 'tested_on', 'seconds', 'beep_level', 'beep_shuttle', 'notes'],
+    ...tests
+      .filter((t) => byId.has(t.person_id))
+      .map((t) => {
+        const p = byId.get(t.person_id)!;
+        const beep = t.kind === 'beep';
+        const level = Math.floor(t.value + 1e-9);
+        return [t.person_id, displayName(p), p.gender, label[t.kind] ?? t.kind, t.tested_on.slice(0, 10), beep ? null : t.value, beep ? level : null, beep ? Math.round((t.value - level) * 100) : null, t.notes];
+      }),
+  ]);
+}
+
+/** Who's ready to play: accreditation and association standing. Phone numbers are deliberately left out. */
+export function readinessCsv(
+  rows: (DevPerson & {
+    level: string | null;
+    expires_on: string | null;
+    reg: { safda_number: string | null; region_code: string | null; region_number: string | null } | null;
+    safda: { status: string; paid_until: string | null } | null;
+    region: { status: string; paid_until: string | null } | null;
+    safdaListed: boolean;
+    regionListed: boolean;
+  })[],
+  today = new Date().toISOString().slice(0, 10),
+) {
+  const st = (n: string | null | undefined, row: { status: string } | null, listed: boolean) => (!n ? 'no_number' : !listed ? 'list_not_uploaded' : row ? row.status : 'not_on_list');
+  return csv([
+    ['person_id', 'player', 'gender', 'accreditation', 'accreditation_expires', 'accreditation_valid', 'safda_number', 'safda_status', 'safda_paid_until', 'region', 'region_number', 'region_status', 'region_paid_until', 'ready'],
+    ...rows.map((r) => {
+      const accOk = !!r.level && !!r.expires_on && r.expires_on >= today;
+      const s = st(r.reg?.safda_number, r.safda, r.safdaListed);
+      const g = st(r.reg?.region_number, r.region, r.regionListed);
+      return [r.id, displayName(r), r.gender, r.level, r.expires_on, accOk ? 1 : 0, r.reg?.safda_number, s, r.safda?.paid_until, r.reg?.region_code, r.reg?.region_number, g, r.region?.paid_until, accOk && s === 'good' && g === 'good' ? 1 : 0];
+    }),
+  ]);
+}
