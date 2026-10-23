@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { getAccess, getHomeRegion } from '@/db/repo';
 import { meetingStart } from '@/domain/calendar';
 import { shortDate, timeOfDay } from '@/domain/format';
+import { COUNTRY } from '@/content/countries';
 import { yearlyInfoReminders, yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
 
 /*
@@ -131,8 +132,8 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
     }
   }
   if (prefs.fees) {
-    const feb = nextYearly(1, 1);
-    out.push({ key: `fees:${feb.getFullYear()}`, kind: 'fees', at: feb, title: `Time to pay your ${feb.getFullYear()} fees`, body: 'Register and pay with SAFDA and your region so you can play leagues, regionals and nationals.', url: '/registration' });
+    const feb = nextYearly(COUNTRY.feesOpen.month, COUNTRY.feesOpen.day);
+    out.push({ key: `fees:${feb.getFullYear()}`, kind: 'fees', at: feb, title: `Time to pay your ${feb.getFullYear()} fees`, body: `Register and pay with ${COUNTRY.nationalBody.short} and your region so you can play leagues, regionals and nationals.`, url: '/registration' });
   }
 
   // Meetings (AGM, SGM…) for your region or national: the evening before, and 15 minutes before with the link.

@@ -13,7 +13,8 @@ import { Button, Card, Chip, EmptyState, Icon, Section, Screen, Segmented, T } f
 import { GameCard } from '@/ui/game-bits';
 import { MeButton } from '@/ui/me-button';
 import { PREVIEW } from '@/lib/preview';
-import { yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
+import { COUNTRY } from '@/content/countries';
+import { deadlineLabel, yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
 import { KindIcon } from '@/ui/kind-icon';
 import { colors, font, space } from '@/ui/theme';
 
@@ -123,12 +124,12 @@ function YearlyInfoCard() {
   );
   if (!season || !state || state.done || (state.level !== 'admin' && state.level !== 'coordinator')) return null;
   const text = yearlyInfoText(season, state.level);
-  const daysLeft = Math.max(0, Math.ceil((new Date(season, 0, 20, 23, 59).getTime() - now.getTime()) / 86400_000));
+  const daysLeft = Math.max(0, Math.ceil((new Date(season, COUNTRY.infoDeadline.month, COUNTRY.infoDeadline.day, 23, 59).getTime() - now.getTime()) / 86400_000));
   return (
     <View style={{ backgroundColor: colors.brand, borderRadius: 14, padding: space.lg, gap: space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <Icon name="pin" color="#fff" size={18} />
-        <T style={{ fontFamily: font.bold, fontSize: 12, letterSpacing: 1, color: '#fff' }}>{daysLeft <= 7 ? `${daysLeft} DAYS LEFT` : 'DUE 20 JANUARY'}</T>
+        <T style={{ fontFamily: font.bold, fontSize: 12, letterSpacing: 1, color: '#fff' }}>{daysLeft <= 7 ? `${daysLeft} DAYS LEFT` : `DUE ${deadlineLabel.toUpperCase()}`}</T>
       </View>
       <T style={{ fontFamily: font.bold, fontSize: 19, lineHeight: 24, color: '#fff' }}>{text.title}</T>
       <T style={{ color: '#FBE9E0' }}>{text.body}</T>

@@ -7,6 +7,7 @@ import { REGIONS } from '@/content/hub';
 import { getClub, saveClub, type ClubInput } from '@/db/clubs';
 import { getMeId } from '@/db/repo';
 import { Button, Choice, Field, Footer, Icon, Screen, Section } from '@/ui/components';
+import { PhoneField } from '@/ui/phone-field';
 import { colors, space } from '@/ui/theme';
 
 const PALETTE = ['#BF0000', '#E0561B', '#E8A33D', '#C9A227', '#2E8B57', '#00562B', '#1F6B4A', '#0E7C86', '#2F6FB2', '#1D3F8F', '#5B3FA8', '#61223B', '#C2185B', '#6D4C41', '#5A615C', '#14181A'];
@@ -66,7 +67,7 @@ export default function ClubEdit() {
         <Field label="Home town / campus" value={f.city ?? ''} onChangeText={opt('city')} />
         <Field label="About the club" value={f.about ?? ''} onChangeText={opt('about')} multiline placeholder="Who you are, when you train, how to join" />
         <Section title="Contact">
-          <Field label="Phone / WhatsApp" value={f.contact_phone ?? ''} onChangeText={opt('contact_phone')} keyboardType="phone-pad" />
+          <PhoneField label="Phone / WhatsApp" value={f.contact_phone ?? ''} onChange={opt('contact_phone')} />
           <Field label="Email" value={f.contact_email ?? ''} onChangeText={opt('contact_email')} keyboardType="email-address" autoCapitalize="none" />
           <Field label="Website" value={f.website ?? ''} onChangeText={opt('website')} autoCapitalize="none" />
           <Field label="Instagram / Facebook" value={f.social ?? ''} onChangeText={opt('social')} autoCapitalize="none" />

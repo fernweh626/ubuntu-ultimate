@@ -1,35 +1,10 @@
 // Static info-hub content. Club and region lists come from the community hub in the current Stall Count
 // app (Oct 2026). Contact details are filled in per team in the app.
+import { REGIONS } from './countries';
 
-// SAFDA's four regions: Northern, Eastern (KwaZulu-Natal), Southern (Eastern Cape) and Western.
-export type Region = { code: string; name: string; body: string; area: string };
-
-export const REGIONS: Region[] = [
-  {
-    code: 'western',
-    name: 'Western',
-    body: 'CTFDA',
-    area: 'Western Cape & Northern Cape. One of the oldest and deepest scenes, centred on Cape Town and Stellenbosch.',
-  },
-  {
-    code: 'northern',
-    name: 'Northern',
-    body: 'GFDA',
-    area: 'Gauteng, Free State, Mpumalanga, North West & Limpopo. The largest region, centred on Johannesburg and Pretoria.',
-  },
-  {
-    code: 'kzn',
-    name: 'Eastern (KZN)',
-    body: 'KZN',
-    area: 'Durban, Pietermaritzburg and the Midlands, with several long-standing competitive clubs.',
-  },
-  {
-    code: 'eastern-cape',
-    name: 'Southern (EC)',
-    body: 'EC',
-    area: 'Gqeberha, East London and surrounds — a developing region with a growing set of teams.',
-  },
-];
+// Regions come from the country settings (src/content/countries.ts); South Africa for now.
+export type { Region } from './countries';
+export { REGIONS };
 
 export const regionName = (code: string | null | undefined) => REGIONS.find((r) => r.code === code)?.name ?? 'Other';
 

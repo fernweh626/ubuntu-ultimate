@@ -10,6 +10,7 @@ import { canChoosePickupEditors, canEditPickup, MAX_PICKUP_EDITORS, pickupEditor
 import type { PickupSpot } from '@/db/types';
 import { DAYS } from '@/domain/format';
 import { Button, Choice, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
+import { PhoneField } from '@/ui/phone-field';
 import { space } from '@/ui/theme';
 
 type Form = Omit<PickupSpot, 'id' | 'is_sample'>;
@@ -136,7 +137,7 @@ export default function PickupEdit() {
             <Field label="Contact name" value={f.contact_name ?? ''} onChangeText={text('contact_name')} />
           </View>
           <View style={{ flex: 1 }}>
-            <Field label="Contact number" value={f.contact_phone ?? ''} onChangeText={text('contact_phone')} keyboardType="phone-pad" />
+            <PhoneField label="Contact number" value={f.contact_phone ?? ''} onChange={text('contact_phone')} />
           </View>
         </View>
         <Section title="Level">

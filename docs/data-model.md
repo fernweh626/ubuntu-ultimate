@@ -18,6 +18,14 @@ security. Sync lives in `mobile/src/db/sync.ts`.
   shipped; add a new one. Table rebuilds marked `-- @fk-off` run with foreign keys off and are checked after.
   `repairDrift()` fixes tables early test phones may have in an older shape.
 
+## Countries
+
+Everything that differs by country lives in `mobile/src/content/countries.ts`: national body, regions,
+dialling code, currency, time zone, privacy law, when fees open and the coordinators' info deadline.
+South Africa is the only country today. Each region names its country; phone numbers are stored with
+their country code (`+27 82 123 4567`), so WhatsApp links work for any country. Adding a country means
+adding an entry and its regions there.
+
 ## Sync
 
 - **Push:** SQLite triggers write every change to `sync_outbox` (one row per record). `push()` upserts in

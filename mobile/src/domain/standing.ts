@@ -4,6 +4,8 @@
  * matches the two. Pure functions.
  */
 
+import { COUNTRY } from '@/content/countries';
+
 export type Standing = 'good' | 'unpaid' | 'lapsed';
 export type StandingRow = { number: string; status: Standing; paidUntil: string | null };
 
@@ -91,10 +93,23 @@ export function standingCheck(number: string | null | undefined, row: { status: 
   return { check: 'warn', text: row.status === 'lapsed' ? 'Lapsed' : 'Unpaid' };
 }
 
-/** South African mobile → WhatsApp link ("082 123 4567" → wa.me/27821234567). */
-export function whatsappLink(phone: string | null | undefined, text?: string) {
-  let d = (phone ?? '').replace(/\D/g, '');
+/**
+ * Any phone number in international form, digits only: "+263 77 123 4567" → 263771234567,
+ * "0044 7700…" → 447700…, and a local "082 123 4567" gets the app country's code (27821234567).
+ */
+export function internationalDigits(phone: string | null | undefined, dial = COUNTRY.dial) {
+  const raw = (phone ?? '').trim();
+  const d = raw.replace(/\D/g, '');
   if (!d) return null;
-  if (d.startsWith('0')) d = `27${d.slice(1)}`;
+  if (raw.startsWith('+')) return d;
+  if (d.startsWith('00')) return d.slice(2);
+  if (d.startsWith('0')) return `${dial}${d.slice(1)}`;
+  return d.length <= 10 ? `${dial}${d}` : d;
+}
+
+/** Phone number → WhatsApp chat link, for numbers from any country. */
+export function whatsappLink(phone: string | null | undefined, text?: string) {
+  const d = internationalDigits(phone);
+  if (!d) return null;
   return `https://wa.me/${d}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 }

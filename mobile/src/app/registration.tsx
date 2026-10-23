@@ -9,6 +9,7 @@ import { useData } from '@/db/live';
 import { getHomeRegion, getMeId } from '@/db/repo';
 import { standingCheck } from '@/domain/standing';
 import { Button, Card, Choice, Field, Footer, Icon, Screen, Section, T } from '@/ui/components';
+import { PhoneField } from '@/ui/phone-field';
 import { colors, space } from '@/ui/theme';
 
 /** Your SAFDA and regional numbers, a number your staff can WhatsApp, and where to sign up or pay. */
@@ -100,18 +101,16 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
           ))}
         </ScrollView>
         <Field label={`${body} number`} value={regionNo} onChangeText={setRegionNo} autoCapitalize="characters" placeholder="If you have one" />
-        <Field
-          label="Mobile number (for WhatsApp)"
+        <PhoneField
+          label="Your WhatsApp number"
           value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          placeholder="082 123 4567"
-          hint="Only your team staff and coordinators see it, so they can reach you about the team."
+          onChange={setPhone}
+          hint="This is the number we’ll contact you on (WhatsApp). Not South African? Tap the code to change it. Only your team staff and coordinators see it."
         />
         <T v="smallStrong">Emergency contact</T>
         <T v="small">Who should we call if you get hurt at a game or practice? Only your team staff and coordinators see it.</T>
         <Field label="Name" value={emName} onChangeText={setEmName} placeholder="e.g. Thandi (mom)" autoCapitalize="words" />
-        <Field label="Cell number" value={emPhone} onChangeText={setEmPhone} keyboardType="phone-pad" placeholder="082 123 4567" />
+        <PhoneField label="Their cell number" value={emPhone} onChange={setEmPhone} />
 
         <Section title="Get your numbers, pay fees">
           {myLinks.length ? (

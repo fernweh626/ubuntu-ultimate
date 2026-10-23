@@ -9,6 +9,7 @@ import { useData } from '@/db/live';
 import { getTeam, saveTeam, type TeamInput } from '@/db/repo';
 import { DIVISIONS } from '@/domain/divisions';
 import { Button, Choice, Field, Footer, Icon, Screen, Section, T } from '@/ui/components';
+import { PhoneField } from '@/ui/phone-field';
 import { colors, space } from '@/ui/theme';
 
 const PALETTE = [
@@ -120,7 +121,7 @@ export default function TeamEdit() {
         <Field label="Home town / campus" value={f.city ?? ''} onChangeText={opt('city')} />
         <Section title="How to contact the team">
           <Field label="Contact person" value={f.contact_name ?? ''} onChangeText={opt('contact_name')} />
-          <Field label="Phone / WhatsApp" value={f.contact_phone ?? ''} onChangeText={opt('contact_phone')} keyboardType="phone-pad" />
+          <PhoneField label="Phone / WhatsApp" value={f.contact_phone ?? ''} onChange={opt('contact_phone')} />
           <Field label="Email" value={f.contact_email ?? ''} onChangeText={opt('contact_email')} keyboardType="email-address" autoCapitalize="none" />
           <Field label="Website" value={f.website ?? ''} onChangeText={opt('website')} autoCapitalize="none" />
           <Field label="Instagram or Facebook link" value={f.social ?? ''} onChangeText={opt('social')} autoCapitalize="none" />
