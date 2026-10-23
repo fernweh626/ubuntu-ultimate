@@ -12,6 +12,7 @@ import { readiness } from '@/db/development';
 import { attendanceCsv, eventsCsv, fitnessCsv, gamesCsv, playerGamesCsv, pointsCsv, ratingsCsv, readinessCsv } from '@/domain/export';
 import { displayName } from '@/domain/format';
 import { Button, Card, Screen, T } from '@/ui/components';
+import { IS_WEB, webShareFiles } from '@/lib/web';
 import { colors, space } from '@/ui/theme';
 
 async function attendanceRows(db: SQLiteDatabase, teamId: string) {
@@ -61,6 +62,7 @@ export default function Export() {
   async function share(name: string, make: () => string) {
     setBusy(name);
     try {
+      if (IS_WEB) return await webShareFiles([{ src: `data:text/csv;charset=utf-8,${encodeURIComponent(make())}`, name: `${slug}-${name}-${stamp}.csv`, mime: 'text/csv' }], label);
       const file = new File(Paths.cache, `${slug}-${name}-${stamp}.csv`);
       if (file.exists) file.delete();
       file.create();

@@ -14,6 +14,7 @@ import { ACCREDITATION_LEVELS, accreditationState, daysUntil, type Accreditation
 import { dmyToIso, isoToDmy, shortDate } from '@/domain/format';
 import { Button, Card, Chip, DateField, Footer, Icon, Screen, Segmented, T } from '@/ui/components';
 import { deletePhoto, PhotoSheet } from '@/ui/photo';
+import { IS_WEB, webDataUrl } from '@/lib/web';
 import { colors, space } from '@/ui/theme';
 
 const isPdf = (uri: string) => uri.toLowerCase().endsWith('.pdf');
@@ -54,6 +55,7 @@ function Form({ meId, acc }: { meId: string; acc: Accreditation | null }) {
   async function pickPdf() {
     const res = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
     if (res.canceled || !res.assets?.[0]) return;
+    if (IS_WEB) return setPhoto(await webDataUrl(res.assets[0].uri));
     // Keep our own copy, like photos, so it survives the picker's cache being cleared.
     const dir = new Directory(Paths.document, 'photos');
     if (!dir.exists) dir.create();

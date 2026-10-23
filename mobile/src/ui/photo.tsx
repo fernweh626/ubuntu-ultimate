@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Alert, Text, View } from 'react-native';
 
 import { initials } from '@/domain/format';
+import { IS_WEB, webDataUrl } from '@/lib/web';
 
 import { Button, Sheet, T } from './components';
 import { colors, DEFAULT_TEAM_COLOR, font } from './theme';
@@ -19,9 +20,11 @@ export async function pickPhoto(source: 'camera' | 'library', name: string): Pro
     Alert.alert('Permission needed', source === 'camera' ? 'Allow camera access to take a photo.' : 'Allow photo access to choose a picture.');
     return null;
   }
-  const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 };
+  const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7, base64: IS_WEB };
   const result = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
   if (result.canceled || !result.assets[0]) return null;
+  // The browser has no app folder: keep the picture itself (a data URL), so it survives a reload.
+  if (IS_WEB) return result.assets[0].base64 ? `data:${result.assets[0].mimeType ?? 'image/jpeg'};base64,${result.assets[0].base64}` : webDataUrl(result.assets[0].uri);
 
   const dir = new Directory(Paths.document, 'photos');
   if (!dir.exists) dir.create();

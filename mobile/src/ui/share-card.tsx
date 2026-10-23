@@ -3,6 +3,8 @@ import { useRef, useState, type ComponentRef } from 'react';
 import { Alert, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
+import { IS_WEB, webShareFiles } from '@/lib/web';
+
 import { Button, Sheet, T } from './components';
 import { colors, DEFAULT_TEAM_COLOR, font, space } from './theme';
 
@@ -25,6 +27,10 @@ export function ShareCardSheet({ visible, onClose, data }: { visible: boolean; o
     if (!ref.current) return;
     setBusy(true);
     try {
+      if (IS_WEB) {
+        const b64 = await captureRef(ref.current as never, { format: 'png', quality: 1, result: 'base64' });
+        return await webShareFiles([{ src: b64, name: 'ubuntu-ultimate-game.png', mime: 'image/png' }], 'My game');
+      }
       const uri = await captureRef(ref.current as never, { format: 'png', quality: 1 });
       if (!(await Sharing.isAvailableAsync())) {
         Alert.alert('Sharing is not available on this device');

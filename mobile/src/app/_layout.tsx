@@ -17,9 +17,11 @@ import { migrate } from '@/db/schema';
 import { ensureDemoContent, ensureStarterContent, seedIfEmpty } from '@/db/seed';
 import { SyncManager } from '@/db/sync-manager';
 import { NotificationManager } from '@/notify/manager';
+import { installWebAlert } from '@/lib/web';
 import { colors, font } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
+installWebAlert();
 
 async function init(db: SQLiteDatabase) {
   await migrate(db);

@@ -4,6 +4,8 @@ import { createRef, useMemo, useState, type ComponentRef, type ReactElement, typ
 import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
+import { IS_WEB, webPrint, webShareFiles } from '@/lib/web';
+
 import { useData } from '@/db/live';
 import { loadFinishedGames, peopleById, playerTotals, type LoadedGame } from '@/db/reports';
 import { bracketSlots, eventTeams, finalPlacings, getEvent, getGameListItem, getTeam, listGamesForEvent, listGamesForTeam, spiritForEvent } from '@/db/repo';
@@ -62,6 +64,10 @@ export default function Report() {
   async function saveImages() {
     setBusy('Saving images…');
     try {
+      if (IS_WEB) {
+        const imgs = await capture('base64');
+        return await webShareFiles(imgs.map((b, i) => ({ src: b, name: `ubuntu-ultimate-report-${i + 1}.png`, mime: 'image/png' })), 'Report');
+      }
       // Loaded on tap, so a phone without these native bits still opens the report.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { Asset, requestPermissionsAsync } = require('expo-media-library') as typeof import('expo-media-library');
@@ -83,6 +89,7 @@ export default function Report() {
       const html = `<html><head><style>@page{margin:0}body{margin:0}img{width:100%;display:block;page-break-after:always}</style></head><body>${imgs
         .map((b) => `<img src="data:image/png;base64,${b}"/>`)
         .join('')}</body></html>`;
+      if (IS_WEB) return webPrint(html);
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const Print = require('expo-print') as typeof import('expo-print');
       const { uri } = await Print.printToFileAsync({ html, width: 612, height: 765 });
