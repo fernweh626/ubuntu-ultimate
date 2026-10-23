@@ -134,6 +134,8 @@ The Supabase project is `sa-ultimate` (ref `fcsdtbvcvlmspjcfnfto`; the name is f
 npx supabase db push -p "$SUPABASE_DB_PASSWORD"
 ```
 
+**Backups:** every night at 02:30 an encrypted copy of the database goes to the private repo `ubuntu-ultimate-backups` (separate on purpose, so code collaborators can't reach the backup login). Its README explains how to check them and how to restore. Opening a backup needs the private backup key, which is kept outside git.
+
 The database password lives only in `.env.local` at the repo root. That file is git-ignored: **never commit it**, and never put the password or any secret key in the app.
 
 ## Data and privacy
