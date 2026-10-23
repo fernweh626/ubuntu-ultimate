@@ -11,6 +11,7 @@ import { DAYS_LONG, dateRange, timeOfDay, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, Icon, Section, Screen, Segmented, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
 import { MeButton } from '@/ui/me-button';
+import { PREVIEW } from '@/lib/preview';
 import { KindIcon } from '@/ui/kind-icon';
 import { colors, font, space } from '@/ui/theme';
 
@@ -38,6 +39,17 @@ export default function Home() {
 
   return (
     <Screen>
+      {PREVIEW ? (
+        <Pressable
+          onPress={() => router.push('/feedback')}
+          accessibilityRole="button"
+          style={{ backgroundColor: colors.warnTint, borderRadius: 10, paddingHorizontal: space.md, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <Icon name="flask-outline" color={colors.warnInk} size={18} />
+          <T v="small" style={{ flex: 1, color: colors.warnInk }}>
+            <T v="smallStrong" style={{ color: colors.warnInk }}>Preview.</T> Play with the demo data; nothing is saved for real. Tap to send feedback.
+          </T>
+        </Pressable>
+      ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexShrink: 1 }}>
           <Image source={LOGO} style={{ width: 48, height: 48, borderRadius: 24 }} accessibilityIgnoresInvertColors accessible={false} />

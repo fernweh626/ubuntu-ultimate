@@ -6,6 +6,7 @@ import { claimFirstAdmin } from './account';
 import { sendPendingFeedback } from './feedback-send';
 import { onChanged } from './live';
 import { syncNow } from './sync';
+import { PREVIEW } from '@/lib/preview';
 
 /**
  * Keeps this phone and the server in step without anyone thinking about it: syncs on start, when the
@@ -21,7 +22,7 @@ export function SyncManager() {
     const run = async () => {
       // Feedback goes even when signed out.
       sendPendingFeedback(db).catch(() => {});
-      if (!(await signedIn())) return;
+      if (PREVIEW || !(await signedIn())) return;
       try {
         // A brand-new server has no admin yet: the first signed-in account claims it (once per session).
         if (!adminChecked) {

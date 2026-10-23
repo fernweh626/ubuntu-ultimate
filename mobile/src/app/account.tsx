@@ -7,6 +7,7 @@ import { currentUser, linkAccount, resumeAccount, signIn, signOut, signUp } from
 import { notifyChanged, useData } from '@/db/live';
 import { getMe, listPeople, savePerson } from '@/db/repo';
 import { syncNow, syncStatus } from '@/db/sync';
+import { PREVIEW } from '@/lib/preview';
 import type { Gender } from '@/db/types';
 import { displayName } from '@/domain/format';
 import { Button, Card, Field, Icon, Row, Screen, Section, Segmented, T } from '@/ui/components';
@@ -30,6 +31,20 @@ export default function Account() {
   });
   const [busy, setBusy] = useState(false);
 
+  if (PREVIEW) {
+    return (
+      <>
+        <Stack.Screen options={{ title: 'Account & sync' }} />
+        <Screen edges={[]}>
+          <Card>
+            <T v="bodyStrong">This is a preview</T>
+            <T v="small">Accounts are switched off, so nothing you do leaves this phone. Score games, sign up for hats, try every level. Have a play!</T>
+          </Card>
+          <Button label="Tell us what you think" icon="lightbulb-on-outline" kind="primary" onPress={() => router.push('/feedback')} />
+        </Screen>
+      </>
+    );
+  }
   if (!state) return <Screen edges={[]}>{null}</Screen>;
   const { user, signedIn, me, status } = state;
 

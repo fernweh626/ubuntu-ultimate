@@ -27,6 +27,7 @@ import { displayName, shortDate } from '@/domain/format';
 import { canSetTeamRole, LEVEL_LABEL } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, Field, Icon, IconButton, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
 import { regionName } from '@/content/hub';
+import { PREVIEW } from '@/lib/preview';
 import { getAccreditation } from '@/db/development';
 import { ACCREDITATION_LEVELS, accreditationState } from '@/domain/development';
 import { Avatar } from '@/ui/photo';
@@ -161,8 +162,8 @@ export default function Me() {
             <Row title="Region" subtitle={homeRegion ? regionName(homeRegion) : 'All of SA'} left={<Icon name="map-outline" color={colors.brand} />} onPress={() => router.push('/region')} />
             <Row title="Notifications" subtitle="Reminders, check-ins, news" left={<Icon name="bell-outline" color={colors.brand} />} onPress={() => router.push('/notifications')} />
             <Row
-              title={access?.signedIn ? 'Account & sync' : 'Go online'}
-              subtitle={access?.signedIn ? 'Backed up · syncs automatically' : 'Back up your data and share with your team'}
+              title={PREVIEW ? 'Preview version' : access?.signedIn ? 'Account & sync' : 'Go online'}
+              subtitle={PREVIEW ? 'Nothing you do here is saved online' : access?.signedIn ? 'Backed up · syncs automatically' : 'Back up your data and share with your team'}
               left={<Icon name={access?.signedIn ? 'cloud-check-outline' : 'cloud-upload-outline'} color={colors.brand} />}
               onPress={() => router.push('/account')}
             />
