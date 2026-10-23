@@ -9,6 +9,7 @@ import { describeSource, NOBODY, type Source } from '@/domain/formats';
 import { shortDate, timeOfDay } from '@/domain/format';
 
 import { Button, T } from './components';
+import { VideoLink } from './game-bits';
 import { colors, DEFAULT_TEAM_COLOR, font, space } from './theme';
 
 const W = 196;
@@ -148,6 +149,7 @@ export function BracketView({
                           <T style={{ fontFamily: font.regular, fontSize: 11, color: game?.status === 'live' ? colors.danger : colors.muted }} numberOfLines={1}>
                             {game?.status === 'live' ? 'LIVE' : st?.walkover ? 'Bye' : when ? `${shortDate(when).slice(4)} ${timeOfDay(when)}` : 'Time TBC'}
                           </T>
+                          {game?.video_url ? <VideoLink url={game.video_url} size={14} compact /> : null}
                         </View>
                         {sides.map((s, i) => {
                           const real = s.team && s.team !== NOBODY ? s.team : null;

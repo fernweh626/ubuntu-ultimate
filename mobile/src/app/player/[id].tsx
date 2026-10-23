@@ -9,6 +9,7 @@ import { getMeId, getPerson, joinOrRequest, leaveTeam, listGamesForPerson, listT
 import { displayName, shortDate } from '@/domain/format';
 import { Button, Card, Chip, Choice, IconButton, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
+import { VideoLink } from '@/ui/game-bits';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
 import { Avatar } from '@/ui/photo';
 import { space } from '@/ui/theme';
@@ -155,6 +156,7 @@ export default function PlayerProfile() {
                   <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
                     {g.item.a_name} {g.item.score_a}–{g.item.score_b} {g.item.b_name}
                   </T>
+                  <VideoLink url={g.item.video_url} size={22} />
                 </View>
                 <T v="small">
                   {shortDate(g.item.started_at)} · {s ? `${s.points} pts · ${s.goals}G ${s.assists}A ${s.intercepts}I` : 'Did not play a point'}

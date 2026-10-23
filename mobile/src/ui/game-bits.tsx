@@ -1,11 +1,29 @@
 import { router } from 'expo-router';
-import { View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
 import type { GameListItem } from '@/db/repo';
 import { shortDate, timeOfDay } from '@/domain/format';
 
-import { Card, Chip, T, TeamSwatch } from './components';
+import { Card, Chip, Icon, T, TeamSwatch } from './components';
 import { colors, font, space } from './theme';
+
+const isYouTube = (url: string) => /youtube\.com|youtu\.be/i.test(url);
+
+/** Tappable video icon for a game with a recording or stream: the YouTube logo for YouTube links. */
+export function VideoLink({ url, size = 26, compact = false }: { url: string | null | undefined; size?: number; compact?: boolean }) {
+  if (!url) return null;
+  const yt = isYouTube(url);
+  return (
+    <Pressable
+      onPress={() => Linking.openURL(url)}
+      accessibilityRole="link"
+      accessibilityLabel={yt ? 'Watch on YouTube' : 'Watch the video'}
+      hitSlop={10}
+      style={compact ? undefined : { minWidth: 36, minHeight: 32, alignItems: 'center', justifyContent: 'center' }}>
+      <Icon name={yt ? 'youtube' : 'play-circle'} color={yt ? '#FF0000' : colors.brand} size={size} />
+    </Pressable>
+  );
+}
 
 export function GameCard({ g }: { g: GameListItem }) {
   if (g.status === 'scheduled') return <FixtureCard g={g} />;
@@ -19,9 +37,10 @@ export function GameCard({ g }: { g: GameListItem }) {
       style={live ? { borderColor: colors.brand, borderWidth: 2 } : undefined}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         {live ? <Chip label="LIVE" tone="danger" icon="circle" /> : forfeitBy ? <Chip label={`Forfeit · ${forfeitBy}`} tone="warn" /> : <Chip label="Final" tone="neutral" />}
-        <T v="small" numberOfLines={1} style={{ flexShrink: 1, marginLeft: space.sm }}>
+        <T v="small" numberOfLines={1} style={{ flex: 1, textAlign: 'right', marginLeft: space.sm }}>
           {[g.event_name, shortDate(g.started_at ?? g.scheduled_at ?? g.created_at)].filter(Boolean).join(' · ')}
         </T>
+        <VideoLink url={g.video_url} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
@@ -56,6 +75,7 @@ export function FixtureCard({ g }: { g: GameListItem }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
         <T v="bodyStrong">{g.scheduled_at ? `${shortDate(g.scheduled_at)} · ${timeOfDay(g.scheduled_at)}` : 'Date to be confirmed'}</T>
         {g.postponements ? <Chip label={`Postponed${g.postponements > 1 ? ` ×${g.postponements}` : ''}`} tone="warn" /> : null}
+        <VideoLink url={g.video_url} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <TeamSwatch color={homeColor} size="sm" />

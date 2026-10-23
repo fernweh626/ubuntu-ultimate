@@ -20,6 +20,7 @@ import { dmyTimeToIso as toIso, localDmy, shortDate, timeOfDay } from '@/domain/
 import { Button, Card, Chip, Choice, DateField, Field, IconButton, Screen, Section, Sheet, T, TeamSwatch } from '@/ui/components';
 import { Availability } from '@/ui/availability';
 import { FieldPicker } from '@/ui/field-picker';
+import { VideoLink } from '@/ui/game-bits';
 import { colors, space } from '@/ui/theme';
 
 export default function Fixture() {
@@ -63,7 +64,10 @@ export default function Fixture() {
       />
       <Screen edges={[]}>
         <Card>
-          <T v="label">{event?.name ?? 'Game'}</T>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <T v="label">{event?.name ?? 'Game'}</T>
+            <VideoLink url={g.video_url} />
+          </View>
           <T v="title">{g.scheduled_at ? `${shortDate(g.scheduled_at)} · ${timeOfDay(g.scheduled_at)}` : 'Date to be confirmed'}</T>
           {venue ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
