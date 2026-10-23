@@ -9,7 +9,7 @@ npm install
 npx expo start --lan  # then scan the QR code with Expo Go (SDK 57) on your phone
 ```
 
-Step-by-step phone setup, troubleshooting and what to try are in the [main README](../README.md#try-it-on-your-phone-with-expo-go).
+Phone setup, troubleshooting and a 10-minute tour are in the [main README](../README.md#run-it-in-5-minutes).
 
 ## Where things live
 
@@ -18,7 +18,8 @@ Step-by-step phone setup, troubleshooting and what to try are in the [main READM
 | `src/app/` | Screens (Expo Router: every file is a route) |
 | `src/db/` | SQLite schema, migrations, seed data and queries |
 | `src/domain/` | Game engine, stats, rules and formatting — plain TypeScript, no UI |
-| `src/content/` | Info hub text: regions, clubs, rules quick reference, what is ultimate |
+| `src/content/` | Static content: regions, clubs, links, rules, the in-app guide, spirit examples, demo season |
+| `tests/` | Tests (`npm test`): real in-memory SQLite, Expo modules shimmed |
 | `src/ui/` | Design system and shared components |
 
 The data model is described in `../docs/data-model.md`.
@@ -26,6 +27,7 @@ The data model is described in `../docs/data-model.md`.
 ## Checks
 
 ```bash
-npx tsc --noEmit
-npx eslint src
+npm run typecheck
+npx eslint src tests
+npm test
 ```

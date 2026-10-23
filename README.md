@@ -11,7 +11,7 @@ Android first (Expo / React Native), with a web version for desk work. Works off
 
 ## Run it in 5 minutes
 
-You need **Node.js 20+**, **git**, and **Expo Go** (SDK 57) on an Android phone on the same Wi-Fi as your computer.
+You need **Node.js 22.13+** (the tests use Node's built-in SQLite), **git**, and **Expo Go** (SDK 57) on an Android phone on the same Wi-Fi as your computer.
 
 ```bash
 git clone https://github.com/fernweh626/ubuntu-ultimate.git
@@ -86,16 +86,26 @@ Phone (Expo / React Native)                Supabase (London)
 | `mobile/src/content/` | Static content: clubs, links, the in-app guide, spirit examples |
 | `supabase/migrations/` | Server tables, row-level security, functions |
 | `tools/demo/` | Builds the anonymised demo content from Stall Count exports (exports never committed) |
-| `docs/data-model.md` | Data, permissions, fixtures and formats in more depth |
+| `mobile/tests/` | Tests (`npm test`), with Expo modules shimmed in `tests/shims/` |
+| `docs/data-model.md` | Every table, sync, privacy on the server, permissions, fixtures and formats |
 
-**Before committing:** `cd mobile && npx tsc --noEmit && npx eslint src`
+**Checks** (from `mobile/`):
+
+```bash
+npm run typecheck   # TypeScript
+npx eslint src tests
+npm test            # 37 test files against a real in-memory SQLite; npm test -- hat sync runs a subset
+```
+
+The tests cover the game engine and stats, formats and brackets, hats and the draw, schedules and
+notifications planning, permissions, privacy, migrations from old phones, and what sync uploads.
 
 ## Known gaps
 
 - **Safari** (web) doesn't start the in-browser database yet. Use a Chromium browser.
 - **Pushes when the app is closed** need an installed build (APK). Expo Go only does on-phone reminders.
 - **The spectator live link** (`web/live/`) is built but not hosted.
-- **No automated test runner in the repo yet.** The domain and database logic has been tested with scripts outside the repo. Moving them in is a good first task.
+- **No UI tests.** The tests cover logic and the database. Screens are checked by hand (and on web with Playwright, not in the repo).
 
 ## Feedback
 
