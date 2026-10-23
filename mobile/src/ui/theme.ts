@@ -21,6 +21,12 @@ export const colors = {
   nightRaised: '#384764',
   nightMuted: '#C3CAD6',
   neutralTint: '#EDF1F5',
+  // Female / male matching: opposite hues (raspberry and teal) so they're easy to tell apart, always
+  // paired with ♀/♂ or F/M, never colour alone. Both pass AA as text on white.
+  female: '#A3125A',
+  femaleTint: '#FBE3EE',
+  male: '#00695C',
+  maleTint: '#DCF0EC',
 } as const;
 
 export const font = {

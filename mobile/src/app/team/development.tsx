@@ -100,7 +100,7 @@ export default function SquadDevelopment() {
               return (
                 <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
                   <Pressable onPress={() => router.push({ pathname: '/development', params: { personId: p.id } })} accessibilityRole="button" style={{ flex: 1, gap: 3 }}>
-                    <T v="bodyStrong" style={{ color: p.gender === 'W' ? '#6B2C91' : p.gender === 'M' ? '#1D3F8F' : colors.ink }}>
+                    <T v="bodyStrong" style={{ color: p.gender === 'W' ? colors.female : p.gender === 'M' ? colors.male : colors.ink }}>
                       {c.ready ? '✓ ' : ''}
                       {displayName(p)}
                     </T>
@@ -120,7 +120,7 @@ export default function SquadDevelopment() {
                 style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
                 <T style={{ width: 22, fontFamily: font.bold, color: colors.faint }}>{i + 1}</T>
                 <View style={{ flex: 1 }}>
-                  <T v="bodyStrong" style={{ color: p.gender === 'W' ? '#6B2C91' : p.gender === 'M' ? '#1D3F8F' : colors.ink }}>
+                  <T v="bodyStrong" style={{ color: p.gender === 'W' ? colors.female : p.gender === 'M' ? colors.male : colors.ink }}>
                     {displayName(p)}
                   </T>
                   <T v="small">{sub}</T>

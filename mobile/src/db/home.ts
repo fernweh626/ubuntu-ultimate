@@ -35,8 +35,8 @@ export type TimelineItem = {
   url: string;
 };
 
-// Distinct from the purple/blue used for F/M points, and readable as text on white.
-const TAG_COLORS = ['#C2410C', '#0F766E', '#B45309', '#BE123C', '#4D7C0F', '#0E7490', '#9F1239', '#15803D', '#7C2D12', '#115E59'];
+// Distinct from the raspberry/teal used for female/male matching, and readable as text on white.
+const TAG_COLORS = ['#C2410C', '#1E40AF', '#B45309', '#6D28D9', '#4D7C0F', '#334155', '#854D0E', '#15803D', '#7C2D12', '#3730A3'];
 
 export function tagColor(id: string) {
   let h = 0;

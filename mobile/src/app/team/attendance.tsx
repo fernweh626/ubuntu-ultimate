@@ -61,7 +61,7 @@ export default function Attendance() {
                 style={{ padding: space.md, gap: 6, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
                   <T style={{ width: 24, fontFamily: font.display, fontSize: 18, color: i < 3 ? colors.brand : colors.faint }}>{i + 1}</T>
-                  <T v="bodyStrong" style={{ flex: 1, color: r.gender === 'W' ? '#6B2C91' : r.gender === 'M' ? '#1D3F8F' : colors.ink }}>
+                  <T v="bodyStrong" style={{ flex: 1, color: r.gender === 'W' ? colors.female : r.gender === 'M' ? colors.male : colors.ink }}>
                     {displayName(r)}
                   </T>
                   <T style={{ fontFamily: font.display, fontSize: 20 }}>

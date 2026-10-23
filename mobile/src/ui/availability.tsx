@@ -10,8 +10,8 @@ import { AnswerButtons } from './answer';
 import { Section, T } from './components';
 import { colors, font, space } from './theme';
 
-const F = '#6B2C91';
-const M = '#1D3F8F';
+const F = colors.female;
+const M = colors.male;
 
 /**
  * "Are you available?" for an upcoming game, per team you play for or run. Players answer for

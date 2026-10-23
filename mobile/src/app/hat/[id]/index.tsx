@@ -14,8 +14,8 @@ import { Button, Card, Chip, Choice, Field, IconButton, Screen, Section, Segment
 import { GameCard } from '@/ui/game-bits';
 import { colors, font, space } from '@/ui/theme';
 
-const F = '#6B2C91';
-const M = '#1D3F8F';
+const F = colors.female;
+const M = colors.male;
 
 export default function HatPage() {
   const { id } = useLocalSearchParams<{ id: string }>();

@@ -12,8 +12,8 @@ import { AnswerButtons } from '@/ui/answer';
 import { Avatar } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
-const F = '#6B2C91';
-const M = '#1D3F8F';
+const F = colors.female;
+const M = colors.male;
 
 export default function Practice() {
   const { id } = useLocalSearchParams<{ id: string }>();

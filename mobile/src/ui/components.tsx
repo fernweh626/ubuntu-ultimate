@@ -237,7 +237,7 @@ export function Chip({
 }
 
 /**
- * ABBA ratio for a point as F1/F2/M1/M2 (purple for female, blue for male). Icon + words, never colour alone.
+ * ABBA ratio for a point as F1/F2/M1/M2 (raspberry for female, teal for male). Icon + words, never colour alone.
  * `compact` is for tight rows (point-by-point log); the full badge is for scoring screens.
  */
 export function RatioBadge({ ratio, point, compact, onDark }: { ratio: string | null; point: number; compact?: boolean; onDark?: boolean }) {
@@ -245,8 +245,8 @@ export function RatioBadge({ ratio, point, compact, onDark }: { ratio: string | 
   const women = ratio === 'W';
   const code = ratioCode(ratio, point);
   const slot = ratioSlot(point);
-  const bg = women ? '#F3E8FB' : '#E3ECFA';
-  const fg = women ? '#6B2C91' : '#1D3F8F';
+  const bg = women ? colors.femaleTint : colors.maleTint;
+  const fg = women ? colors.female : colors.male;
   return (
     <View
       accessibilityLabel={`${code}: ${women ? 'female' : 'male'} point ${slot}, ${women ? 'four female matching and three male matching players' : 'four male matching and three female matching players'}`}
