@@ -14,3 +14,6 @@ web-build/
 
 # OS
 .DS_Store
+
+# Real player names (POPIA)
+Ghost.pdf
