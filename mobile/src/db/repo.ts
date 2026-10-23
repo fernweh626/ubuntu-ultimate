@@ -65,7 +65,8 @@ export async function deviceId(db: SQLiteDatabase) {
 /** The region this phone's user plays in / cares most about — the default filter across the app. */
 export async function getHomeRegion(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'home_region'`);
-  if (row) return row.value;
+  // 'all' = they chose All of SA on purpose: don't guess a region for them.
+  if (row) return row.value === 'all' ? null : row.value;
   // Not chosen yet: guess from the teams you play for.
   const team = await db.getFirstAsync<{ region: string }>(
     `SELECT t.region FROM membership m JOIN team t ON t.id = m.team_id
@@ -78,9 +79,7 @@ export async function getHomeRegion(db: SQLiteDatabase) {
 
 export function setHomeRegion(db: SQLiteDatabase, region: string | null) {
   return write(db, () =>
-    region
-      ? db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('home_region', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, region)
-      : db.runAsync(`DELETE FROM app_meta WHERE key = 'home_region'`),
+    db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('home_region', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, region ?? 'all'),
   );
 }
 

@@ -29,7 +29,7 @@ import type { Gender } from '@/db/types';
 import { displayName, shortDate } from '@/domain/format';
 import { canSetTeamRole, grantSummary, LEVEL_LABEL } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, Field, Icon, IconButton, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
-import { RegionChips } from '@/ui/region-filter';
+import { RegionMap } from '@/ui/region-map';
 import { getAccreditation } from '@/db/development';
 import { ACCREDITATION_LEVELS, accreditationState } from '@/domain/development';
 import { Avatar } from '@/ui/photo';
@@ -156,8 +156,8 @@ export default function Me() {
         ) : null}
 
         <Section title="Your region">
-          <T v="small">Where you play, or care about most. Calendar, pickups and teams open on it — you can always switch to All of SA.</T>
-          <RegionChips value={homeRegion ?? ''} onChange={(v) => setHomeRegion(db, v === 'all' ? null : v)} home={homeRegion ?? null} />
+          <T v="small">Tap where you play, or care about most. Calendar, pickups, teams and links open on it. Pick All of SA to see everything.</T>
+          <RegionMap value={homeRegion ?? null} onChange={(v) => setHomeRegion(db, v)} />
         </Section>
 
         <View style={{ gap: space.sm }}>
