@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, TextInput, View } from 'react-native';
 
 import { currentUser, linkAccount, resumeAccount, signIn, signOut, signUp } from '@/db/account';
-import { useData } from '@/db/live';
+import { notifyChanged, useData } from '@/db/live';
 import { getMe, listPeople, savePerson } from '@/db/repo';
 import { syncNow, syncStatus } from '@/db/sync';
 import type { Gender } from '@/db/types';
@@ -52,7 +52,9 @@ export default function Account() {
         <SignInForm busy={busy} onSubmit={(mode, email, pw) => run(async () => {
           if (mode === 'up') await signUp(email, pw);
           else await signIn(email, pw);
-          await resumeAccount(db);
+          // Already linked on another phone: reconnect. Otherwise move on to "Which player are you?".
+          // Signing in doesn't touch the local database, so refresh the screen ourselves.
+          if (!(await resumeAccount(db))) notifyChanged();
         })} />
       ) : !signedIn ? (
         <LinkPlayer me={me ?? null} busy={busy} email={user.email ?? ''} onLink={(pid) => run(async () => {
