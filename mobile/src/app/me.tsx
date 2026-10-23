@@ -26,10 +26,12 @@ import {
   type MyRole,
 } from '@/db/repo';
 import type { Gender } from '@/db/types';
-import { displayName } from '@/domain/format';
+import { displayName, shortDate } from '@/domain/format';
 import { canSetTeamRole, grantSummary, LEVEL_LABEL } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, Field, Icon, IconButton, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
 import { RegionChips } from '@/ui/region-filter';
+import { getAccreditation } from '@/db/development';
+import { ACCREDITATION_LEVELS, accreditationState } from '@/domain/development';
 import { Avatar } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
@@ -56,6 +58,7 @@ export default function Me() {
   const roles = useData(async (d) => (me ? myRoles(d, me.id) : []), [me?.id]) ?? [];
   const access = useData(getAccess);
   const homeRegion = useData(getHomeRegion);
+  const acc = useData(async (d) => (me ? getAccreditation(d, me.id) : null), [me?.id]);
   const week = useData(async (d) => {
     if (!me) return null;
     const monday = new Date();
@@ -123,6 +126,21 @@ export default function Me() {
             onPress={() => router.push('/account')}
           />
           <Row title="Notifications" subtitle="Game reminders, shout-outs, check-ins" left={<Icon name="bell-outline" color={colors.brand} />} onPress={() => router.push('/notifications')} />
+        </View>
+
+        <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+          <Row
+            title="Accreditation"
+            subtitle={
+              !acc
+                ? 'Add yours: needed for leagues and nationals'
+                : `${ACCREDITATION_LEVELS[acc.level]}${acc.expires_on ? ` · ${accreditationState(acc.expires_on) === 'expired' ? 'expired' : 'valid until'} ${shortDate(acc.expires_on)}` : ''}`
+            }
+            left={<Icon name={acc && accreditationState(acc.expires_on) === 'valid' ? 'check-decagram' : 'alert-decagram-outline'} color={acc && accreditationState(acc.expires_on) === 'valid' ? colors.brand : colors.warn} />}
+            onPress={() => router.push('/accreditation')}
+          />
+          <Row title="My development" subtitle="Self-rating every 6 months, fitness tests, history" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push('/development')} />
+          <Row title="Report a bug or suggest an idea" subtitle="Goes straight to the people building the app" left={<Icon name="lightbulb-on-outline" color={colors.brand} />} onPress={() => router.push('/feedback')} />
         </View>
 
         <Section title="Your region">

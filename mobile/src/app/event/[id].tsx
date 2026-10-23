@@ -141,7 +141,15 @@ export default function EventPage() {
       <Stack.Screen
         options={{
           title: '',
-          headerRight: () => (runsEvents ? <IconButton icon="pencil" label="Edit event" onPress={() => router.push({ pathname: '/event/edit', params: { id } })} /> : null),
+          headerRight: () =>
+            runsEvents ? (
+              <View style={{ flexDirection: 'row' }}>
+                <IconButton icon="file-delimited-outline" label="Export data" onPress={() => router.push({ pathname: '/export', params: { eventId: id } })} />
+                <IconButton icon="pencil" label="Edit event" onPress={() => router.push({ pathname: '/event/edit', params: { id } })} />
+              </View>
+            ) : access.staffTeamIds.length ? (
+              <IconButton icon="file-delimited-outline" label="Export data" onPress={() => router.push({ pathname: '/export', params: { eventId: id } })} />
+            ) : null,
         }}
       />
       <Screen edges={[]}>

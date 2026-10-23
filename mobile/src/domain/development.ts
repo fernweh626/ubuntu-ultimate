@@ -30,6 +30,10 @@ export const RATING_AREAS: { key: RatingArea; label: string; hint: string }[] = 
   { key: 'defence', label: 'Defence', hint: 'Marking, staying with your player, poaching, zone.' },
   { key: 'athleticism', label: 'Fitness & athleticism', hint: 'Speed, endurance, agility, playing hard all game.' },
 ];
+/** 1–5, each with a plain meaning so players rate against the same yardstick. */
+export const RATING_SCALE = ['Beginner', 'Developing', 'Solid club player', 'Strong / regional level', 'National-team level'];
+export const RATING_MAX = RATING_SCALE.length;
+
 /** Re-rate every six months. */
 export const RATING_EVERY_DAYS = 182;
 

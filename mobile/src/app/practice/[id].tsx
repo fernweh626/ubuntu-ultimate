@@ -3,10 +3,11 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Alert, Linking, Pressable, View } from 'react-native';
 
+import { attendanceFor, setAttendance } from '@/db/development';
 import { useData } from '@/db/live';
 import { cancelPractice, getAccess, getVenue, practiceDetail, setRsvp, type PracticeAttendee, type RsvpStatus } from '@/db/repo';
 import { displayName, shortDate, timeOfDay } from '@/domain/format';
-import { Button, Card, Chip, Field, IconButton, Screen, Section, Sheet, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, Field, IconButton, Screen, Section, Sheet, T } from '@/ui/components';
 import { Avatar } from '@/ui/photo';
 import { colors, font, space } from '@/ui/theme';
 
@@ -20,18 +21,22 @@ export default function Practice() {
     async (d) => {
       const detail = await practiceDetail(d, id);
       const venue = detail?.session.venue_id ? await getVenue(d, detail.session.venue_id) : null;
-      return { detail, venue, access: await getAccess(d) };
+      return { detail, venue, access: await getAccess(d), register: await attendanceFor(d, id) };
     },
     [id],
   );
   const [reasonSheet, setReasonSheet] = useState(false);
   const [reason, setReason] = useState('');
   const [opened] = useState(() => Date.now());
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [ticks, setTicks] = useState<Set<string>>(new Set());
 
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
   if (!bundle.detail) return <Screen edges={[]}><T>This practice was removed.</T></Screen>;
   const { session: s, people } = bundle.detail;
-  const { access, venue } = bundle;
+  const { access, venue, register } = bundle;
+  const hasRegister = register.length > 0;
+  const present = register.filter((r) => r.attended).length;
   const staff = access.level === 'admin' || access.level === 'coordinator' || (!!s.team_id && access.staffTeamIds.includes(s.team_id));
   const meId = access.meId;
   const mine = people.find((p) => p.personId === meId);
@@ -125,6 +130,22 @@ export default function Practice() {
           </Section>
         ) : null}
 
+        {staff && started && !cancelled ? (
+          <Card>
+            <T v="bodyStrong">{hasRegister ? `Register: ${present} here` : 'Take the register'}</T>
+            <T v="small">Who actually came. It feeds the attendance ranking and spots no-shows.</T>
+            <Button
+              label={hasRegister ? 'Edit register' : 'Take register'}
+              icon="clipboard-check-outline"
+              kind={hasRegister ? 'secondary' : 'primary'}
+              onPress={() => {
+                setTicks(new Set(hasRegister ? register.filter((r) => r.attended).map((r) => r.person_id) : people.filter((p) => p.status === 'going').map((p) => p.personId)));
+                setRegisterOpen(true);
+              }}
+            />
+          </Card>
+        ) : null}
+
         {ended && !cancelled ? (
           <View style={{ flexDirection: 'row', gap: space.sm }}>
             {onSquad ? <Button label="How was it?" icon="comment-question-outline" kind="primary" onPress={() => router.push({ pathname: '/reflect', params: { sessionId: s.id } })} style={{ flex: 1 }} /> : null}
@@ -161,6 +182,37 @@ export default function Practice() {
 
         {staff && !ended ? <Button label={cancelled ? 'Un-cancel practice' : 'Cancel practice'} icon={cancelled ? 'undo' : 'cancel'} kind={cancelled ? 'secondary' : 'danger'} onPress={cancelMenu} /> : null}
       </Screen>
+
+      <Sheet visible={registerOpen} onClose={() => setRegisterOpen(false)} title={`Who’s here? · ${ticks.size}`}>
+        <T v="small">Started from who said they’re going. Tap to change.</T>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {people.map((p) => {
+            const on = ticks.has(p.personId);
+            return (
+              <Choice
+                key={p.personId}
+                label={`${on ? '✓ ' : ''}${displayName(p)}`}
+                selected={on}
+                onPress={() => {
+                  const next = new Set(ticks);
+                  if (on) next.delete(p.personId);
+                  else next.add(p.personId);
+                  setTicks(next);
+                }}
+                style={{ minHeight: 44, paddingHorizontal: 12 }}
+              />
+            );
+          })}
+        </View>
+        <Button
+          label="Save register"
+          kind="primary"
+          onPress={async () => {
+            await setAttendance(db, s.id, people.map((p) => ({ personId: p.personId, attended: ticks.has(p.personId) })));
+            setRegisterOpen(false);
+          }}
+        />
+      </Sheet>
 
       <Sheet visible={reasonSheet} onClose={() => setReasonSheet(false)} title="Can’t make it">
         <Field label="Reason (optional, only staff see it)" value={reason} onChangeText={setReason} placeholder="Work, injury, away…" />

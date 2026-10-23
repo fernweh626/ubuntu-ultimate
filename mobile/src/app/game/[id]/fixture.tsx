@@ -18,6 +18,7 @@ import {
 import { canPostpone, postponeRuleText, STATUS_REASONS, type StatusReason } from '@/domain/fixtures';
 import { dmyTimeToIso as toIso, localDmy, shortDate, timeOfDay } from '@/domain/format';
 import { Button, Card, Chip, Choice, DateField, Field, IconButton, Screen, Section, Sheet, T, TeamSwatch } from '@/ui/components';
+import { Availability } from '@/ui/availability';
 import { FieldPicker } from '@/ui/field-picker';
 import { colors, space } from '@/ui/theme';
 
@@ -100,6 +101,8 @@ export default function Fixture() {
         ) : (
           <T v="small">A scorekeeper or team staff starts this game on the day.</T>
         )}
+
+        <Availability gameId={g.id} teams={[{ id: homeId, name: name(homeId) }, { id: awayId, name: name(awayId) }]} />
 
         {actsFor.length ? (
           <Section title="Can’t make it?">

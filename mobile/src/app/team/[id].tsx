@@ -107,6 +107,13 @@ export default function TeamPage() {
           {agg && agg.games ? <Button label="Team report" icon="chart-box-outline" onPress={() => router.push({ pathname: '/team/report', params: { id } })} /> : null}
         </View>
         {team.about ? <T v="small">{team.about}</T> : null}
+        {isStaffHere ? (
+          <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+            <Row title="Attendance" subtitle="Who comes to practice, no-shows, games played" left={<Icon name="account-check-outline" color={colors.brand} />} onPress={() => router.push({ pathname: '/team/attendance', params: { teamId: id } })} />
+            <Row title="Squad development" subtitle="Accreditation, fitness tests, self-ratings" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push({ pathname: '/team/development', params: { teamId: id } })} />
+            <Row title="Export data" subtitle="Games, points and player stats as CSV" left={<Icon name="file-delimited-outline" color={colors.brand} />} onPress={() => router.push({ pathname: '/export', params: { teamId: id } })} />
+          </View>
+        ) : null}
 
         <Section title="Contact">
           {hasContact ? (

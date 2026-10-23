@@ -2,6 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
+import { sendPendingFeedback } from './feedback-send';
 import { onChanged } from './live';
 import { syncNow } from './sync';
 
@@ -16,6 +17,8 @@ export function SyncManager() {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const signedIn = async () => !!(await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'signed_in'`));
     const run = async () => {
+      // Feedback goes even when signed out.
+      sendPendingFeedback(db).catch(() => {});
       if (!(await signedIn())) return;
       try {
         await syncNow(db);

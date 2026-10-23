@@ -682,7 +682,7 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
-  -- Self-rating, 1–10 in five areas, redone every six months; rows are the history.
+  -- Self-rating, 1–5 in five areas, redone every six months; rows are the history.
   CREATE TABLE self_rating (
     id TEXT PRIMARY KEY NOT NULL,
     person_id TEXT NOT NULL REFERENCES person(id),

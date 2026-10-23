@@ -12,6 +12,8 @@ export type NotifyPrefs = {
   gameReminders: boolean;
   postGame: boolean;
   practices: boolean;
+  accreditation: boolean;
+  development: boolean;
   spirit: boolean;
   roster: boolean;
   shoutouts: boolean;
@@ -26,6 +28,8 @@ export const DEFAULT_PREFS: NotifyPrefs = {
   gameReminders: true,
   postGame: true,
   practices: true,
+  accreditation: true,
+  development: true,
   spirit: true,
   roster: true,
   shoutouts: true,
@@ -93,13 +97,37 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
   const me = (await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_person_id'`))?.value;
   if (!me) return [];
   const out: Planned[] = [];
+
+  // Accreditation: 6 months, 1 month and 1 week before it expires, and on the day.
+  const acc = await db.getFirstAsync<{ level: string; expires_on: string | null }>(`SELECT level, expires_on FROM accreditation WHERE person_id = ?`, me);
+  if (acc?.expires_on && prefs.accreditation) {
+    const end = new Date(`${acc.expires_on.slice(0, 10)}T09:00:00`);
+    const steps: [number, string, string][] = [
+      [182, 'Your accreditation expires in 6 months', 'Plenty of time, but book the course so leagues and nationals aren’t a scramble.'],
+      [30, 'Accreditation expires in a month', 'You need it valid to play leagues, regionals and nationals. Renew it soon.'],
+      [7, 'Accreditation expires in a week ⚠️', 'Renew now so you’re not left off a roster. Then update the expiry in the app.'],
+      [0, 'Your accreditation expires today', 'Renew it and update the date in Me → Accreditation.'],
+    ];
+    for (const [days, title, body] of steps) {
+      out.push({ key: `acc${days}:${acc.expires_on}`, kind: 'accreditation', at: new Date(end.getTime() - days * 86400_000), title, body, url: '/accreditation' });
+    }
+  }
+
+  // Self-rating: six months after the last one.
+  const lastRating = await db.getFirstAsync<{ rated_on: string }>(`SELECT rated_on FROM self_rating WHERE person_id = ? ORDER BY rated_on DESC LIMIT 1`, me);
+  if (lastRating && prefs.development) {
+    const due = new Date(`${lastRating.rated_on.slice(0, 10)}T09:00:00`);
+    due.setDate(due.getDate() + 182);
+    out.push({ key: `rate:${lastRating.rated_on}`, kind: 'development', at: due, title: 'Six months on: rate yourself again', body: 'Two minutes, five areas. See how far you’ve come since last time.', url: '/rate' });
+  }
+
   const myTeams = (
     await db.getAllAsync<{ team_id: string; role: string }>(
       `SELECT team_id, role FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`,
       me,
     )
   ).map((r) => ({ id: r.team_id, staff: r.role !== 'player', spirit: r.role === 'spirit_captain' || r.role === 'captain' }));
-  if (!myTeams.length) return [];
+  if (!myTeams.length) return out.filter((p) => p.at > now);
   const teamIds = myTeams.map((t) => t.id);
   const q = teamIds.map(() => '?').join(',');
   const horizon = new Date(now.getTime() + 14 * 86400_000).toISOString();
@@ -126,6 +154,18 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
 
     if (g.status === 'scheduled' && g.scheduled_at && prefs.gameReminders) {
       const start = new Date(g.scheduled_at);
+      // "Are you available?" 5 days out (or now, if the fixture is sooner), until answered.
+      const said = await db.getFirstAsync(`SELECT 1 FROM game_availability WHERE game_id = ? AND person_id = ?`, g.id, me);
+      if (!said) {
+        out.push({
+          key: `avail:${g.id}:${g.scheduled_at}`,
+          kind: 'gameReminders',
+          at: respectQuiet(new Date(Math.max(start.getTime() - 5 * 86400_000, now.getTime() + 60_000)), prefs, start),
+          title: `Can you play ${shortDate(g.scheduled_at)} v ${opp}?`,
+          body: 'One tap so your captains can pick the line-up.',
+          url: `/game/${g.id}/fixture`,
+        });
+      }
       const where = `${myName} v ${opp}${g.venue ? ` at ${g.venue}` : ''}, ${timeOfDay(g.scheduled_at)}.`;
       out.push({
         key: `game24:${g.id}:${g.scheduled_at}`,

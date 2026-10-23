@@ -11,9 +11,11 @@ import { Button, Card, Screen, Section, Segmented, T } from '@/ui/components';
 import { colors, space } from '@/ui/theme';
 
 const ITEMS: { key: keyof NotifyPrefs; title: string; body: string }[] = [
-  { key: 'gameReminders', title: 'Game reminders', body: '24 hours and 100 minutes before your team plays: where, when and who.' },
+  { key: 'gameReminders', title: 'Game reminders', body: 'Can you play? 5 days before, then 24 hours and 100 minutes before: where, when and who.' },
   { key: 'postGame', title: 'After the game', body: 'Your game card is ready + a 1-minute check-in. One nudge next morning if you haven’t.' },
   { key: 'practices', title: 'Practices', body: 'Are you coming? the day before, a reminder if you are, and a 1-minute check-in after.' },
+  { key: 'accreditation', title: 'Accreditation expiry', body: '6 months, 1 month and 1 week before it runs out.' },
+  { key: 'development', title: 'Self-rating check-in', body: 'Every six months, a nudge to rate yourself again.' },
   { key: 'shoutouts', title: 'Shout-outs', body: 'When a teammate shouts you out.' },
   { key: 'fixtureChanges', title: 'Fixture changes', body: 'Your team’s game moves, is postponed or forfeited.' },
   { key: 'spirit', title: 'Spirit score due', body: 'Captains and spirit captains, 2 hours after a game.' },
