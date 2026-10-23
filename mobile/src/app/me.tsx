@@ -61,11 +61,17 @@ export default function Me() {
   }, [me?.id]);
   const following = useData(async (d) => {
     const [follows, teams, events] = await Promise.all([listFollows(d), listTeams(d), listEvents(d)]);
+    const players = new Map(
+      (await d.getAllAsync<{ id: string; first_name: string; last_name: string }>(`SELECT id, first_name, last_name FROM person WHERE id IN (SELECT target_id FROM follow WHERE kind = 'player')`)).map((p) => [p.id, `${p.first_name} ${p.last_name}`.trim()]),
+    );
     return follows
+      .filter((f) => f.kind !== 'pickup')
       .map((f) =>
         f.kind === 'team'
           ? { ...f, name: teams.find((t) => t.id === f.target_id)?.name, color: teams.find((t) => t.id === f.target_id)?.primary_color ?? null }
-          : { ...f, name: events.find((e) => e.id === f.target_id)?.name, color: null },
+          : f.kind === 'player'
+            ? { ...f, name: players.get(f.target_id), color: null }
+            : { ...f, name: events.find((e) => e.id === f.target_id)?.name, color: null },
       )
       .filter((f) => f.name);
   }) ?? [];
@@ -171,10 +177,10 @@ export default function Me() {
                 <Row
                   key={`${f.kind}-${f.target_id}`}
                   title={f.name!}
-                  subtitle={f.kind === 'team' ? 'Team' : 'Tournament / league'}
-                  left={f.kind === 'team' ? <TeamSwatch color={f.color} /> : <Icon name="trophy-outline" />}
+                  subtitle={f.kind === 'team' ? 'Team' : f.kind === 'player' ? 'Player' : 'Tournament / league'}
+                  left={f.kind === 'team' ? <TeamSwatch color={f.color} /> : <Icon name={f.kind === 'player' ? 'account-star-outline' : 'trophy-outline'} />}
                   right={<IconButton icon="star" color={colors.warn} label="Unfollow" onPress={() => setFollowing(db, f.kind, f.target_id, false)} />}
-                  onPress={() => router.push(f.kind === 'team' ? `/team/${f.target_id}` : `/event/${f.target_id}`)}
+                  onPress={() => router.push(f.kind === 'team' ? `/team/${f.target_id}` : f.kind === 'player' ? `/player/${f.target_id}` : `/event/${f.target_id}`)}
                 />
               ))}
             </View>

@@ -5,9 +5,10 @@ import { Alert, Pressable, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
-import { getPerson, joinOrRequest, leaveTeam, listGamesForPerson, listTeams, personHistory } from '@/db/repo';
+import { getMeId, getPerson, joinOrRequest, leaveTeam, listGamesForPerson, listTeams, personHistory } from '@/db/repo';
 import { displayName, shortDate } from '@/domain/format';
 import { Button, Card, Chip, Choice, IconButton, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
+import { FollowButton } from '@/ui/follow-button';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
 import { Avatar } from '@/ui/photo';
 import { space } from '@/ui/theme';
@@ -21,6 +22,7 @@ export default function PlayerProfile() {
   const person = useData((d) => getPerson(d, id), [id]);
   const history = useData((d) => personHistory(d, id), [id]) ?? [];
   const teams = useData(listTeams) ?? [];
+  const meId = useData(getMeId);
   const career = useData(async (d) => loadFinishedGames(d, await listGamesForPerson(d, id)), [id]);
   const [joining, setJoining] = useState(false);
   const [joinKind, setJoinKind] = useState<'core' | 'guest' | 'mercenary'>('mercenary');
@@ -90,6 +92,11 @@ export default function PlayerProfile() {
             </T>
           </View>
         </View>
+        {meId !== undefined && meId !== id ? (
+          <View style={{ flexDirection: 'row' }}>
+            <FollowButton kind="player" id={id} />
+          </View>
+        ) : null}
 
         <Section title="Career · all teams">
           <View style={{ flexDirection: 'row', gap: space.sm }}>

@@ -73,6 +73,20 @@ export async function homeFeed(db: SQLiteDatabase, now = new Date()) {
   const followedTeams = new Set(follows.filter((f) => f.kind === 'team').map((f) => f.target_id));
   const followedEvents = new Set(follows.filter((f) => f.kind === 'event').map((f) => f.target_id));
   const followedPickups = new Set(follows.filter((f) => f.kind === 'pickup').map((f) => f.target_id));
+  // Players you follow (a partner, a friend): their current teams' games count as followed.
+  const playerIds = follows.filter((f) => f.kind === 'player').map((f) => f.target_id);
+  const playerTeams = new Map<string, string[]>();
+  if (playerIds.length) {
+    const rows = await db.getAllAsync<{ team_id: string; first_name: string }>(
+      `SELECT m.team_id, p.first_name FROM membership m JOIN person p ON p.id = m.person_id
+        WHERE m.person_id IN (${playerIds.map(() => '?').join(',')}) AND m.end_date IS NULL AND m.deleted_at IS NULL`,
+      ...playerIds,
+    );
+    for (const r of rows) {
+      playerTeams.set(r.team_id, [...(playerTeams.get(r.team_id) ?? []), r.first_name]);
+      followedTeams.add(r.team_id);
+    }
+  }
   const today = now.toISOString().slice(0, 10);
 
   // Competitions: events my teams are entered in, plus followed ones, that haven't finished.
@@ -140,7 +154,13 @@ export async function homeFeed(db: SQLiteDatabase, now = new Date()) {
       at: g.scheduled_at,
       kind: 'game',
       title: isMine ? (multi ? `${myName} v ${opp}` : `v ${opp}`) : `${g.a_name} v ${g.b_name}`,
-      subtitle: [g.venue_name, isMine && mine.has(g.home_team_id ?? g.team_a_id) ? 'you’re home: bring cones' : null].filter(Boolean).join(' · '),
+      subtitle: [
+        !isMine ? [...(playerTeams.get(g.team_a_id) ?? []), ...(playerTeams.get(g.team_b_id) ?? [])].join(' & ') + (playerTeams.has(g.team_a_id) || playerTeams.has(g.team_b_id) ? ' playing' : '') || null : null,
+        g.venue_name,
+        isMine && mine.has(g.home_team_id ?? g.team_a_id) ? 'you’re home: bring cones' : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
       tag: g.event_id ? (tagFor.get(g.event_id) ?? (g.event_name ? { name: tagName(g.event_name), color: tagColor(g.event_id) } : null)) : null,
       following: !isMine,
       url: `/game/${g.id}/fixture`,

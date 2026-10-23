@@ -1219,8 +1219,8 @@ export function setFollowing(db: SQLiteDatabase, kind: FollowKind, targetId: str
 }
 
 /**
- * The teams and events "For you" covers: teams I'm on, teams I follow, events I follow, and events
- * those teams are entered in.
+ * The teams and events "For you" covers: teams I'm on, teams I follow, teams of players I follow,
+ * events I follow, and events those teams are entered in.
  */
 export async function myScope(db: SQLiteDatabase) {
   const meId = await getMeId(db);
@@ -1228,7 +1228,12 @@ export async function myScope(db: SQLiteDatabase) {
     ? (await db.getAllAsync<{ team_id: string }>(`SELECT team_id FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`, meId)).map((r) => r.team_id)
     : [];
   const follows = await listFollows(db);
-  const teamIds = new Set([...mine, ...follows.filter((f) => f.kind === 'team').map((f) => f.target_id)]);
+  const players = follows.filter((f) => f.kind === 'player').map((f) => f.target_id);
+  // Teams of players you follow count as followed, so their games show under "For you".
+  const theirTeams = players.length
+    ? (await db.getAllAsync<{ team_id: string }>(`SELECT team_id FROM membership WHERE person_id IN (${players.map(() => '?').join(',')}) AND end_date IS NULL AND deleted_at IS NULL`, ...players)).map((r) => r.team_id)
+    : [];
+  const teamIds = new Set([...mine, ...follows.filter((f) => f.kind === 'team').map((f) => f.target_id), ...theirTeams]);
   const eventIds = new Set(follows.filter((f) => f.kind === 'event').map((f) => f.target_id));
   return { teamIds, eventIds, myTeamIds: new Set(mine), hasAny: teamIds.size + eventIds.size > 0 };
 }
