@@ -13,12 +13,12 @@ import { lineNeed, ratioCode } from '@/domain/rules';
 import { BreakClock } from '@/ui/break-clock';
 import { Button, Choice, Field, Footer, Icon, RatioBadge, Screen, Sheet, T } from '@/ui/components';
 import { QuickAddPlayer } from '@/ui/quick-add-player';
+import { byMatching, MatchingHeader, PosTag } from '@/ui/roster';
 import { colors, space } from '@/ui/theme';
 
 // Effort × minutes; e.g. a 90-minute practice at effort 5, or an hour at effort 7.
 const HEAVY_LOAD = 420;
 const DOT = { fresh: colors.brand, tiring: colors.warn, tired: colors.danger } as const;
-const POS = { handler: 'H', cutter: 'C', hybrid: 'Hy' } as const;
 
 export default function LineBuilder() {
   const { id, team: teamId } = useLocalSearchParams<{ id: string; team: string }>();
@@ -164,11 +164,12 @@ export default function LineBuilder() {
               {gp.jersey_number ? <T v="small"> #{gp.jersey_number}</T> : null}
             </T>
             <T v="small">
-              {[p.gender, (gp.position ?? p.position) ? POS[(gp.position ?? p.position)!] : null, `${f?.pointsPlayed ?? 0} pts`, f?.consecutive ? `${f.consecutive} in a row` : f?.restedPoints ? `rested ${f.restedPoints}` : null, injured ? 'injured' : gp.status === 'tired' ? 'says tired' : heavy ? 'played hard recently' : null]
+              {[p.gender === 'W' ? 'F' : p.gender === 'M' ? 'M' : null, `${f?.pointsPlayed ?? 0} pts`, f?.consecutive ? `${f.consecutive} in a row` : f?.restedPoints ? `rested ${f.restedPoints}` : null, injured ? 'injured' : gp.status === 'tired' ? 'says tired' : heavy ? 'played hard recently' : null]
                 .filter(Boolean)
                 .join(' · ')}
             </T>
           </View>
+          <PosTag position={gp.position ?? p.position} />
           <Icon name={on ? 'check-circle' : 'plus-circle-outline'} color={on ? colors.brand : colors.faint} />
         </Pressable>
         {subs.length ? (
@@ -238,7 +239,15 @@ export default function LineBuilder() {
           <T v="label">Bench · freshest first</T>
           <Button label="Add player" icon="account-plus" kind="ghost" onPress={() => setAdding(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} />
         </View>
-        {bench.map((gp) => row(gp, false))}
+        {byMatching(
+          bench.map((gp) => ({ gp, gender: person(gp.person_id)?.gender ?? null, first_name: person(gp.person_id)?.first_name ?? '' })),
+          true,
+        ).map((g) => (
+          <View key={g.key} style={{ gap: 6 }}>
+            <MatchingHeader group={g} inline />
+            {g.items.map((x) => row(x.gp, false))}
+          </View>
+        ))}
       </Screen>
 
       <Sheet visible={saving} onClose={() => setSaving(false)} title="Save as a line">

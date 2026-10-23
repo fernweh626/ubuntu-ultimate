@@ -12,6 +12,7 @@ import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
 import { TeamFixtures } from '@/ui/team-fixtures';
+import { MatchingGroups, PosTag } from '@/ui/roster';
 import { JoinRequests, JoinTeamBar } from '@/ui/join-team';
 import { getClub } from '@/db/clubs';
 import { divisionName } from '@/domain/divisions';
@@ -195,22 +196,24 @@ export default function TeamPage() {
           }>
           {players && players.length ? (
             <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-              {players.map((p) => (
-                <Row
-                  key={p.id}
-                  title={`${displayName(p)}${p.jersey_number ? `  #${p.jersey_number}` : ''}`}
-                  subtitle={[p.gender === 'W' ? 'Female matching' : p.gender === 'M' ? 'Male matching' : null, p.position ? POS[p.position] : null].filter(Boolean).join(' · ')}
-                  right={
-                    p.role !== 'player' ? (
-                      <Chip label={TEAM_ROLE_LABEL[p.role]} />
-                    ) : p.membership_kind !== 'core' ? (
-                      <Chip label={KIND_LABEL[p.membership_kind]} tone="warn" />
-                    ) : undefined
-                  }
-                  left={<Avatar uri={p.photo_uri} name={displayName(p)} size={36} tone="tint" />}
-                  onPress={() => router.push(`/player/${p.id}`)}
-                />
-              ))}
+              <MatchingGroups
+                list={players}
+                render={(p) => (
+                  <Row
+                    key={p.id}
+                    title={`${displayName(p)}${p.jersey_number ? `  #${p.jersey_number}` : ''}`}
+                    subtitle={p.position ? POS[p.position] : undefined}
+                    right={
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        {p.role !== 'player' ? <Chip label={TEAM_ROLE_LABEL[p.role]} /> : p.membership_kind !== 'core' ? <Chip label={KIND_LABEL[p.membership_kind]} tone="warn" /> : null}
+                        <PosTag position={p.position} />
+                      </View>
+                    }
+                    left={<Avatar uri={p.photo_uri} name={displayName(p)} size={36} tone="tint" />}
+                    onPress={() => router.push(`/player/${p.id}`)}
+                  />
+                )}
+              />
             </View>
           ) : (
             <EmptyState

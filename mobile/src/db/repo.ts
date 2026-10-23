@@ -192,8 +192,25 @@ export function setMembershipRole(db: SQLiteDatabase, personId: string, teamId: 
 /* ---------------- Teams & people ---------------- */
 
 export function listTeams(db: SQLiteDatabase) {
-  // Hat teams only exist for one hat day; they're shown on the hat, not in team lists.
-  return db.getAllAsync<Team>(`SELECT * FROM team WHERE deleted_at IS NULL AND kind != 'hat' ORDER BY name COLLATE NOCASE`);
+  // Hat teams and scrimmage sides (non-sample 'pickup' teams) only exist for one day or game; not in team lists.
+  return db.getAllAsync<Team>(`SELECT * FROM team WHERE deleted_at IS NULL AND kind != 'hat' AND NOT (kind = 'pickup' AND is_sample = 0) ORDER BY name COLLATE NOCASE`);
+}
+
+/** Two one-off sides for a scrimmage or pickup game: Light and Dark. */
+export function createScrimmageSides(db: SQLiteDatabase) {
+  return write(db, async () => {
+    const ts = now();
+    const region = await getHomeRegion(db);
+    const make = async (name: string, color: string) => {
+      const id = uuid();
+      await db.runAsync(
+        `INSERT INTO team (id, name, short_name, kind, region, primary_color, about, is_sample, created_at, updated_at) VALUES (?, ?, ?, 'pickup', ?, ?, 'Scrimmage side', 0, ?, ?)`,
+        id, name, name.slice(0, 3).toUpperCase(), region && region !== 'all' ? region : null, color, ts, ts,
+      );
+      return (await db.getFirstAsync<Team>(`SELECT * FROM team WHERE id = ?`, id))!;
+    };
+    return { light: await make('Light', '#E9ECEF'), dark: await make('Dark', '#293750') };
+  });
 }
 
 export function getTeam(db: SQLiteDatabase, id: string) {
