@@ -6,8 +6,10 @@ Expo (React Native) app, Android first. Everything is stored on the phone in SQL
 
 ```bash
 npm install
-npx expo start        # then scan the QR code with Expo Go on your phone
+npx expo start --lan  # then scan the QR code with Expo Go (SDK 57) on your phone
 ```
+
+Step-by-step phone setup, troubleshooting and what to try are in the [main README](../README.md#try-it-on-your-phone-with-expo-go).
 
 ## Where things live
 
