@@ -21,7 +21,7 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
   ok('whatsapp link SA number', whatsappLink('082 123 4567') === 'https://wa.me/27821234567' && whatsappLink('') === null);
 
   const db: any = open(); await migrate(db); await seedIfEmpty(db);
-  ok('v17', (await db.getFirstAsync('PRAGMA user_version')).user_version === 22);
+  ok('v17', (await db.getFirstAsync('PRAGMA user_version')).user_version === 23);
   const ts = await repo.listTeams(db); const chilli = ts.find((t) => t.name === 'Chilli Legends')!, ghost = ts.find((t) => t.name === 'Ghost')!;
   const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'B', gender: 'W' }, { teamId: chilli.id });
   const ben = await repo.savePerson(db, { first_name: 'Ben', last_name: 'C', gender: 'M' }, { teamId: chilli.id });

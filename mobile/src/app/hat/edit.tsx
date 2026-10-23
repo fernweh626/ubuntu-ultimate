@@ -1,7 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Linking, View } from 'react-native';
 
 import { REGIONS } from '@/content/hub';
 import { getHat, saveHat } from '@/db/hats';
@@ -13,6 +13,14 @@ import { FieldPicker } from '@/ui/field-picker';
 import { space } from '@/ui/theme';
 
 const TIME = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
+// Starting text for the details: organisers fill in the blanks.
+const DETAILS_TEMPLATE = `What to bring: a light AND a dark shirt, water, sunscreen, cleats or tekkies
+Food & drinks: 
+Theme / dress-up: 
+Schedule: check-in 08:30, first pull 09:00, finals around 15:00
+After-party: 
+Questions? WhatsApp: `;
 
 /** Organisers set up a hat: when, where, cost and payment link, and how the games are played. */
 export default function HatEdit() {
@@ -29,7 +37,10 @@ export default function HatEdit() {
   const [payment, setPayment] = useState('');
   const [eft, setEft] = useState('');
   const [pop, setPop] = useState('');
-  const [details, setDetails] = useState('');
+  const [details, setDetails] = useState(id ? '' : DETAILS_TEMPLATE);
+  const [where, setWhere] = useState<'field' | 'other'>('field');
+  const [mapUrl, setMapUrl] = useState('');
+  const [website, setWebsite] = useState('');
   const [perSide, setPerSide] = useState('7');
   const [minutes, setMinutes] = useState('45');
   const [points, setPoints] = useState('11');
@@ -49,6 +60,9 @@ export default function HatEdit() {
       setTime(h.start_time ?? '09:00');
       setVenueId(h.venue_id);
       setLocation(h.location ?? '');
+      setMapUrl(h.map_url ?? '');
+      setWebsite(h.website ?? '');
+      setWhere(h.venue_id ? 'field' : 'other');
       setCost(h.cost ?? '');
       setPayment(h.payment_url ?? '');
       setEft(h.eft_details ?? '');
@@ -67,6 +81,8 @@ export default function HatEdit() {
     if (!start || (endDate && !end)) return Alert.alert('Check the dates', 'Use dd/mm/yyyy.');
     if (!TIME.test(time)) return Alert.alert('Check the start time', 'Use HH:MM, e.g. 09:00.');
     if (payment && !/^https?:\/\//i.test(payment.trim())) return Alert.alert('Check the payment link', 'It should start with https://');
+    if (website && !/^https?:\/\//i.test(website.trim())) return Alert.alert('Check the website', 'It should start with https://');
+    if (where === 'other' && mapUrl && !/^https?:\/\//i.test(mapUrl.trim())) return Alert.alert('Check the map link', 'Paste the link from Google Maps (Share → Copy link).');
     const hatId = await saveHat(db, {
       id,
       name,
@@ -75,7 +91,9 @@ export default function HatEdit() {
       startDate: start,
       endDate: end,
       startTime: time,
-      venueId,
+      venueId: where === 'field' ? venueId : null,
+      mapUrl: where === 'other' ? mapUrl.trim() || null : null,
+      website: website.trim() || null,
       cost: cost.trim() || null,
       paymentUrl: payment.trim() || null,
       eftDetails: eft.trim() || null,
@@ -117,13 +135,38 @@ export default function HatEdit() {
             ))}
           </View>
         </Section>
-        <T v="smallStrong">Field</T>
-        <FieldPicker value={venueId} onChange={setVenueId} />
-        <Field label="Or describe where" value={location} onChangeText={setLocation} placeholder="e.g. Clifton 2nd beach" />
+        <Section title="Where">
+          <Segmented
+            value={where}
+            onChange={setWhere}
+            options={[
+              { value: 'field', label: 'A saved field' },
+              { value: 'other', label: 'Somewhere else' },
+            ]}
+          />
+          {where === 'field' ? (
+            <FieldPicker value={venueId} onChange={setVenueId} />
+          ) : (
+            <>
+              <Field label="Place or address" value={location} onChangeText={setLocation} placeholder="e.g. Clifton 2nd Beach, Cape Town" />
+              <Button
+                label="Find it on Google Maps"
+                icon="google-maps"
+                kind="ghost"
+                disabled={!location.trim()}
+                onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.trim())}`)}
+                style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }}
+              />
+              <Field label="Google Maps link (optional)" value={mapUrl} onChangeText={setMapUrl} autoCapitalize="none" keyboardType="url" placeholder="In Maps: Share → Copy link, then paste here" hint="Players get a Directions button straight to the spot." />
+            </>
+          )}
+          {where === 'field' ? <Field label="Nickname for the spot (optional)" value={location} onChangeText={setLocation} placeholder="e.g. the back field, by the clubhouse" /> : null}
+        </Section>
+        <Field label="Website (optional)" value={website} onChangeText={setWebsite} autoCapitalize="none" keyboardType="url" placeholder="https://… (a page or Instagram post about the hat)" />
         <Field label="Cost" value={cost} onChangeText={setCost} placeholder="e.g. R120, includes a disc" />
         <Section title="Payment">
           <T v="small">Use a pay link, EFT details, or both. Players tick “I’ve paid”; you confirm payments on the hat page.</T>
-          <Field label="Pay link (optional)" value={payment} onChangeText={setPayment} autoCapitalize="none" keyboardType="url" placeholder="SnapScan, Zapper, PayFast…" />
+          <Field label="Payment link (optional)" value={payment} onChangeText={setPayment} autoCapitalize="none" keyboardType="url" placeholder="SnapScan, Zapper, PayFast…" />
           <Field label="EFT details (optional)" value={eft} onChangeText={setEft} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + HAT'} />
           <Field label="Send proof of payment to" value={pop} onChangeText={setPop} autoCapitalize="none" placeholder="Email or WhatsApp number" hint="Players get a button that opens WhatsApp or email to you, ready to attach their PoP." />
         </Section>
@@ -148,7 +191,7 @@ export default function HatEdit() {
           </View>
           <T v="small">{Number(perSide) % 2 ? 'Mixed ratio applies (e.g. 3–2 for 5v5).' : 'Even sides: no gender ratio.'}</T>
         </Section>
-        <Field label="Details" value={details} onChangeText={setDetails} multiline placeholder="Theme, what to bring (light and dark shirt!), food, the after-party…" />
+        <Field label="Details" value={details} onChangeText={setDetails} multiline placeholder="Theme, what to bring (light and dark shirt!), food, the after-party…" hint="Fill in the blanks and delete any lines you don’t need." />
       </Screen>
     </>
   );

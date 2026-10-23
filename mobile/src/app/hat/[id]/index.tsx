@@ -69,6 +69,18 @@ export default function HatPage() {
             {[hat.start_date ? shortDate(hat.start_date) : null, hat.end_date && hat.end_date !== hat.start_date ? `to ${shortDate(hat.end_date)}` : null, hat.start_time, hat.venue_name ?? hat.location].filter(Boolean).join(' · ')}
           </T>
           {hat.cost ? <T style={{ fontFamily: font.bold, fontSize: 18, color: '#fff' }}>{hat.cost}</T> : null}
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            {hat.map_url || hat.venue_name || hat.location ? (
+              <Button
+                label="Directions"
+                icon="map-marker-outline"
+                kind="dark"
+                onPress={() => Linking.openURL(hat.map_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([hat.venue_name, hat.location].filter(Boolean).join(', '))}`)}
+                style={{ flex: 1 }}
+              />
+            ) : null}
+            {hat.website ? <Button label="Website" icon="open-in-new" kind="dark" onPress={() => Linking.openURL(hat.website!)} style={{ flex: 1 }} /> : null}
+          </View>
           {hat.payment_url ? <Button label="Pay" icon="credit-card-outline" kind="primary" onPress={() => Linking.openURL(hat.payment_url!)} /> : null}
           {hat.eft_details ? (
             <View style={{ backgroundColor: colors.nightRaised, borderRadius: 10, padding: space.md, gap: 4 }}>

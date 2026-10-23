@@ -1161,6 +1161,11 @@ const MIGRATIONS: string[] = [
   ALTER TABLE pickup_spot ADD COLUMN created_by_person TEXT;
   ALTER TABLE pickup_spot ADD COLUMN editor_ids TEXT;
   `,
+  // v23: events (hats first) can point at a Google Maps link and a website.
+  `
+  ALTER TABLE event ADD COLUMN map_url TEXT;
+  ALTER TABLE event ADD COLUMN website TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {
