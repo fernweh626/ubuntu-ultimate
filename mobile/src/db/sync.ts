@@ -183,6 +183,7 @@ function isNetwork(e: { message?: string; code?: string }) {
 
 async function pull(db: SQLiteDatabase) {
   let pulled = 0;
+  const skipped: { table: string; message: string }[] = [];
   for (const spec of TABLES) {
     const cursorKey = `pull:${spec.name}`;
     let cursor = (await meta(db, cursorKey)) ?? '1970-01-01T00:00:00Z';
@@ -200,11 +201,16 @@ async function pull(db: SQLiteDatabase) {
         for (const row of data as Record<string, unknown>[]) {
           const use = cols.filter((c) => c in row && !spec.localOnly?.includes(c));
           const updates = use.filter((c) => !spec.pk.includes(c));
-          await db.runAsync(
-            `INSERT INTO ${spec.name} (${use.join(', ')}) VALUES (${use.map(() => '?').join(', ')})
-             ON CONFLICT(${spec.pk.join(', ')}) DO ${updates.length ? `UPDATE SET ${updates.map((c) => `${c} = excluded.${c}`).join(', ')}` : 'NOTHING'}`,
-            ...use.map((c) => (row[c] ?? null) as string | number | null),
-          );
+          try {
+            await db.runAsync(
+              `INSERT INTO ${spec.name} (${use.join(', ')}) VALUES (${use.map(() => '?').join(', ')})
+               ON CONFLICT(${spec.pk.join(', ')}) DO ${updates.length ? `UPDATE SET ${updates.map((c) => `${c} = excluded.${c}`).join(', ')}` : 'NOTHING'}`,
+              ...use.map((c) => (row[c] ?? null) as string | number | null),
+            );
+          } catch (e) {
+            // One row this phone can't hold (e.g. an older table shape) mustn't stop the whole sync.
+            skipped.push({ table: spec.name, message: String((e as Error).message ?? e).slice(0, 200) });
+          }
         }
       });
       pulled += data.length;
@@ -231,6 +237,8 @@ async function pull(db: SQLiteDatabase) {
     await setMeta(db, 'pull:deleted_row', tomb);
     if (data.length < 1000) break;
   }
+  // Kept for "Report a bug": what this phone couldn't store, so it can be fixed.
+  if (skipped.length) await setMeta(db, 'sync_skipped', JSON.stringify(skipped.slice(-20)));
   return pulled;
 }
 

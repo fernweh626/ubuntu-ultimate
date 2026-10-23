@@ -1176,4 +1176,69 @@ export async function migrate(db: SQLiteDatabase) {
     version += 1;
     await db.execAsync(`PRAGMA user_version = ${version}`);
   }
+  await repairDrift(db);
+}
+
+const syncTrigger = (tbl: string, op: 'insert' | 'update' | 'delete') =>
+  `CREATE TRIGGER sync_${tbl}_${op} AFTER ${op.toUpperCase()} ON ${tbl}
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('${tbl}', json_object('id', ${op === 'delete' ? 'OLD' : 'NEW'}.id), '${op === 'delete' ? 'delete' : 'upsert'}', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;`;
+
+// Tables whose final shape a test phone can have missed (an early migration changed after it ran there).
+// If one still has the old CHECK, rebuild it to the current definition. Cheap no-op otherwise.
+const DRIFT: { table: string; mustContain: string; create: string; cols: string; index: string }[] = [
+  {
+    table: 'practice_rsvp',
+    mustContain: "'late'",
+    create: `CREATE TABLE practice_rsvp_fix (
+      id TEXT PRIMARY KEY NOT NULL,
+      session_id TEXT NOT NULL REFERENCES session(id),
+      person_id TEXT NOT NULL REFERENCES person(id),
+      status TEXT NOT NULL CHECK (status IN ('going','late','not_going')),
+      reason TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (session_id, person_id)
+    );`,
+    cols: 'id, session_id, person_id, status, reason, created_at, updated_at',
+    index: 'CREATE INDEX IF NOT EXISTS idx_practice_rsvp_session ON practice_rsvp (session_id);',
+  },
+  {
+    table: 'game_availability',
+    mustContain: "'late'",
+    create: `CREATE TABLE game_availability_fix (
+      id TEXT PRIMARY KEY NOT NULL,
+      game_id TEXT NOT NULL REFERENCES game(id),
+      person_id TEXT NOT NULL REFERENCES person(id),
+      team_id TEXT NOT NULL REFERENCES team(id),
+      status TEXT NOT NULL CHECK (status IN ('available','late','unavailable')),
+      reason TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );`,
+    cols: 'id, game_id, person_id, team_id, status, reason, created_at, updated_at',
+    index: 'CREATE INDEX IF NOT EXISTS idx_game_availability_game ON game_availability (game_id);',
+  },
+];
+
+async function repairDrift(db: SQLiteDatabase) {
+  for (const d of DRIFT) {
+    const row = await db.getFirstAsync<{ sql: string }>(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`, d.table);
+    if (!row || row.sql.includes(d.mustContain)) continue;
+    await db.execAsync('PRAGMA foreign_keys = OFF');
+    try {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync(`${d.create}
+          INSERT INTO ${d.table}_fix (${d.cols}) SELECT ${d.cols} FROM ${d.table};
+          DROP TABLE ${d.table};
+          ALTER TABLE ${d.table}_fix RENAME TO ${d.table};
+          ${d.index}
+          ${syncTrigger(d.table, 'insert')}
+          ${syncTrigger(d.table, 'update')}
+          ${syncTrigger(d.table, 'delete')}`);
+      });
+    } finally {
+      await db.execAsync('PRAGMA foreign_keys = ON');
+    }
+  }
 }
