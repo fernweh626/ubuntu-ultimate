@@ -11,7 +11,18 @@ export type Rules = {
   pullWithinSeconds: number;
   mixedRatio: boolean;
   halftimeMinutes: number;
+  /** Players per side on the field: 7 normally; hats and pickups also play 4v4 or 5v5. */
+  playersPerSide?: number;
 };
+
+/** How many of each on a line for a ratio point: 7 → 4 and 3, 5 → 3 and 2. Even sides have no ratio. */
+export function lineNeed(ratio: 'W' | 'M' | string | null, perSide = 7) {
+  if (ratio !== 'W' && ratio !== 'M') return null;
+  if (perSide % 2 === 0) return null;
+  const major = Math.ceil(perSide / 2);
+  const minor = perSide - major;
+  return { W: ratio === 'W' ? major : minor, M: ratio === 'M' ? major : minor };
+}
 
 export type RulesPreset = { id: string; name: string; summary: string; rules: Rules };
 
@@ -41,6 +52,12 @@ export const RULE_PRESETS: RulesPreset[] = [
     rules: { ...WFDF, pointTarget: 11, halftimeTarget: 6, softCapMinutes: 55, hardCapMinutes: 60, timeoutsPerTeam: 1, halftimeMinutes: 5 },
   },
   {
+    id: 'beach',
+    name: 'Beach (5v5)',
+    summary: 'To 11 · half at 6 · cap 50 min · 5 a side, 3–2 ratio',
+    rules: { ...WFDF, pointTarget: 11, halftimeTarget: 6, softCapMinutes: null, hardCapMinutes: 50, timeoutsPerTeam: 1, halftimeMinutes: 3, playersPerSide: 5 },
+  },
+  {
     id: 'casual',
     name: 'Scrimmage / pickup',
     summary: 'To 15 · no caps · no ratio enforcement',
@@ -50,7 +67,8 @@ export const RULE_PRESETS: RulesPreset[] = [
 
 export function rulesFor(presetId: string, division: Division): Rules {
   const preset = RULE_PRESETS.find((p) => p.id === presetId) ?? RULE_PRESETS[0];
-  return { ...preset.rules, mixedRatio: preset.rules.mixedRatio && division === 'mixed' };
+  // Beach is usually played mixed (3–2), so it keeps the ratio like the mixed division.
+  return { ...preset.rules, mixedRatio: preset.rules.mixedRatio && (division === 'mixed' || division === 'beach') };
 }
 
 export function parseRules(json: string | null | undefined): Rules {

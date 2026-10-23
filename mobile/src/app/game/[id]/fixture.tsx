@@ -97,7 +97,10 @@ export default function Fixture() {
         ))}
 
         {canStart ? (
-          <Button label="Start this game" icon="whistle" kind="primary" big onPress={() => router.push({ pathname: '/game/new', params: { fixtureId: id } })} />
+          <>
+            <Button label="Start this game" icon="whistle" kind="primary" big onPress={() => router.push({ pathname: '/game/new', params: { fixtureId: id } })} />
+            <Button label="Just enter the result" icon="scoreboard-outline" onPress={() => router.push({ pathname: '/game/[id]/result', params: { id } })} />
+          </>
         ) : (
           <T v="small">A scorekeeper or team staff starts this game on the day.</T>
         )}

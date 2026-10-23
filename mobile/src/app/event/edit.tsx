@@ -102,7 +102,7 @@ export default function EventEdit() {
         </Section>
         <Section title="Division">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            {(['mixed', 'open', 'women', 'u17', 'u20', 'u24', 'masters'] as const).map((d) => (
+            {(['mixed', 'open', 'women', 'beach', 'u17', 'u20', 'u24', 'masters'] as const).map((d) => (
               <Choice key={d} label={d.toUpperCase().startsWith('U') ? d.toUpperCase() : d[0].toUpperCase() + d.slice(1)} selected={f.division === d} onPress={() => set('division', d)} style={{ paddingHorizontal: 14 }} />
             ))}
           </View>

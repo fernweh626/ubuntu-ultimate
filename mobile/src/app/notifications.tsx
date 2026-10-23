@@ -18,6 +18,7 @@ const ITEMS: { key: keyof NotifyPrefs; title: string; body: string }[] = [
   { key: 'accreditation', title: 'Accreditation expiry', body: '6 months, 1 month and 1 week before it runs out.' },
   { key: 'development', title: 'Self-rating check-in', body: 'Every six months, a nudge to rate yourself again.' },
   { key: 'admin', title: 'Yearly admin (coordinators)', body: 'Mondays in January: update the registration, fees and merch links.' },
+  { key: 'hats', title: 'Hat tournaments', body: 'New hats near you, a nudge to pay, and your team once it’s drawn.' },
   { key: 'announcements', title: 'Announcements', body: 'News from SAFDA and your region: Nationals dates, AGMs, reviews.' },
   { key: 'meetings', title: 'Meetings (AGM, SGM)', body: 'The evening before, and 15 minutes before with the join link.' },
   { key: 'fees', title: 'Annual fees', body: '1 February: time to register and pay SAFDA and regional fees.' },

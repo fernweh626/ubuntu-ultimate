@@ -9,6 +9,7 @@ import { END_REASONS, reflectionsFor, statusLog, confirmTeamRoster, deleteGame, 
 import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, timeOfDay } from '@/domain/format';
 import { STATUS_REASONS } from '@/domain/fixtures';
 import { deriveState } from '@/domain/engine';
+import type { Team } from '@/db/types';
 import { computeGameStats, type TeamGameStats } from '@/domain/stats';
 import { weatherLine, type Weather } from '@/domain/weather';
 import { Bars, ScoreProgression } from '@/ui/charts';
@@ -58,6 +59,7 @@ export default function GameReport() {
   const name = (pid: string | null) => (pid && people.get(pid) ? shortName(people.get(pid)!) : 'Unknown');
   const subs = data.events.filter((e) => e.type === 'injury_sub' && !e.voided_at).sort((a, b) => a.seq - b.seq);
   const final = game.status === 'final';
+  if (game.result_mode) return <LightResult gameId={id} a={ta} b={tb} mode={game.result_mode} finalA={game.final_a ?? 0} finalB={game.final_b ?? 0} winner={game.winner_team_id ?? null} eventName={event?.name ?? null} />;
   const endReason = final
     ? (data.events.find((e) => e.type === 'end' && !e.voided_at)?.value as EndReason | null | undefined)
     : null;
@@ -468,4 +470,31 @@ export default function GameReport() {
 function perPoint(s: TeamGameStats) {
   const pts = s.oPoints + s.dPoints;
   return pts ? String(round1(s.turnovers / pts)) : '–';
+}
+
+/** A game recorded without point-by-point tracking: just the result, with a way to change it. */
+function LightResult({ gameId, a, b, mode, finalA, finalB, winner, eventName }: { gameId: string; a: Team; b: Team; mode: 'score' | 'winner' | 'none'; finalA: number; finalB: number; winner: string | null; eventName: string | null }) {
+  const headline =
+    mode === 'score' ? `${a.name} ${finalA} – ${finalB} ${b.name}` : mode === 'winner' ? `${winner === a.id ? a.name : b.name} won` : `${a.name} v ${b.name}`;
+  return (
+    <>
+      <Stack.Screen options={{ title: 'Result' }} />
+      <Screen edges={[]}>
+        <Card style={{ backgroundColor: colors.night, borderColor: colors.night, gap: space.sm }}>
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            <Chip label="Final" tone="dark" />
+            <Chip label={mode === 'score' ? 'Final score only' : mode === 'winner' ? 'Result only' : 'Played, no score'} tone="neutral" />
+          </View>
+          {eventName ? <T style={{ color: colors.nightMuted }}>{eventName}</T> : null}
+          <T style={{ fontFamily: font.display, fontSize: 30, lineHeight: 32, color: '#fff' }}>{headline}</T>
+          {mode === 'winner' ? <T style={{ color: colors.nightMuted }}>v {winner === a.id ? b.name : a.name}</T> : null}
+        </Card>
+        <T v="small">No point-by-point stats for this game: only the result was recorded.</T>
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <Button label="Change result" icon="pencil" onPress={() => router.push({ pathname: '/game/[id]/result', params: { id: gameId, mode } })} style={{ flex: 1 }} />
+          <Button label="Spirit" icon="handshake-outline" onPress={() => router.push(`/game/${gameId}/spirit`)} style={{ flex: 1 }} />
+        </View>
+      </Screen>
+    </>
+  );
 }

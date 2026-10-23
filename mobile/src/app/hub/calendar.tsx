@@ -4,6 +4,7 @@ import { Linking, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
+import { listHats } from '@/db/hats';
 import { getAccess, listCalendar } from '@/db/repo';
 import { isMeeting, KIND_LABEL } from '@/domain/calendar';
 import type { CalendarEntry } from '@/db/types';
@@ -23,7 +24,13 @@ const LEVEL_TONE: Record<string, 'brand' | 'neutral' | 'warn' | 'dark'> = {
 };
 
 export default function Calendar() {
-  const all = useData(listCalendar) ?? [];
+  const entries0 = useData(listCalendar) ?? [];
+  const hats = useData(listHats) ?? [];
+  // Hats live as events, so they're added here alongside the calendar entries.
+  const all: CalendarEntry[] = [
+    ...entries0,
+    ...hats.map((h) => ({ id: `hat:${h.id}`, name: `🎩 ${h.name}`, kind: 'hat', level: 'social', region: h.region, location: h.venue_name ?? h.location, start_date: h.start_date, end_date: h.end_date, month_hint: null, status: 'confirmed' as const, url: null, notes: h.cost ? `Hat · ${h.cost} · sign up in the app` : 'Hat · sign up in the app', start_time: h.start_time, end_time: null, meeting_url: null })),
+  ].sort((a, b) => (a.start_date ?? '9999').localeCompare(b.start_date ?? '9999'));
   const access = useData(getAccess);
   const runs = access?.level === 'admin' || access?.level === 'coordinator';
   const region = useRegionFilter();
@@ -73,7 +80,9 @@ export default function Calendar() {
                 <Card
                   key={e.id}
                   onPress={
-                    isMeeting(e.kind)
+                    e.id.startsWith('hat:')
+                      ? () => router.push(`/hat/${e.id.slice(4)}`)
+                      : isMeeting(e.kind)
                       ? () => router.push(`/hub/meeting/${e.id}`)
                       : runs
                         ? () => router.push({ pathname: '/hub/calendar-edit', params: { id: e.id } })

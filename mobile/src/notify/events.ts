@@ -20,6 +20,8 @@ type Seen = {
   results: string[];
   cancelled?: string[];
   announcements?: string[];
+  hats?: string[];
+  hatTeams?: string[];
   fixtures: Record<string, string>;
 };
 
@@ -34,7 +36,7 @@ async function load(db: SQLiteDatabase) {
 
 async function save(db: SQLiteDatabase, s: Seen) {
   const trim = (xs: string[]) => xs.slice(-500);
-  const v = { ...s, announcements: trim(s.announcements ?? []), cancelled: trim(s.cancelled ?? []), shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
+  const v = { ...s, hats: trim(s.hats ?? []), hatTeams: trim(s.hatTeams ?? []), announcements: trim(s.announcements ?? []), cancelled: trim(s.cancelled ?? []), shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
   await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('notify:seen', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, JSON.stringify(v));
 }
 
@@ -168,6 +170,35 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
       if (!first && c.status !== 'not_going') {
         out.push({ key: `pcx:${c.id}`, title: `${c.team} practice cancelled`, body: `${shortDate(c.started_at)} ${timeOfDay(c.started_at)} is off.`, url: `/practice/${c.id}` });
       }
+    }
+  }
+
+  // Hats: a new one in my region, and my team once they're drawn.
+  if (prefs.hats) {
+    seen.hats ??= [];
+    seen.hatTeams ??= [];
+    const home = (await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'home_region'`))?.value ?? null;
+    const hats = await db.getAllAsync<{ id: string; name: string; region: string | null; start_date: string | null; cost: string | null }>(
+      `SELECT id, name, region, start_date, cost FROM event WHERE is_hat = 1 AND deleted_at IS NULL AND start_date >= ?`,
+      new Date().toISOString().slice(0, 10),
+    );
+    for (const h of hats) {
+      if (seen.hats.includes(h.id)) continue;
+      seen.hats.push(h.id);
+      if (!first && (!h.region || !home || home === 'all' || h.region === home)) {
+        out.push({ key: `hat:${h.id}`, title: `🎩 ${h.name}${h.start_date ? ` on ${shortDate(h.start_date)}` : ''}`, body: `${h.cost ? `${h.cost}. ` : ''}Tap for more and to sign up.`, url: `/hat/${h.id}` });
+      }
+    }
+    const placed = await db.getAllAsync<{ id: string; team: string; event_id: string; hat: string; role: string }>(
+      `SELECT m.id, t.name AS team, e.id AS event_id, e.name AS hat, m.role FROM membership m JOIN team t ON t.id = m.team_id
+         JOIN event e ON e.id = m.scope_ref_id
+        WHERE m.person_id = ? AND m.scope = 'event' AND e.is_hat = 1 AND m.deleted_at IS NULL`,
+      me,
+    );
+    for (const p of placed) {
+      if (seen.hatTeams.includes(p.id)) continue;
+      seen.hatTeams.push(p.id);
+      if (!first) out.push({ key: `hatteam:${p.id}`, title: `🎩 You’re on ${p.team} for ${p.hat}`, body: p.role === 'captain' ? 'You’re captain! Check your team and the schedule for the day.' : 'Go check out your team, your captain and the schedule for the day.', url: `/hat/${p.event_id}` });
     }
   }
 

@@ -1006,6 +1006,90 @@ const MIGRATIONS: string[] = [
     WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
     BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('meeting_rsvp', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
   `,
+  // v16: hat tournaments (sign-up, payment, draw) and lighter results (final score, winner only, or none).
+  `
+  ALTER TABLE event ADD COLUMN is_hat INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE event ADD COLUMN cost TEXT;
+  ALTER TABLE event ADD COLUMN payment_url TEXT;
+  ALTER TABLE event ADD COLUMN details TEXT;
+  ALTER TABLE event ADD COLUMN start_time TEXT;
+  ALTER TABLE event ADD COLUMN venue_id TEXT;
+  ALTER TABLE event ADD COLUMN hat_status TEXT;
+  ALTER TABLE event ADD COLUMN team_count INTEGER;
+  -- result_mode NULL = tracked point by point; 'score' = final score only; 'winner' = who won; 'none' = just played.
+  ALTER TABLE game ADD COLUMN result_mode TEXT;
+  ALTER TABLE game ADD COLUMN final_a INTEGER;
+  ALTER TABLE game ADD COLUMN final_b INTEGER;
+  ALTER TABLE game ADD COLUMN winner_team_id TEXT;
+  -- One per player per hat; id = event_id:person_id.
+  CREATE TABLE hat_signup (
+    id TEXT PRIMARY KEY NOT NULL,
+    event_id TEXT NOT NULL REFERENCES event(id),
+    person_id TEXT NOT NULL REFERENCES person(id),
+    attending TEXT NOT NULL DEFAULT 'yes' CHECK (attending IN ('yes','maybe','no')),
+    wants_captain INTEGER NOT NULL DEFAULT 0,
+    skill INTEGER,
+    paid INTEGER NOT NULL DEFAULT 0,
+    paid_confirmed INTEGER NOT NULL DEFAULT 0,
+    on_the_day INTEGER NOT NULL DEFAULT 0,
+    note TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX idx_hat_signup_event ON hat_signup (event_id);
+  CREATE TRIGGER sync_hat_signup_insert AFTER INSERT ON hat_signup
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('hat_signup', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_hat_signup_update AFTER UPDATE ON hat_signup
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('hat_signup', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_hat_signup_delete AFTER DELETE ON hat_signup
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('hat_signup', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
+  // v17: 'beach' division. SQLite can't alter a CHECK, so the event table is rebuilt. Other tables point
+  // at event, so this runs with foreign keys off and is checked afterwards (see migrate()).
+  `
+  -- @fk-off
+  CREATE TABLE event_v17 (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('tournament','league','scrimmage','practice','pickup')),
+    level TEXT NOT NULL DEFAULT 'regional' CHECK (level IN ('international','national','regional','league','minor','social')),
+    division TEXT NOT NULL DEFAULT 'mixed' CHECK (division IN ('mixed','open','women','beach','u17','u20','u24','masters')),
+    region TEXT,
+    location TEXT,
+    start_date TEXT,
+    end_date TEXT,
+    rules_json TEXT,
+    video_url TEXT,
+    photos_url TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    is_hat INTEGER NOT NULL DEFAULT 0,
+    cost TEXT,
+    payment_url TEXT,
+    details TEXT,
+    start_time TEXT,
+    venue_id TEXT,
+    hat_status TEXT,
+    team_count INTEGER
+  );
+  INSERT INTO event_v17 (id, name, kind, level, division, region, location, start_date, end_date, rules_json, video_url, photos_url, notes, created_at, updated_at, deleted_at, is_hat, cost, payment_url, details, start_time, venue_id, hat_status, team_count) SELECT id, name, kind, level, division, region, location, start_date, end_date, rules_json, video_url, photos_url, notes, created_at, updated_at, deleted_at, is_hat, cost, payment_url, details, start_time, venue_id, hat_status, team_count FROM event;
+  DROP TABLE event;
+  ALTER TABLE event_v17 RENAME TO event;
+  CREATE TRIGGER sync_event_insert AFTER INSERT ON event
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('event', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_event_update AFTER UPDATE ON event
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('event', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_event_delete AFTER DELETE ON event
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('event', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {
@@ -1013,9 +1097,21 @@ export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let version = row?.user_version ?? 0;
   while (version < MIGRATIONS.length) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(MIGRATIONS[version]);
-    });
+    const sql = MIGRATIONS[version];
+    // Table rebuilds that other tables point at need foreign keys off (it can't change inside a transaction).
+    const fkOff = sql.includes('@fk-off');
+    if (fkOff) await db.execAsync('PRAGMA foreign_keys = OFF');
+    try {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync(sql);
+        if (fkOff) {
+          const broken = await db.getAllAsync('PRAGMA foreign_key_check');
+          if (broken.length) throw new Error(`Migration ${version + 1} broke ${broken.length} foreign keys`);
+        }
+      });
+    } finally {
+      if (fkOff) await db.execAsync('PRAGMA foreign_keys = ON');
+    }
     version += 1;
     await db.execAsync(`PRAGMA user_version = ${version}`);
   }

@@ -3,7 +3,7 @@ export type Position = 'handler' | 'cutter' | 'hybrid';
 export type TrackingMode = 'lite' | 'standard' | 'full';
 export type EventKind = 'tournament' | 'league' | 'scrimmage' | 'practice' | 'pickup';
 export type EventLevel = 'international' | 'national' | 'regional' | 'league' | 'minor' | 'social';
-export type Division = 'mixed' | 'open' | 'women' | 'u17' | 'u20' | 'u24' | 'masters';
+export type Division = 'mixed' | 'open' | 'women' | 'beach' | 'u17' | 'u20' | 'u24' | 'masters';
 export type PullOutcome = 'in' | 'out' | 'brick' | 'unknown';
 
 export type Person = {
@@ -128,6 +128,10 @@ export type Game = {
   scheduled_at: string | null;
   status: 'scheduled' | 'live' | 'final' | 'cancelled';
   tracking_mode: TrackingMode;
+  result_mode?: 'score' | 'winner' | 'none' | null;
+  final_a?: number | null;
+  final_b?: number | null;
+  winner_team_id?: string | null;
   rules_json: string;
   first_pull_team_id: string | null;
   ratio_point1: 'M' | 'W' | null;

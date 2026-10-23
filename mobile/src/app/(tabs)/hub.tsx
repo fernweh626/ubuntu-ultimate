@@ -6,6 +6,7 @@ import { MeButton } from '@/ui/me-button';
 import { colors, space } from '@/ui/theme';
 
 const TILES: { title: string; body: string; icon: IconName; href: Href }[] = [
+  { title: 'Hat tournaments', body: 'Sign up solo, get drawn into a team: skill, captains, payment', icon: 'hat-fedora', href: '/hat' },
   { title: 'Announcements', body: 'Nationals dates, AGMs, constitution reviews and other news', icon: 'bullhorn-outline', href: '/hub/announcements' },
   { title: 'Merch & links', body: 'Kit and discs, join your association, pickup groups, socials', icon: 'tshirt-crew-outline', href: '/hub/links' },
   { title: 'Find pickup', body: 'Flick through the week to find games near you', icon: 'map-marker-radius', href: '/hub/pickups' },

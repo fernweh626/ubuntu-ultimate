@@ -183,7 +183,8 @@ export function setMembershipRole(db: SQLiteDatabase, personId: string, teamId: 
 /* ---------------- Teams & people ---------------- */
 
 export function listTeams(db: SQLiteDatabase) {
-  return db.getAllAsync<Team>(`SELECT * FROM team WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE`);
+  // Hat teams only exist for one hat day; they're shown on the hat, not in team lists.
+  return db.getAllAsync<Team>(`SELECT * FROM team WHERE deleted_at IS NULL AND kind != 'hat' ORDER BY name COLLATE NOCASE`);
 }
 
 export function getTeam(db: SQLiteDatabase, id: string) {
@@ -552,9 +553,15 @@ const GAME_LIST_SQL = `
          ta.short_name AS a_short, tb.short_name AS b_short, e.name AS event_name,
          CASE WHEN g.forfeit_team_id = g.team_a_id THEN 0
               WHEN g.forfeit_team_id = g.team_b_id THEN COALESCE(json_extract(g.rules_json, '$.pointTarget'), 15)
+              WHEN g.result_mode = 'score' THEN COALESCE(g.final_a, 0)
+              WHEN g.result_mode = 'winner' THEN CASE WHEN g.winner_team_id = g.team_a_id THEN 1 ELSE 0 END
+              WHEN g.result_mode = 'none' THEN 0
               ELSE (SELECT COUNT(*) FROM point p WHERE p.game_id = g.id AND p.scoring_team_id = g.team_a_id) END AS score_a,
          CASE WHEN g.forfeit_team_id = g.team_b_id THEN 0
               WHEN g.forfeit_team_id = g.team_a_id THEN COALESCE(json_extract(g.rules_json, '$.pointTarget'), 15)
+              WHEN g.result_mode = 'score' THEN COALESCE(g.final_b, 0)
+              WHEN g.result_mode = 'winner' THEN CASE WHEN g.winner_team_id = g.team_b_id THEN 1 ELSE 0 END
+              WHEN g.result_mode = 'none' THEN 0
               ELSE (SELECT COUNT(*) FROM point p WHERE p.game_id = g.id AND p.scoring_team_id = g.team_b_id) END AS score_b,
          v.name AS venue_name, ta.region AS a_region, tb.region AS b_region, e.region AS event_region
     FROM game g
@@ -1352,6 +1359,31 @@ export function deleteCalendarEntry(db: SQLiteDatabase, id: string) {
   return write(db, () => db.runAsync(`UPDATE calendar_entry SET deleted_at = ? WHERE id = ?`, now(), id));
 }
 
+/* ---------------- Light results: final score, winner only, or just played ---------------- */
+
+export type ResultMode = 'score' | 'winner' | 'none';
+
+/** Record a game's result without point-by-point tracking, and finish it. */
+export function setGameResult(db: SQLiteDatabase, gameId: string, r: { mode: ResultMode; finalA?: number | null; finalB?: number | null; winnerTeamId?: string | null }) {
+  return write(db, async () => {
+    const ts = now();
+    await db.runAsync(
+      `UPDATE game SET result_mode = ?, final_a = ?, final_b = ?, winner_team_id = ?, status = 'final',
+         started_at = COALESCE(started_at, scheduled_at, ?), ended_at = COALESCE(ended_at, ?), updated_at = ? WHERE id = ?`,
+      r.mode,
+      r.mode === 'score' ? (r.finalA ?? 0) : null,
+      r.mode === 'score' ? (r.finalB ?? 0) : null,
+      r.mode === 'winner' ? (r.winnerTeamId ?? null) : null,
+      ts,
+      ts,
+      ts,
+      gameId,
+    );
+    const ev = await db.getFirstAsync<{ event_id: string | null }>(`SELECT event_id FROM game WHERE id = ?`, gameId);
+    if (ev?.event_id) await fillBracket(db, ev.event_id);
+  });
+}
+
 /* ---------------- Meeting RSVPs ---------------- */
 
 export function setMeetingRsvp(db: SQLiteDatabase, entryId: string, personId: string, status: RsvpStatus | null, note: string | null = null) {
@@ -1807,8 +1839,10 @@ export async function recentLoad(db: SQLiteDatabase, personIds: string[], hours 
 export async function eventRankings(db: SQLiteDatabase, eventId: string) {
   const [teams, games] = await Promise.all([eventTeams(db, eventId), listGamesForEvent(db, eventId)]);
   const pool = games.filter((g) => g.stage !== 'playoff');
-  const done = pool.filter((g) => g.status === 'final');
+  // "Just played" games (no result) don't count; winner-only games count as a win/loss with no points.
+  const done = pool.filter((g) => g.status === 'final' && g.result_mode !== 'none');
   const results: Result[] = done.map((g) => ({ a: g.team_a_id, b: g.team_b_id, scoreA: g.score_a, scoreB: g.score_b }));
+  const noPoints = new Set(done.filter((g) => g.result_mode === 'winner').map((g) => `${g.team_a_id}|${g.team_b_id}|${g.score_a}|${g.score_b}`));
   const row = (teamId: string): TableRow & Standing => {
     let wins = 0;
     let draws = 0;
@@ -1818,8 +1852,10 @@ export async function eventRankings(db: SQLiteDatabase, eventId: string) {
     for (const r of results) {
       if (r.a !== teamId && r.b !== teamId) continue;
       const [f, a] = r.a === teamId ? [r.scoreA, r.scoreB] : [r.scoreB, r.scoreA];
-      pf += f;
-      pa += a;
+      if (!noPoints.has(`${r.a}|${r.b}|${r.scoreA}|${r.scoreB}`)) {
+        pf += f;
+        pa += a;
+      }
       if (f > a) wins += 1;
       else if (f < a) losses += 1;
       else draws += 1;

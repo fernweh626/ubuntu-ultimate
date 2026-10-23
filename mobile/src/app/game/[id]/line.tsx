@@ -9,13 +9,12 @@ import { addGamePlayer, getPerson, getTeam, loadGameData, recentLoad, saveLine, 
 import type { GamePlayer } from '@/db/types';
 import { deriveState, fitness, lineFor, type Fitness } from '@/domain/engine';
 import { shortName } from '@/domain/format';
-import { ratioCode } from '@/domain/rules';
+import { lineNeed, ratioCode } from '@/domain/rules';
 import { BreakClock } from '@/ui/break-clock';
 import { Button, Choice, Field, Footer, Icon, RatioBadge, Screen, Sheet, T } from '@/ui/components';
 import { QuickAddPlayer } from '@/ui/quick-add-player';
 import { colors, space } from '@/ui/theme';
 
-const LINE_SIZE = 7;
 // Effort × minutes; e.g. a 90-minute practice at effort 5, or an hour at effort 7.
 const HEAVY_LOAD = 420;
 const DOT = { fresh: colors.brand, tiring: colors.warn, tired: colors.danger } as const;
@@ -58,7 +57,8 @@ export default function LineBuilder() {
   const squad = data.players.filter((p) => p.team_id === teamId);
   const person = (pid: string) => people.get(pid);
   const gender = (pid: string) => person(pid)?.gender;
-  const need = point.ratio ? { W: point.ratio === 'W' ? 4 : 3, M: point.ratio === 'M' ? 4 : 3 } : null;
+  const LINE_SIZE = state?.rules.playersPerSide ?? 7;
+  const need = lineNeed(point.ratio, LINE_SIZE);
   const w = chosen.filter((p) => gender(p) === 'W').length;
   const m = chosen.filter((p) => gender(p) === 'M').length;
   const ratioOk = !need || (w === need.W && m === need.M);
@@ -98,7 +98,7 @@ export default function LineBuilder() {
 
   async function save() {
     if (chosen.length !== LINE_SIZE || !ratioOk) {
-      const problem = chosen.length !== LINE_SIZE ? `${chosen.length} players picked (usually 7).` : `Ratio is ${w}F ${m}M; this ${ratioCode(point!.ratio, point!.number)} point needs ${need!.W}F ${need!.M}M.`;
+      const problem = chosen.length !== LINE_SIZE ? `${chosen.length} players picked (this game is ${LINE_SIZE} a side).` : `Ratio is ${w}F ${m}M; this ${ratioCode(point!.ratio, point!.number)} point needs ${need!.W}F ${need!.M}M.`;
       Alert.alert('Use this line anyway?', problem, [
         { text: 'Fix it', style: 'cancel' },
         { text: 'Use it', onPress: commit },
@@ -207,7 +207,7 @@ export default function LineBuilder() {
           <Footer>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <T v="bodyStrong" style={{ color: ratioOk && chosen.length === LINE_SIZE ? colors.brandDark : colors.warnInk }}>
-                {chosen.length}/7 · {w}F {m}M{need ? ` (need ${need.W}F ${need.M}M)` : ''}
+                {chosen.length}/{LINE_SIZE} · {w}F {m}M{need ? ` (need ${need.W}F ${need.M}M)` : ''}
               </T>
               <Button label="Save as…" kind="ghost" onPress={() => setSaving(true)} style={{ minHeight: 36, paddingHorizontal: 0 }} />
             </View>

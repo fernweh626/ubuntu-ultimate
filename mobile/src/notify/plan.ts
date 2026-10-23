@@ -20,6 +20,7 @@ export type NotifyPrefs = {
   meetings: boolean;
   announcements: boolean;
   admin: boolean;
+  hats: boolean;
   spirit: boolean;
   roster: boolean;
   shoutouts: boolean;
@@ -40,6 +41,7 @@ export const DEFAULT_PREFS: NotifyPrefs = {
   meetings: true,
   announcements: true,
   admin: true,
+  hats: true,
   spirit: true,
   roster: true,
   shoutouts: true,
@@ -144,6 +146,25 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
       eve.setHours(18, 0, 0, 0);
       out.push({ key: `meet1:${m.id}:${m.start_date}${m.start_time}`, kind: 'meetings', at: eve, title: `Tomorrow ${m.start_time}: ${m.name}`, body: m.meeting_url ? 'Online: the join link is in the app. Tap to see the agenda and RSVP.' : 'Tap to see the agenda and RSVP.', url: `/hub/meeting/${m.id}` });
       out.push({ key: `meet2:${m.id}:${m.start_date}${m.start_time}`, kind: 'meetings', at: new Date(start.getTime() - 15 * 60_000), title: `${m.name} starts in 15 minutes`, body: m.meeting_url ? 'Tap to join.' : 'Tap for details.', url: `/hub/meeting/${m.id}`, gameDay: true });
+    }
+  }
+
+  // Hats: organisers draw 48 hours before; signed-up players who haven't paid get a nudge 3 days before.
+  if (prefs.hats) {
+    const hats = await db.getAllAsync<{ id: string; name: string; region: string | null; start_date: string; start_time: string | null; hat_status: string | null; payment_url: string | null }>(
+      `SELECT id, name, region, start_date, start_time, hat_status, payment_url FROM event WHERE is_hat = 1 AND deleted_at IS NULL AND start_date >= ?`,
+      now.toISOString().slice(0, 10),
+    );
+    for (const h of hats) {
+      const start = meetingStart(h);
+      if (!start) continue;
+      if ((access.level === 'admin' || access.level === 'coordinator') && h.hat_status !== 'drawn') {
+        out.push({ key: `hatdraw:${h.id}:${h.start_date}`, kind: 'hats', at: new Date(start.getTime() - 48 * 3600_000), title: `Time to draw the teams for ${h.name}`, body: 'Paid sign-ups go into balanced teams. Pick captains from the willing, then confirm.', url: `/hat/${h.id}/draw` });
+      }
+      const mine = me ? await db.getFirstAsync<{ attending: string; paid: number; paid_confirmed: number }>(`SELECT attending, paid, paid_confirmed FROM hat_signup WHERE event_id = ? AND person_id = ?`, h.id, me) : null;
+      if (mine && mine.attending !== 'no' && !mine.paid && !mine.paid_confirmed) {
+        out.push({ key: `hatpay:${h.id}`, kind: 'hats', at: respectQuiet(new Date(start.getTime() - 72 * 3600_000), prefs, start), title: `Pay for ${h.name} to secure your spot`, body: 'Only paid players are drawn into teams, 48 hours before.', url: `/hat/${h.id}` });
+      }
     }
   }
 

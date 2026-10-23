@@ -60,6 +60,7 @@ export const TABLES: TableSpec[] = [
   { name: 'org_link', pk: ['id'] },
   { name: 'announcement', pk: ['id'] },
   { name: 'meeting_rsvp', pk: ['id'] },
+  { name: 'hat_signup', pk: ['id'] },
   { name: 'fitness_test', pk: ['id'] },
   { name: 'reflection', pk: ['id'] },
   { name: 'shoutout', pk: ['id'] },

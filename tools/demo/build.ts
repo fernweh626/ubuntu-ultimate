@@ -17,6 +17,7 @@ import { join } from 'node:path';
 
 import { CLUB_DIRECTORY } from '../../mobile/src/content/clubs';
 import { md5 } from '../../mobile/src/db/md5';
+import { drawTeams, recommendCaptains } from '../../mobile/src/domain/hat';
 import { ratioForPoint, rulesFor } from '../../mobile/src/domain/rules';
 
 const [WR_DIR, RES_DIR] = process.argv.slice(2);
@@ -95,7 +96,8 @@ type Row = Record<string, string | number | null>;
 const T: Record<string, Row[]> = {};
 const add = (table: string, row: Row) => (T[table] ??= []).push(row);
 // game_player isn't stored: everyone on the two teams' rosters played (the loader and the SQL fill it in).
-const ORDER = ['club', 'venue', 'team', 'person', 'membership', 'event', 'event_team', 'game', 'point', 'point_player', 'game_event', 'game_status_log', 'spirit_score', 'session', 'practice_rsvp', 'practice_attendance', 'game_availability', 'calendar_entry', 'announcement'];
+const ORDER = ['club', 'venue', 'team', 'person', 'membership', 'event', 'event_team', 'game', 'point', 'point_player', 'game_event', 'game_status_log', 'spirit_score', 'session', 'practice_rsvp', 'practice_attendance', 'game_availability', 'calendar_entry', 'announcement', 'hat_signup'];
+const VERSION = 2;
 
 /* ---------------- clubs, teams and venues from the public directory ---------------- */
 
@@ -513,8 +515,54 @@ add('calendar_entry', {
 add('announcement', { id: demoId('ann:nationals'), region_code: null, title: 'Mixed Nationals 2026: 4–6 December, KwaZulu-Natal', body: 'Team registrations open soon. Check your accreditation is valid and your SAFDA and regional fees are paid.\n\n(Demo announcement.)', link_url: 'https://safda.org.za/new-safda-events/', link_label: 'SAFDA events', pinned: 1, published_at: '2026-10-20T08:00:00.000Z', created_by_id: null, created_at: CREATED, updated_at: CREATED });
 add('announcement', { id: demoId('ann:constitution'), region_code: 'western', title: 'CTFDA constitution review: comments by 15 November', body: 'The committee is reviewing the constitution. Read the current version and send comments to the committee.\n\n(Demo announcement.)', link_url: 'https://drive.google.com/open?id=1M6J8if-22sOxGus-Ut3syubY3mKEIGZmmNDvSZYT-ho', link_label: 'Read the constitution', pinned: 0, published_at: '2026-10-18T08:00:00.000Z', created_by_id: null, created_at: CREATED, updated_at: CREATED });
 
+/* ---------------- Hats (demo) ---------------- */
+
+const hatRules = (perSide: number, minutes: number, target: number) => ({ pointTarget: target, halftimeTarget: Math.ceil(target / 2), softCapMinutes: null, hardCapMinutes: minutes, timeoutsPerTeam: 0, timeoutSeconds: 60, pullWithinSeconds: 60, mixedRatio: perSide % 2 === 1, halftimeMinutes: 2, playersPerSide: perSide });
+const cityPeople = T.person.filter((p) => !String(p.id).startsWith('x')).slice(0, 140); // WR + Res players and Heat
+function hatSignups(eventId: string, seed: string, count: number) {
+  const r = rng(seed);
+  const pool = [...cityPeople].sort(() => r() - 0.5).slice(0, count);
+  return pool.map((p, i) => {
+    const attending = i % 11 === 10 ? 'maybe' : 'yes';
+    const paid = i % 9 !== 4 ? 1 : 0;
+    const row = { id: `${eventId}:${p.id}`, event_id: eventId, person_id: p.id as string, attending, wants_captain: i % 6 === 0 ? 1 : 0, skill: 1 + Math.floor(r() * 5), paid, paid_confirmed: paid && i % 3 === 0 ? 1 : 0, on_the_day: 0, note: null, created_at: CREATED, updated_at: CREATED };
+    add('hat_signup', row);
+    return { ...row, gender: p.gender as 'W' | 'M' | null };
+  });
+}
+
+// Upcoming beach hat, sign-ups open (draw due 48 hours before).
+const BEACH_HAT = demoId('hat:clifton2026');
+add('event', { id: BEACH_HAT, name: 'Clifton Beach Hat 2026 (demo)', kind: 'tournament', level: 'social', division: 'beach', region: 'western', location: 'Clifton 2nd beach', start_date: '2026-10-31', end_date: '2026-10-31', start_time: '09:00', rules_json: JSON.stringify(hatRules(5, 30, 9)), is_hat: 1, cost: 'R120 (includes a hat disc)', payment_url: 'https://www.capetownultimate.co.za/contact/merch', details: 'DEMO HAT: shows how hats work in the app.\n\nSign up, say if you’d captain, pay, and tick “I’ve paid”. Teams are drawn on Thursday 29 Oct. Bring a light AND a dark shirt, water and sunscreen. Barefoot. Braai after.', hat_status: 'signups', team_count: null, notes: null, created_at: CREATED, updated_at: CREATED });
+hatSignups(BEACH_HAT, 'beachhat', 42);
+
+// Past hat: drawn and played, results entered without stats.
+const WINTER_HAT = demoId('hat:winter2026');
+const winterRules = hatRules(7, 40, 11);
+add('event', { id: WINTER_HAT, name: 'Winter Hat 2026 (demo)', kind: 'tournament', level: 'social', division: 'mixed', region: 'western', location: 'Woolsack Oval, UCT', venue_id: seedId('venue', 'Woolsack Oval, UCT'), start_date: '2026-07-18', end_date: '2026-07-18', start_time: '10:00', rules_json: JSON.stringify(winterRules), is_hat: 1, cost: 'R100', payment_url: null, details: 'DEMO HAT: drawn into four teams; results were entered as final scores or winners only.', hat_status: 'drawn', team_count: 4, notes: null, created_at: CREATED, updated_at: CREATED });
+const winter = hatSignups(WINTER_HAT, 'winterhat', 48).filter((s) => s.attending === 'yes' && s.paid);
+const players = winter.map((s) => ({ id: s.person_id, gender: s.gender, skill: s.skill, wantsCaptain: !!s.wants_captain }));
+const drawn = drawTeams(players, 4, recommendCaptains(players, 4));
+const hatTeamIds = drawn.map((t, i) => {
+  const id = demoId(`hatteam:winter:${i}`);
+  add('team', { id, name: t.name, short_name: t.name.slice(0, 3).toUpperCase(), kind: 'hat', region: 'western', primary_color: t.color, about: 'Hat team', is_sample: 0, created_at: CREATED, updated_at: CREATED });
+  add('event_team', { id: demoId(`et:winter:${i}`), event_id: WINTER_HAT, team_id: id, pool: null, seed: i + 1, created_at: CREATED });
+  for (const pid of t.playerIds) add('membership', { id: demoId(`hatm:${id}:${pid}`), person_id: pid, team_id: id, kind: 'guest', scope: 'event', scope_ref_id: WINTER_HAT, role: pid === t.captainId ? 'captain' : 'player', created_at: CREATED, updated_at: CREATED });
+  return id;
+});
+const winterGames: [number, number, string, number | null, number | null][] = [
+  [0, 1, '10:00', 9, 11], [2, 3, '10:00', 11, 6], [0, 2, '10:50', 11, 10], [1, 3, '10:50', null, null], [0, 3, '11:40', 7, 11], [1, 2, '11:40', null, null],
+];
+winterGames.forEach(([a, b, time, fa, fb], k) => {
+  const when = sast('2026-07-18', time);
+  const mode = fa != null ? 'score' : k === 3 ? 'winner' : 'none';
+  add('game', { id: demoId(`hatgame:winter:${k}`), event_id: WINTER_HAT, venue_id: seedId('venue', 'Woolsack Oval, UCT'), team_a_id: hatTeamIds[a], team_b_id: hatTeamIds[b], scheduled_at: when, status: 'final', tracking_mode: 'lite', rules_json: JSON.stringify(winterRules), started_at: when, ended_at: new Date(Date.parse(when) + 40 * 60_000).toISOString(), home_team_id: hatTeamIds[a], postponements: 0, round: Math.floor(k / 2) + 1, result_mode: mode, final_a: fa, final_b: fb, winner_team_id: mode === 'winner' ? hatTeamIds[b] : null, created_at: CREATED, updated_at: CREATED });
+});
+
 /* ---------------- write the JSON (phones) and SQL (server) ---------------- */
 
+// Columns with NOT NULL defaults must be explicit: the compact format writes a value for every column.
+for (const e of T.event) e.is_hat ??= 0;
 const tables = ORDER.filter((t) => T[t]?.length).map((t) => [t, T[t]] as const);
 const counts = Object.fromEntries(tables.map(([t, rows]) => [t, rows.length]));
 // Columnar (column names once, then value lists) keeps the file small enough to ship in the app.
@@ -524,7 +572,7 @@ const columnar = Object.fromEntries(
     return [t, { cols, rows: rows.map((r) => cols.map((c) => r[c] ?? null)) }];
   }),
 );
-writeFileSync(join(ROOT, 'mobile/src/content/demo/demo-2026.json'), JSON.stringify({ version: 1, builtFor: TODAY, teamUpdates, tables: columnar }));
+writeFileSync(join(ROOT, 'mobile/src/content/demo/demo-2026.json'), JSON.stringify({ version: VERSION, builtFor: TODAY, teamUpdates, tables: columnar }));
 
 const serverCols: Record<string, string[]> = JSON.parse(readFileSync(join(__dirname, 'server-columns.json'), 'utf8'));
 const lit = (v: string | number | null | undefined) => (v == null ? 'null' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
@@ -555,7 +603,9 @@ sql.push(`insert into game_player (id, game_id, team_id, person_id, jersey_numbe
      and m.id in (select id from membership where person_id in (select id from person where is_placeholder = 1))
 on conflict do nothing;`);
 sql.push(`update calendar_entry set end_date = '2026-11-14', status = 'confirmed' where id = ${lit(seedId('calendar', 'Cape Town Mixed League 2026'))};`);
-writeFileSync(join(ROOT, 'supabase/migrations/20261024150000_demo_content.sql'), sql.join('\n') + '\n');
+// Each demo version is its own (idempotent) migration, so already-applied versions are never edited.
+const MIGRATION: Record<number, string> = { 1: '20261024150000_demo_content.sql', 2: '20261024210000_demo_content_v2.sql' };
+writeFileSync(join(ROOT, 'supabase/migrations', MIGRATION[VERSION]), sql.join('\n') + '\n');
 
 console.log(`clubs ${counts.club} · new teams ${counts.team} (+${teamUpdates.length} updated) · people ${counts.person} · games ${counts.game} (WR ${wr.imported}, Res ${res.imported}, league ${leagueGames}) · points ${counts.point} · events ${counts.game_event} · practices ${practices}`);
 console.log(counts);

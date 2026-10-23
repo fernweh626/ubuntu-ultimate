@@ -31,7 +31,7 @@ export function GameCard({ g }: { g: GameListItem }) {
           </T>
         </View>
         <T style={{ fontFamily: font.display, fontSize: 34, lineHeight: 38 }}>
-          {g.score_a} – {g.score_b}
+          {g.result_mode === 'winner' ? (g.score_a > g.score_b ? 'W – L' : 'L – W') : g.result_mode === 'none' ? 'Played' : `${g.score_a} – ${g.score_b}`}
         </T>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, justifyContent: 'flex-end' }}>
           <T v="bodyStrong" numberOfLines={2} style={{ flex: 1, textAlign: 'right', opacity: aWon ? 0.6 : 1 }}>

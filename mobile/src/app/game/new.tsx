@@ -53,7 +53,7 @@ export default function NewGame() {
   const mode: TrackingMode = modeChoice ?? (isPlayer ? 'lite' : 'standard');
   const eventKind = events.find((e) => e.id === eventId)?.kind;
   const friendly = preset === 'casual' || eventKind === 'scrimmage' || eventKind === 'practice' || eventKind === 'pickup';
-  const usesRatio = division === 'mixed' && !friendly;
+  const usesRatio = (division === 'mixed' || division === 'beach') && !friendly;
 
   useEffect(() => {
     if (!eventId) return;
@@ -106,11 +106,11 @@ export default function NewGame() {
     return [...list.filter((t) => inEvent.includes(t.id)), ...list.filter((t) => !inEvent.includes(t.id))];
   }, [teams, q, teamA, teamB, inEvent]);
 
-  async function start() {
+  async function start(resultOnly?: 'score' | 'winner' | 'none') {
     if (!teamA || !teamB) return Alert.alert('Pick both teams');
     const squadA = rosterA.filter((p) => !outA.includes(p.id));
     const squadB = rosterB.filter((p) => !outB.includes(p.id));
-    if (squadA.length === 0 && squadB.length === 0 && mode !== 'lite') {
+    if (!resultOnly && squadA.length === 0 && squadB.length === 0 && mode !== 'lite') {
       return Alert.alert('No players', 'Add players to at least one team, or use Lite mode to just count goals.');
     }
     const rules = { ...rulesFor(preset, division), mixedRatio: usesRatio };
@@ -129,7 +129,8 @@ export default function NewGame() {
       ],
     };
     const id = fixtureId ? await startScheduledGame(db, fixtureId, game) : await createGame(db, game);
-    router.replace(`/game/${id}`);
+    if (resultOnly) router.replace({ pathname: '/game/[id]/result', params: { id, mode: resultOnly } });
+    else router.replace(`/game/${id}`);
   }
 
   const squadBlock = (side: 'A' | 'B') => {
@@ -176,7 +177,7 @@ export default function NewGame() {
         edges={[]}
         footer={
           <Footer>
-            <Button label="Start game" icon="whistle" kind="primary" big onPress={start} disabled={!teamA || !teamB} />
+            <Button label="Start game" icon="whistle" kind="primary" big onPress={() => start()} disabled={!teamA || !teamB} />
           </Footer>
         }>
         <Section title="Teams">
@@ -229,11 +230,15 @@ export default function NewGame() {
         <Section title="Division">
           <Segmented
             value={division}
-            onChange={setDivision}
+            onChange={(d) => {
+              setDivision(d);
+              if (d === 'beach') setPreset('beach');
+            }}
             options={[
               { value: 'mixed', label: 'Mixed' },
               { value: 'open', label: 'Open' },
               { value: 'women', label: 'Women' },
+              { value: 'beach', label: 'Beach' },
             ]}
           />
         </Section>
@@ -248,6 +253,15 @@ export default function NewGame() {
           <Segmented value={mode} onChange={setMode} options={MODES.map((m) => ({ value: m.value, label: isPlayer && m.value === 'lite' ? 'Lite ★' : m.label }))} />
           {isPlayer ? <T v="small">★ Recommended for pickups and scrimmages.</T> : null}
           <T v="small">{MODES.find((m) => m.value === mode)!.body}</T>
+          <T v="smallStrong" style={{ marginTop: space.sm }}>
+            Not tracking points? Just record the result
+          </T>
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            <Button label="Final score" icon="scoreboard-outline" onPress={() => start('score')} style={{ flex: 1, minHeight: 44, paddingHorizontal: 6 }} />
+            <Button label="Who won" icon="trophy-outline" onPress={() => start('winner')} style={{ flex: 1, minHeight: 44, paddingHorizontal: 6 }} />
+            <Button label="No score" icon="hand-wave-outline" onPress={() => start('none')} style={{ flex: 1, minHeight: 44, paddingHorizontal: 6 }} />
+          </View>
+          <T v="small">Handy for hats and pickups: e.g. “Light 7, Dark 10”, just W/L, or nothing at all.</T>
         </Section>
 
         {teamA && teamB ? (
