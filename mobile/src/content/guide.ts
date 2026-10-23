@@ -2,6 +2,8 @@ import type { Href } from 'expo-router';
 
 import type { IconName } from '@/ui/components';
 
+import { PRIVACY_EMAIL } from './hub';
+
 /*
  * The in-app guide: every feature, what it's for, and how to use it, in plain words.
  * Each article opens like a Notion toggle. Screenshots are real screens with demo data only
@@ -523,6 +525,7 @@ export const GUIDE: GuideSection[] = [
           'Me → Settings → Your data & privacy.',
           'Download my data: one file with everything about you.',
           'Fix or delete: pick what you need, add details and tap Send to the admins. They reply within 30 days, usually much sooner.',
+          `Prefer email? Write to ${PRIVACY_EMAIL}.`,
         ],
         tips: ['Most things you can fix yourself: Me → Edit profile.', 'Deleting removes your profile and personal details. Game scores stay (so other people’s stats still add up), with your name taken off.'],
         shot: 'privacy',
@@ -576,7 +579,8 @@ export const GUIDE: GuideSection[] = [
           'Joining a team, practices, lines, roles: your team’s captain or coach.',
           'Hosting a hat, leagues, the calendar, coordinator access: the admins (Me → Settings → Access level → Need more access?).',
           'Fees, membership, accreditation courses: SAFDA or your regional association (Hub → Merch & links).',
-          'Bugs, ideas and privacy: Me → Help → Report a bug.',
+          'Bugs and ideas: Me → Help → Report a bug.',
+          `Privacy and your data: Me → Settings → Your data & privacy, or email ${PRIVACY_EMAIL}.`,
         ],
       },
     ],

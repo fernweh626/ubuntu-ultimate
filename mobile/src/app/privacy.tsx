@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Alert, Platform, View } from 'react-native';
+import { Alert, Linking, Platform, View } from 'react-native';
 
+import { PRIVACY_EMAIL } from '@/content/hub';
 import { sendRequest } from '@/db/feedback-send';
 import { useData } from '@/db/live';
 import { myDataExport } from '@/db/my-data';
@@ -85,6 +86,13 @@ export default function Privacy() {
           ))}
           <Field label="Details (optional)" value={note} onChangeText={setNote} multiline placeholder={kind === 'delete' ? 'Anything we should keep, e.g. game scores for your team' : 'What should change?'} />
           <Button label="Send to the admins" icon="send" onPress={request} />
+          <Button
+            label={`Or email ${PRIVACY_EMAIL}`}
+            icon="email-outline"
+            kind="ghost"
+            onPress={() => Linking.openURL(`mailto:${PRIVACY_EMAIL}?subject=${encodeURIComponent('Privacy request')}`)}
+            style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }}
+          />
           <T v="small">You can fix most things yourself: Me → Edit profile. Deleting removes your profile, contact details, ratings, fitness and accreditation. Game scores stay, with your name taken off.</T>
         </Section>
       </Screen>

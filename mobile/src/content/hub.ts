@@ -194,6 +194,12 @@ export const SPIRIT_SCALE = ['Bad', 'Not good', 'Good', 'Very good', 'Excellent'
 
 export const RULES_URL = 'https://rules.wfdf.sport';
 
+/**
+ * Privacy contact (POPIA information officer). TEMPORARY placeholder: the .example domain can't
+ * receive mail. Swap in the real address here; the guide and privacy screen read it from here.
+ */
+export const PRIVACY_EMAIL = 'privacy@ubuntuultimate.example';
+
 /*
  * Real starting content from the associations' own sites (checked Oct 2026):
  * capetownultimate.co.za (CTFDA, Western) and safda.org.za (SAFDA, national).
