@@ -19,6 +19,8 @@ import {
   setLine,
   setPullDetails,
   substitute,
+  SUB_REASONS,
+  type SubReason,
   undo,
   updateGameMeta,
   updateScoreNames,
@@ -78,7 +80,7 @@ export default function ScoreGame() {
   const [endSheet, setEndSheet] = useState(false);
   const [endReason, setEndReason] = useState<EndReason>('cap');
   const [timeoutSheet, setTimeoutSheet] = useState(false);
-  const [subSheet, setSubSheet] = useState<null | { teamId: string; outId?: string }>(null);
+  const [subSheet, setSubSheet] = useState<null | { teamId: string; outId?: string; reason?: SubReason; matched?: boolean }>(null);
   const weatherTried = useRef(false);
 
   const data = bundle?.data;
@@ -501,7 +503,12 @@ export default function ScoreGame() {
           <>
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               {[ta, tb].map((t) => (
-                <Choice key={t.id} label={t.name} selected={subSheet.teamId === t.id} onPress={() => setSubSheet({ teamId: t.id })} style={{ flex: 1 }} />
+                <Choice key={t.id} label={t.name} selected={subSheet.teamId === t.id} onPress={() => setSubSheet({ teamId: t.id, reason: subSheet.reason })} style={{ flex: 1 }} />
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              {(Object.keys(SUB_REASONS) as SubReason[]).map((r) => (
+                <Choice key={r} label={SUB_REASONS[r]} selected={(subSheet.reason ?? 'injury') === r} onPress={() => setSubSheet({ ...subSheet, reason: r })} style={{ flex: 1, minHeight: 40 }} />
               ))}
             </View>
             <T v="label">{subSheet.outId ? `${label(subSheet.outId)} off — who comes on?` : 'Who is coming off?'}</T>
@@ -516,8 +523,17 @@ export default function ScoreGame() {
                   tall
                   onPress={async () => {
                     if (!subSheet.outId) return setSubSheet({ ...subSheet, outId: pid });
-                    await substitute(db, game.id, point.id, subSheet.teamId, subSheet.outId, pid);
-                    setSubSheet(null);
+                    const reason = subSheet.reason ?? 'injury';
+                    await substitute(db, game.id, point.id, subSheet.teamId, subSheet.outId, pid, reason);
+                    const other = otherTeam(game, subSheet.teamId);
+                    // The rules let the other team match an injury sub, so offer it straight away.
+                    if (reason !== 'other' && !subSheet.matched) {
+                      setSubSheet(null);
+                      Alert.alert(`${team(other).name} may match the sub`, 'Does the other team want to sub a player too?', [
+                        { text: 'No', style: 'cancel' },
+                        { text: 'Yes, sub', onPress: () => setSubSheet({ teamId: other, reason: 'other', matched: true }) },
+                      ]);
+                    } else setSubSheet(null);
                   }}
                   style={{ width: '48.5%' }}
                 />

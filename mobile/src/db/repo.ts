@@ -42,7 +42,7 @@ export const personCols = (alias = '') => {
 };
 export const now = () => new Date().toISOString();
 
-async function write<T>(db: SQLiteDatabase, fn: () => Promise<T>): Promise<T> {
+export async function write<T>(db: SQLiteDatabase, fn: () => Promise<T>): Promise<T> {
   let result!: T;
   await db.withTransactionAsync(async () => {
     result = await fn();
@@ -896,12 +896,19 @@ export function setLine(db: SQLiteDatabase, pointId: string, teamId: string, per
   });
 }
 
-/** Injury (or other) substitution mid-point: swap the player on the line and log it. */
-export function substitute(db: SQLiteDatabase, gameId: string, pointId: string, teamId: string, outId: string, inId: string) {
+export type SubReason = 'injury' | 'illness' | 'other';
+export const SUB_REASONS: Record<SubReason, string> = { injury: 'Injury', illness: 'Illness', other: 'Other' };
+
+/**
+ * Mid-point substitution: swap the player on the line and log it with a reason. An injured or ill
+ * player is also marked unavailable, so line suggestions skip them until someone clears it.
+ */
+export function substitute(db: SQLiteDatabase, gameId: string, pointId: string, teamId: string, outId: string, inId: string, reason: SubReason = 'injury') {
   return write(db, async () => {
     await db.runAsync(`DELETE FROM point_player WHERE point_id = ? AND person_id = ?`, pointId, outId);
     await db.runAsync(`INSERT OR IGNORE INTO point_player (point_id, team_id, person_id) VALUES (?, ?, ?)`, pointId, teamId, inId);
-    await insertEvent(db, { gameId, pointId, type: 'injury_sub', teamId, actorId: outId, secondaryId: inId });
+    await insertEvent(db, { gameId, pointId, type: 'injury_sub', teamId, actorId: outId, secondaryId: inId, value: reason });
+    if (reason !== 'other') await db.runAsync(`UPDATE game_player SET status = 'injured' WHERE game_id = ? AND person_id = ?`, gameId, outId);
   });
 }
 

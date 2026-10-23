@@ -48,6 +48,11 @@ export const TABLES: TableSpec[] = [
   { name: 'bracket_slot', pk: ['id'] },
   { name: 'session', pk: ['id'] },
   { name: 'practice_rsvp', pk: ['id'] },
+  { name: 'practice_attendance', pk: ['id'] },
+  { name: 'game_availability', pk: ['id'] },
+  { name: 'accreditation', pk: ['id'], localOnly: ['photo_uri'] },
+  { name: 'self_rating', pk: ['id'] },
+  { name: 'fitness_test', pk: ['id'] },
   { name: 'reflection', pk: ['id'] },
   { name: 'shoutout', pk: ['id'] },
   { name: 'join_request', pk: ['id'] },
@@ -242,6 +247,7 @@ const TEAM_REFS: [string, string][] = [
   ['reflection', 'team_id'],
   ['shoutout', 'team_id'],
   ['join_request', 'team_id'],
+  ['game_availability', 'team_id'],
 ];
 const VENUE_REFS: [string, string][] = [
   ['game', 'venue_id'],
@@ -292,7 +298,7 @@ export async function prepareFirstSync(db: SQLiteDatabase) {
       if (games.length) {
         const gq = games.map(() => '?').join(',');
         await db.runAsync(`DELETE FROM point_player WHERE point_id IN (SELECT id FROM point WHERE game_id IN (${gq}))`, ...games);
-        for (const t of ['point', 'game_event', 'game_player', 'spirit_score', 'game_status_log', 'reflection', 'shoutout']) {
+        for (const t of ['point', 'game_event', 'game_player', 'spirit_score', 'game_status_log', 'reflection', 'shoutout', 'game_availability']) {
           await db.runAsync(`DELETE FROM ${t} WHERE game_id IN (${gq})`, ...games);
         }
         await db.runAsync(`UPDATE bracket_slot SET game_id = NULL WHERE game_id IN (${gq})`, ...games);
@@ -309,8 +315,12 @@ export async function prepareFirstSync(db: SQLiteDatabase) {
       const me = await meta(db, 'me_person_id');
       const drop = people.filter((p) => p !== me);
       await db.runAsync(`DELETE FROM saved_line_member WHERE line_id IN (SELECT id FROM saved_line WHERE team_id IN (${q}))`, ...samples);
-      await db.runAsync(`DELETE FROM practice_rsvp WHERE session_id IN (SELECT id FROM session WHERE team_id IN (${q}))`, ...samples);
-      if (drop.length) await db.runAsync(`DELETE FROM practice_rsvp WHERE person_id IN (${drop.map(() => '?').join(',')})`, ...drop);
+      for (const t of ['practice_rsvp', 'practice_attendance']) await db.runAsync(`DELETE FROM ${t} WHERE session_id IN (SELECT id FROM session WHERE team_id IN (${q}))`, ...samples);
+      await db.runAsync(`DELETE FROM game_availability WHERE team_id IN (${q})`, ...samples);
+      if (drop.length) {
+        const dq = drop.map(() => '?').join(',');
+        for (const t of ['practice_rsvp', 'practice_attendance', 'game_availability', 'accreditation', 'self_rating', 'fitness_test']) await db.runAsync(`DELETE FROM ${t} WHERE person_id IN (${dq})`, ...drop);
+      }
       for (const t of ['saved_line', 'membership', 'event_team', 'session']) await db.runAsync(`DELETE FROM ${t} WHERE team_id IN (${q})`, ...samples);
       await db.runAsync(`DELETE FROM follow WHERE kind = 'team' AND target_id IN (${q})`, ...samples);
       if (drop.length) await db.runAsync(`DELETE FROM person WHERE id IN (${drop.map(() => '?').join(',')})`, ...drop);

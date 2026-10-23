@@ -5,7 +5,7 @@ import { Alert, Linking, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
-import { END_REASONS, reflectionsFor, statusLog, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta } from '@/db/repo';
+import { END_REASONS, reflectionsFor, statusLog, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta , SUB_REASONS, type SubReason } from '@/db/repo';
 import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, timeOfDay } from '@/domain/format';
 import { STATUS_REASONS } from '@/domain/fixtures';
 import { deriveState } from '@/domain/engine';
@@ -55,6 +55,7 @@ export default function GameReport() {
   const B = stats.teams[tb.id];
   const weather: Weather | null = game.weather_json ? JSON.parse(game.weather_json) : null;
   const name = (pid: string | null) => (pid && people.get(pid) ? shortName(people.get(pid)!) : 'Unknown');
+  const subs = data.events.filter((e) => e.type === 'injury_sub' && !e.voided_at).sort((a, b) => a.seq - b.seq);
   const final = game.status === 'final';
   const endReason = final
     ? (data.events.find((e) => e.type === 'end' && !e.voided_at)?.value as EndReason | null | undefined)
@@ -313,6 +314,24 @@ export default function GameReport() {
             ) : null}
           </View>
         </Section>
+
+        {subs.length ? (
+          <Section title={`Substitutions · ${subs.length}`}>
+            {subs.map((e) => {
+              const pt = data.points.find((p) => p.id === e.point_id);
+              return (
+                <Card key={e.id}>
+                  <T v="bodyStrong">
+                    {name(e.actor_id)} off → {name(e.secondary_id)} on
+                  </T>
+                  <T v="small">
+                    {[e.team_id === ta.id ? ta.name : tb.name, pt ? `point ${pt.number}` : null, SUB_REASONS[(e.value as SubReason) ?? 'injury'] ?? 'Injury'].filter(Boolean).join(' · ')}
+                  </T>
+                </Card>
+              );
+            })}
+          </Section>
+        ) : null}
 
         {final ? (
           <Section title="Who played">
