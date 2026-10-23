@@ -52,28 +52,25 @@ export function FixtureCard({ g }: { g: GameListItem }) {
   const homeColor = home === g.team_a_id ? g.a_color : g.b_color;
   const awayColor = home === g.team_a_id ? g.b_color : g.a_color;
   return (
-    <Card onPress={() => router.push(`/game/${g.id}/fixture`)}>
+    <Card onPress={() => router.push(`/game/${g.id}/fixture`)} style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
-        <T v="smallStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
-          {g.scheduled_at ? `${shortDate(g.scheduled_at)} · ${timeOfDay(g.scheduled_at)}` : 'Date TBC'}
-          {g.venue_name ? ` · ${g.venue_name}` : ''}
-        </T>
-        {g.postponements ? <Chip label={`Postponed ×${g.postponements}`} tone="warn" /> : g.event_name ? <T v="small" numberOfLines={1}>{g.event_name}</T> : null}
+        <T v="bodyStrong">{g.scheduled_at ? `${shortDate(g.scheduled_at)} · ${timeOfDay(g.scheduled_at)}` : 'Date to be confirmed'}</T>
+        {g.postponements ? <Chip label={`Postponed${g.postponements > 1 ? ` ×${g.postponements}` : ''}`} tone="warn" /> : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <TeamSwatch color={homeColor} size="sm" />
-        <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+        <T style={{ fontFamily: font.bold, fontSize: 17, flexShrink: 1 }} numberOfLines={1}>
           {homeName}
         </T>
-        <Chip label="Home · sets up" tone="brand" />
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <T v="small">v</T>
         <TeamSwatch color={awayColor} size="sm" />
-        <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+        <T style={{ fontFamily: font.bold, fontSize: 17, flexShrink: 1 }} numberOfLines={1}>
           {awayName}
         </T>
-        <T v="small">Away</T>
       </View>
+      <T v="small" numberOfLines={1}>
+        {[g.venue_name, g.event_name, `${homeName} sets up`].filter(Boolean).join(' · ')}
+      </T>
     </Card>
   );
 }

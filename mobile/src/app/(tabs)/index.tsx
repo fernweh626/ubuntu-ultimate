@@ -1,14 +1,14 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { dayLabel, homeFeed, type Competition, type TimelineItem } from '@/db/home';
 import { useData } from '@/db/live';
-import { getHomeRegion, listAnnouncements, listCalendar, listGames, listPickups, type GameListItem } from '@/db/repo';
+import { getHomeRegion, isOnboarded, listAnnouncements, listCalendar, listGames, listPickups, type GameListItem } from '@/db/repo';
 import { DAYS_LONG, dateRange, timeOfDay, weekdayIndex } from '@/domain/format';
-import { Button, Card, Chip, EmptyState, Icon, IconButton, Section, Screen, Segmented, T } from '@/ui/components';
+import { Button, Card, Chip, EmptyState, Icon, Section, Screen, Segmented, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
 import { MeButton } from '@/ui/me-button';
 import { colors, font, space } from '@/ui/theme';
@@ -26,10 +26,14 @@ const MAX = 3;
 const MAX_TIMELINE = 8;
 
 export default function Home() {
+  const onboarded = useData(isOnboarded);
   const feedData = useData((d) => homeFeed(d));
   const home = useData(getHomeRegion);
   const [feedChoice, setFeed] = useState<'you' | 'region' | 'all' | null>(null);
   const feed = feedChoice === 'region' && !home ? 'all' : (feedChoice ?? (feedData?.hasScope ? 'you' : home ? 'region' : 'all'));
+
+  // First time on this phone: set up who you are, your team and region.
+  if (onboarded === false) return <Redirect href="/welcome" />;
 
   return (
     <Screen>
@@ -56,12 +60,27 @@ export default function Home() {
         ]}
       />
 
-      <View style={{ flexDirection: 'row', gap: space.sm }}>
-        <Button label="Score a game" icon="whistle" kind="primary" onPress={() => router.push('/game/new')} style={{ flex: 1 }} />
-        <IconButton icon="map-marker-radius" label="Pickups" onPress={() => router.push('/hub/pickups')} />
-        <IconButton icon="calendar" label="Calendar" onPress={() => router.push('/hub/calendar')} />
-        <IconButton icon="book-open-variant" label="Rules" onPress={() => router.push('/hub/rules')} />
-      </View>
+      <Button label="Score a game" icon="whistle" kind="primary" big onPress={() => router.push('/game/new')} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
+        {(
+          [
+            ['map-marker-radius', 'Pickups', '/hub/pickups'],
+            ['hat-fedora', 'Hats', '/hat'],
+            ['calendar', 'Calendar', '/hub/calendar'],
+            ['calendar-check-outline', 'My schedule', '/schedule'],
+            ['book-open-variant', 'Rules', '/hub/rules'],
+          ] as const
+        ).map(([icon, label, href]) => (
+          <Pressable
+            key={label}
+            onPress={() => router.push(href)}
+            accessibilityRole="button"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, minHeight: 40, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+            <Icon name={icon} size={18} color={colors.brand} />
+            <T v="smallStrong">{label}</T>
+          </Pressable>
+        ))}
+      </ScrollView>
 
       <News region={home ?? null} />
 
@@ -76,25 +95,23 @@ export default function Home() {
 function News({ region }: { region: string | null }) {
   const list = useData(listAnnouncements) ?? [];
   const [opened] = useState(() => Date.now());
-  const fresh = list.filter((a) => (!a.region_code || !region || a.region_code === region) && (a.pinned || opened - Date.parse(a.published_at) < 14 * 86400_000)).slice(0, 2);
+  const fresh = list.filter((a) => (!a.region_code || !region || a.region_code === region) && (a.pinned || opened - Date.parse(a.published_at) < 14 * 86400_000));
   if (!fresh.length) return null;
+  const top = fresh[0];
+  // One slim line: the newest/pinned announcement, and how many more there are.
   return (
-    <>
-      {fresh.map((a) => (
-        <Card key={a.id} onPress={() => router.push('/hub/announcements')} style={{ backgroundColor: colors.night, borderColor: colors.night, gap: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-            <Icon name="bullhorn-outline" color="#F0A27E" size={18} />
-            <T style={{ fontFamily: font.bold, fontSize: 12, letterSpacing: 1, color: '#F0A27E' }}>ANNOUNCEMENT</T>
-          </View>
-          <T style={{ fontFamily: font.bold, fontSize: 17, color: '#fff' }}>{a.title}</T>
-          {a.body ? (
-            <T numberOfLines={2} style={{ color: colors.nightMuted }}>
-              {a.body}
-            </T>
-          ) : null}
-        </Card>
-      ))}
-    </>
+    <Pressable
+      onPress={() => router.push('/hub/announcements')}
+      accessibilityRole="button"
+      accessibilityLabel={`Announcement: ${top.title}${fresh.length > 1 ? `, and ${fresh.length - 1} more` : ''}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.night, borderRadius: 12, paddingHorizontal: space.md, paddingVertical: 10 }}>
+      <Icon name="bullhorn-outline" color="#F0A27E" size={20} />
+      <T numberOfLines={1} style={{ flex: 1, fontFamily: font.semibold, fontSize: 15, color: '#fff' }}>
+        {top.title}
+      </T>
+      {fresh.length > 1 ? <T style={{ fontFamily: font.bold, fontSize: 13, color: '#F0A27E' }}>+{fresh.length - 1}</T> : null}
+      <Icon name="chevron-right" color={colors.nightMuted} size={18} />
+    </Pressable>
   );
 }
 

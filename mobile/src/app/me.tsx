@@ -13,23 +13,20 @@ import {
   listFollows,
   listGamesForPerson,
   listPeople,
-  joinTeam,
   listTeams,
   personLog,
   myRoles,
   savePerson,
   setFollowing,
-  setHomeRegion,
   setMeId,
   setMembershipRole,
-  setTestLevel,
   type MyRole,
 } from '@/db/repo';
 import type { Gender } from '@/db/types';
 import { displayName, shortDate } from '@/domain/format';
-import { canSetTeamRole, grantSummary, LEVEL_LABEL } from '@/domain/permissions';
+import { canSetTeamRole, LEVEL_LABEL } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, Field, Icon, IconButton, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
-import { RegionMap } from '@/ui/region-map';
+import { regionName } from '@/content/hub';
 import { getAccreditation } from '@/db/development';
 import { ACCREDITATION_LEVELS, accreditationState } from '@/domain/development';
 import { Avatar } from '@/ui/photo';
@@ -44,13 +41,8 @@ const ROLE_LABEL: Record<MyRole['role'], string> = {
 };
 const STAFF: MyRole['role'][] = ['captain', 'coach', 'spirit_captain', 'manager'];
 
-const LEVELS = [
-  { key: 'admin', title: 'Admin', body: 'Everything. Can make people coordinators, team staff or scorekeepers.' },
-  { key: 'coordinator', title: 'Coordinator', body: 'Runs leagues, regionals and nationals. Can make people team staff or scorekeepers.' },
-  { key: 'staff', title: 'Team staff', body: 'Captains, coaches, spirit captains, managers: roster, lines, contacts, spirit, confirming who played. Can give staff roles and scorekeeper within their team.' },
-  { key: 'scorekeeper', title: 'Scorekeeper', body: 'Starts and scores any game and adds players. Can’t give access to anyone.' },
-  { key: 'player', title: 'Player', body: 'Starts friendly games, edits their own details, joins teams. Can’t give access to anyone.' },
-] as const;
+const GROUP = { borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider } as const;
+
 
 export default function Me() {
   const db = useSQLiteContext();
@@ -79,14 +71,13 @@ export default function Me() {
   }) ?? [];
   const totals = useData(async (d) => (me ? playerTotals(await loadFinishedGames(d, await listGamesForPerson(d, me.id))).get(me.id) ?? null : null), [me?.id]);
   const [roleFor, setRoleFor] = useState<MyRole | null>(null);
-  const [staffPicker, setStaffPicker] = useState(false);
-  const allTeams = useData(listTeams) ?? [];
 
   if (me === undefined) return <Screen edges={[]}>{null}</Screen>;
   if (!me) return <WhoAreYou />;
 
-  const staffOn = roles.filter((r) => STAFF.includes(r.role));
   const level = access?.level ?? 'player';
+  const runs = level === 'admin' || level === 'coordinator';
+  const accOk = !!acc && accreditationState(acc.expires_on) === 'valid';
 
   return (
     <>
@@ -96,82 +87,40 @@ export default function Me() {
           <Avatar uri={me.photo_uri} name={`${me.first_name} ${me.last_name}`} size={72} />
           <View style={{ flex: 1 }}>
             <T v="heading">{displayName(me)}</T>
-            <T v="small">{[me.preferred_number ? `#${me.preferred_number}` : null, me.position ? me.position[0].toUpperCase() + me.position.slice(1) : null].filter(Boolean).join(' · ') || 'Add your number and position'}</T>
+            <T v="small">{[me.preferred_number ? `#${me.preferred_number}` : null, me.position ? me.position[0].toUpperCase() + me.position.slice(1) : null, roles.map((r) => r.team_name).join(', ') || null].filter(Boolean).join(' · ') || 'Add your number and position'}</T>
           </View>
         </View>
-
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <StatTile value={totals?.games ?? 0} label="Games" />
           <StatTile value={totals?.goals ?? 0} label="Goals" />
           <StatTile value={totals?.assists ?? 0} label="Assists" />
-          <StatTile value={totals?.intercepts ?? 0} label="Intercepts" />
+          <StatTile value={totals?.intercepts ?? 0} label="Ds" />
+        </View>
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <Button label="My stats" icon="chart-box-outline" kind="primary" onPress={() => router.push(`/player/${me.id}`)} style={{ flex: 1 }} />
+          <Button label="Edit profile" icon="account-edit-outline" onPress={() => router.push({ pathname: '/player/edit', params: { id: me.id } })} style={{ flex: 1 }} />
         </View>
 
-        <Card onPress={() => router.push('/log')} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-          <Icon name="run" color={colors.brand} size={28} />
-          <View style={{ flex: 1 }}>
-            <T v="bodyStrong">My ultimate log</T>
-            <T v="small">
-              {week ? `This week: ${week.count} session${week.count === 1 ? '' : 's'} · ${week.minutes} min` : 'Games, practices and pickups you’ve played'}
-            </T>
+        <Section title="This week">
+          <View style={GROUP}>
+            <Row title="My schedule" subtitle="Practices and games: going, late or can’t" left={<Icon name="calendar-check-outline" color={colors.brand} />} onPress={() => router.push('/schedule')} />
+            <Row
+              title="My ultimate log"
+              subtitle={week ? `${week.count} session${week.count === 1 ? '' : 's'} · ${week.minutes} min this week` : 'Games, practices and pickups you’ve played'}
+              left={<Icon name="run" color={colors.brand} />}
+              onPress={() => router.push('/log')}
+            />
           </View>
-          <Icon name="chevron-right" color={colors.faint} />
-        </Card>
-
-        <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-          <Row
-            title={access?.signedIn ? 'Account & sync' : 'Go online'}
-            subtitle={access?.signedIn ? 'Backed up · syncs automatically' : 'Back up your data and share with your team'}
-            left={<Icon name={access?.signedIn ? 'cloud-check-outline' : 'cloud-upload-outline'} color={colors.brand} />}
-            onPress={() => router.push('/account')}
-          />
-          <Row title="Notifications" subtitle="Game reminders, shout-outs, check-ins" left={<Icon name="bell-outline" color={colors.brand} />} onPress={() => router.push('/notifications')} />
-        </View>
-
-        <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-          <Row
-            title="Accreditation"
-            subtitle={
-              !acc
-                ? 'Add yours: needed for leagues and nationals'
-                : `${ACCREDITATION_LEVELS[acc.level]}${acc.expires_on ? ` · ${accreditationState(acc.expires_on) === 'expired' ? 'expired' : 'valid until'} ${shortDate(acc.expires_on)}` : ''}`
-            }
-            left={<Icon name={acc && accreditationState(acc.expires_on) === 'valid' ? 'check-decagram' : 'alert-decagram-outline'} color={acc && accreditationState(acc.expires_on) === 'valid' ? colors.brand : colors.warn} />}
-            onPress={() => router.push('/accreditation')}
-          />
-          <Row title="Membership numbers" subtitle="SAFDA and regional numbers, fees, contact for staff" left={<Icon name="card-account-details-outline" color={colors.brand} />} onPress={() => router.push('/registration')} />
-          <Row title="My schedule" subtitle="Practices and games: going, late or can’t, and check-ins" left={<Icon name="calendar-check-outline" color={colors.brand} />} onPress={() => router.push('/schedule')} />
-          <Row title="My development" subtitle="Self-rating every 6 months, fitness tests, history" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push('/development')} />
-          <Row title="Report a bug or suggest an idea" subtitle="Goes straight to the people building the app" left={<Icon name="lightbulb-on-outline" color={colors.brand} />} onPress={() => router.push('/feedback')} />
-        </View>
-
-        {access?.level === 'admin' || access?.level === 'coordinator' ? (
-          <Section title="Admin">
-            <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-              <Row title="Paid-up lists" subtitle="Upload SAFDA and regional member lists (CSV)" left={<Icon name="file-upload-outline" color={colors.brand} />} onPress={() => router.push('/admin/standing')} />
-              <Row title="Forms & payment links" subtitle="Where players register and pay" left={<Icon name="link-variant" color={colors.brand} />} onPress={() => router.push('/admin/links')} />
-              {access.level === 'admin' ? <Row title="Bugs & ideas inbox" subtitle="Reports from players" left={<Icon name="inbox-full-outline" color={colors.brand} />} onPress={() => router.push('/feedback-admin')} /> : null}
-            </View>
-          </Section>
-        ) : null}
-
-        <Section title="Your region">
-          <T v="small">Tap where you play, or care about most. Calendar, pickups, teams and links open on it. Pick All of SA to see everything.</T>
-          <RegionMap value={homeRegion ?? null} onChange={(v) => setHomeRegion(db, v)} />
         </Section>
-
-        <View style={{ gap: space.sm }}>
-          <Button label="My stats & games" icon="chart-box-outline" kind="primary" onPress={() => router.push(`/player/${me.id}`)} />
-          <Button label="Update my details" icon="account-edit-outline" onPress={() => router.push({ pathname: '/player/edit', params: { id: me.id } })} />
-        </View>
 
         <Section title="My teams">
           {roles.length === 0 ? (
-            <Card>
-              <T v="small">You’re not on a team yet. Open your stats page and tap “Join a team”.</T>
+            <Card onPress={() => router.push('/teams')}>
+              <T v="bodyStrong">Join your team</T>
+              <T v="small">Find your club in Teams and tap “Join”. Your games and practices then show up here.</T>
             </Card>
           ) : (
-            <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+            <View style={GROUP}>
               {roles.map((r) => (
                 <Row
                   key={r.team_id}
@@ -186,80 +135,36 @@ export default function Me() {
           )}
         </Section>
 
-        <Section title="My access level">
-          <Card style={{ borderColor: colors.brand, borderWidth: 2 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-              <Icon name="shield-account-outline" color={colors.brand} />
-              <T v="title">{LEVEL_LABEL[level]}</T>
-            </View>
-            <T v="small">
-              {level === 'staff'
-                ? `${staffOn.map((r) => `${ROLE_LABEL[r.role]} of ${r.team_name}`).join(', ')}.`
-                : level === 'scorekeeper'
-                  ? 'You can start any game — league, tournament or friendly — and add players. Captains confirm the rosters afterwards.'
-                  : level === 'player'
-                    ? 'You can start friendly scrimmages and pickups, update your own details, join teams and see every stat.'
-                    : LEVELS.find((l) => l.key === level)!.body}
-            </T>
-            <T v="small" style={{ color: colors.ink }}>
-              {grantSummary(level)}
-            </T>
-          </Card>
-          <View style={{ gap: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.divider }}>
-            {LEVELS.map((l) => {
-              const mine = l.key === level;
-              return (
-                <View key={l.key} style={{ flexDirection: 'row', gap: space.md, padding: space.md, backgroundColor: mine ? colors.brandTint : colors.surface }}>
-                  <Icon name={mine ? 'check-circle' : 'circle-outline'} color={mine ? colors.brand : colors.faint} size={20} />
-                  <View style={{ flex: 1 }}>
-                    <T v="smallStrong">{l.title}</T>
-                    <T v="small">{l.body}</T>
-                  </View>
-                </View>
-              );
-            })}
+        <Section title="Playing">
+          <View style={GROUP}>
+            <Row
+              title="Accreditation"
+              subtitle={!acc ? 'Add yours: needed for leagues and nationals' : `${ACCREDITATION_LEVELS[acc.level]}${acc.expires_on ? ` · ${accreditationState(acc.expires_on) === 'expired' ? 'expired' : 'valid until'} ${shortDate(acc.expires_on)}` : ''}`}
+              left={<Icon name={accOk ? 'check-decagram' : 'alert-decagram-outline'} color={accOk ? colors.brand : colors.warn} />}
+              onPress={() => router.push('/accreditation')}
+            />
+            <Row title="Membership & fees" subtitle="SAFDA and regional numbers, where to pay" left={<Icon name="card-account-details-outline" color={colors.brand} />} onPress={() => router.push('/registration')} />
+            <Row title="My development" subtitle="Self-rating and fitness tests" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push('/development')} />
           </View>
-          {!access?.signedIn ? (
-            <>
-          <T v="label">Try a level on this phone</T>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            {(['player', 'scorekeeper', 'staff', 'coordinator', 'admin'] as const).map((l) => (
-              <Choice
-                key={l}
-                label={LEVEL_LABEL[l]}
-                selected={level === l}
-                onPress={async () => {
-                  if (l === 'staff') return setStaffPicker(true);
-                  // Player and scorekeeper rank below team staff, so drop any staff roles to really be them.
-                  if (l === 'player' || l === 'scorekeeper') {
-                    for (const r of staffOn) await setMembershipRole(db, me.id, r.team_id, 'player');
-                  }
-                  await setTestLevel(db, l);
-                }}
-                style={{ paddingHorizontal: 14 }}
-              />
-            ))}
-          </View>
-          <T v="small">Team staff makes you captain of a team you pick. In real use, staff roles are given by that team’s staff, a coordinator or an admin.</T>
-            </>
-          ) : (
-            <T v="small">Your level comes from your account. Admins and coordinators give levels from a player’s profile; team staff give team roles from the team page.</T>
-          )}
-          {!access?.signedIn ? (
-          <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
-            <T v="smallStrong" style={{ color: colors.warnInk }}>
-              Not enforced yet
-            </T>
-            <T v="small" style={{ color: colors.warnInk }}>
-              This app version has no sign-in, so anyone holding this phone can edit anything. When accounts arrive, the server will check these levels on every change, and admins will assign them.
-            </T>
-          </Card>
-          ) : null}
         </Section>
 
-        <Section title="Following">
-          {following.length ? (
-            <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+        <Section title="Settings">
+          <View style={GROUP}>
+            <Row title="Region" subtitle={homeRegion ? regionName(homeRegion) : 'All of SA'} left={<Icon name="map-outline" color={colors.brand} />} onPress={() => router.push('/region')} />
+            <Row title="Notifications" subtitle="Reminders, check-ins, news" left={<Icon name="bell-outline" color={colors.brand} />} onPress={() => router.push('/notifications')} />
+            <Row
+              title={access?.signedIn ? 'Account & sync' : 'Go online'}
+              subtitle={access?.signedIn ? 'Backed up · syncs automatically' : 'Back up your data and share with your team'}
+              left={<Icon name={access?.signedIn ? 'cloud-check-outline' : 'cloud-upload-outline'} color={colors.brand} />}
+              onPress={() => router.push('/account')}
+            />
+            <Row title="Access level" subtitle={LEVEL_LABEL[level]} left={<Icon name="shield-account-outline" color={colors.brand} />} onPress={() => router.push('/access')} />
+          </View>
+        </Section>
+
+        {following.length ? (
+          <Section title="Following">
+            <View style={GROUP}>
               {following.map((f) => (
                 <Row
                   key={`${f.kind}-${f.target_id}`}
@@ -271,36 +176,27 @@ export default function Me() {
                 />
               ))}
             </View>
-          ) : (
-            <Card onPress={() => router.push('/teams')}>
-              <T v="small">Follow teams in any province, and tournaments, to see their results on Home under “For you”.</T>
-            </Card>
-          )}
+          </Section>
+        ) : null}
+
+        {runs ? (
+          <Section title="Admin">
+            <View style={GROUP}>
+              <Row title="Paid-up lists" subtitle="Upload SAFDA and regional member lists (CSV)" left={<Icon name="file-upload-outline" color={colors.brand} />} onPress={() => router.push('/admin/standing')} />
+              <Row title="Forms & payment links" subtitle="Where players register and pay" left={<Icon name="link-variant" color={colors.brand} />} onPress={() => router.push('/admin/links')} />
+              {level === 'admin' ? <Row title="Bugs & ideas inbox" subtitle="Reports from players" left={<Icon name="inbox-full-outline" color={colors.brand} />} onPress={() => router.push('/feedback-admin')} /> : null}
+            </View>
+          </Section>
+        ) : null}
+
+        <Section title="Help">
+          <View style={GROUP}>
+            <Row title="Report a bug or suggest an idea" subtitle="Goes straight to the people building the app" left={<Icon name="lightbulb-on-outline" color={colors.brand} />} onPress={() => router.push('/feedback')} />
+          </View>
         </Section>
 
         <Button label="Not you? Switch player" kind="ghost" onPress={() => setMeId(db, null)} />
       </Screen>
-
-      <Sheet visible={staffPicker} onClose={() => setStaffPicker(false)} title="Be team staff for…">
-        <T v="small">You’ll be captain of this team (and join it if you’re not on it).</T>
-        {[...allTeams]
-          .sort((a, b) => Number(!roles.some((r) => r.team_id === b.id)) - Number(!roles.some((r) => r.team_id === a.id)) || a.name.localeCompare(b.name))
-          .map((t) => (
-            <Choice
-              key={t.id}
-              label={t.name}
-              sublabel={roles.some((r) => r.team_id === t.id) ? 'Your team' : undefined}
-              dot={t.primary_color ?? undefined}
-              onPress={async () => {
-                if (!roles.some((r) => r.team_id === t.id)) await joinTeam(db, me.id, t.id, 'core', me.preferred_number);
-                await setMembershipRole(db, me.id, t.id, 'captain');
-                await setTestLevel(db, 'player');
-                setStaffPicker(false);
-              }}
-              style={{ alignItems: 'flex-start' }}
-            />
-          ))}
-      </Sheet>
 
       <Sheet visible={!!roleFor} onClose={() => setRoleFor(null)} title={roleFor ? `Your role in ${roleFor.team_name}` : ''}>
         {roleFor && access && canSetTeamRole(access.level, access.staffTeamIds, roleFor.team_id, 'captain') ? (
@@ -371,6 +267,7 @@ function WhoAreYou() {
           <T v="small">Nobody by that name yet.</T>
         ) : null}
         <Button label="I’m not listed — create my profile" icon="account-plus" onPress={() => setAdding(true)} />
+        <Button label="Set up step by step (profile, team, region)" icon="map-marker-path" kind="ghost" onPress={() => router.push('/welcome')} />
       </Screen>
       <Sheet visible={adding} onClose={() => setAdding(false)} title="Create my profile">
         <View style={{ flexDirection: 'row', gap: space.md }}>

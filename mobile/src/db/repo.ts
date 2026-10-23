@@ -84,6 +84,15 @@ export function setHomeRegion(db: SQLiteDatabase, region: string | null) {
   );
 }
 
+/** First-run welcome: done (or skipped) once per phone. */
+export async function isOnboarded(db: SQLiteDatabase) {
+  return !!(await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'onboarded'`)) || !!(await getMeId(db));
+}
+
+export function setOnboarded(db: SQLiteDatabase) {
+  return db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('onboarded', '1') ON CONFLICT(key) DO UPDATE SET value = '1'`);
+}
+
 export async function getMeId(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_person_id'`);
   return row?.value ?? null;

@@ -20,6 +20,7 @@ const KIND_LABEL: Record<string, string> = {
 
 export default function Play() {
   const [tab, setTab] = useState<'games' | 'events'>('games');
+  const [opened] = useState(() => Date.now());
   const games = useData(listGames);
   const events = useData(listEvents);
   const access = useData(getAccess);
@@ -27,7 +28,11 @@ export default function Play() {
 
   const live = games?.filter((g) => g.status === 'live') ?? [];
   const done = games?.filter((g) => g.status === 'final') ?? [];
-  const upcoming = (games ?? []).filter((g) => g.status === 'scheduled').sort((a, b) => (a.scheduled_at ?? '9999').localeCompare(b.scheduled_at ?? '9999')).slice(0, 10);
+  // Fixtures in the past with no result aren't "coming up": they wait for someone to enter the result.
+  const cutoff = new Date(opened - 3 * 3600_000).toISOString();
+  const scheduled = (games ?? []).filter((g) => g.status === 'scheduled').sort((a, b) => (a.scheduled_at ?? '9999').localeCompare(b.scheduled_at ?? '9999'));
+  const upcoming = scheduled.filter((g) => !g.scheduled_at || g.scheduled_at >= cutoff).slice(0, 10);
+  const overdue = scheduled.filter((g) => g.scheduled_at && g.scheduled_at < cutoff).reverse();
 
   return (
     <Screen>
@@ -54,6 +59,14 @@ export default function Play() {
           {upcoming.length ? (
             <Section title="Coming up">
               {upcoming.map((g) => (
+                <GameCard key={g.id} g={g} />
+              ))}
+            </Section>
+          ) : null}
+          {overdue.length ? (
+            <Section title={`Needs a result · ${overdue.length}`}>
+              <T v="small">These were scheduled but nobody scored them. Open one to enter the result, or postpone it.</T>
+              {overdue.slice(0, 3).map((g) => (
                 <GameCard key={g.id} g={g} />
               ))}
             </Section>
