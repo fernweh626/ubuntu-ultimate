@@ -84,7 +84,6 @@ export default function Me() {
   if (!me) return <WhoAreYou />;
 
   const level = access?.level ?? 'player';
-  const runs = level === 'admin' || level === 'coordinator';
   const accOk = !!acc && accreditationState(acc.expires_on) === 'valid';
 
   return (
@@ -189,12 +188,12 @@ export default function Me() {
           </Section>
         ) : null}
 
-        {runs ? (
+        {level === 'admin' ? (
           <Section title="Admin">
             <View style={GROUP}>
               <Row title="Paid-up lists" subtitle="Upload SAFDA and regional member lists (CSV)" left={<Icon name="file-upload-outline" color={colors.brand} />} onPress={() => router.push('/admin/standing')} />
               <Row title="Forms & payment links" subtitle="Where players register and pay" left={<Icon name="link-variant" color={colors.brand} />} onPress={() => router.push('/admin/links')} />
-              {level === 'admin' ? <Row title="Bugs & ideas inbox" subtitle="Reports from players" left={<Icon name="inbox-full-outline" color={colors.brand} />} onPress={() => router.push('/feedback-admin')} /> : null}
+              <Row title="Bugs & ideas inbox" subtitle="Reports, access and privacy requests" left={<Icon name="inbox-full-outline" color={colors.brand} />} onPress={() => router.push('/feedback-admin')} />
             </View>
           </Section>
         ) : null}

@@ -23,6 +23,19 @@ export default function Play() {
   const [opened] = useState(() => Date.now());
   const games = useData(listGames);
   const events = useData(listEvents);
+  const today = new Date(opened).toISOString().slice(0, 10);
+  // Open: started and not finished. Upcoming: not started (or no date yet). Past: finished.
+  const byWhen = { open: [] as NonNullable<typeof events>, upcoming: [] as NonNullable<typeof events>, past: [] as NonNullable<typeof events> };
+  for (const e of events ?? []) {
+    const end = e.end_date ?? e.start_date;
+    if (!e.start_date || e.start_date > today) byWhen.upcoming.push(e);
+    else if (end && end < today) byWhen.past.push(e);
+    else byWhen.open.push(e);
+  }
+  byWhen.upcoming.sort((a, b) => (a.start_date ?? '9999').localeCompare(b.start_date ?? '9999'));
+  byWhen.past.sort((a, b) => (b.end_date ?? b.start_date ?? '').localeCompare(a.end_date ?? a.start_date ?? ''));
+  const [whenPick, setWhen] = useState<'open' | 'upcoming' | 'past' | null>(null);
+  const when = whenPick ?? (byWhen.open.length ? 'open' : 'upcoming');
   const access = useData(getAccess);
   const runsEvents = access?.level === 'admin' || access?.level === 'coordinator';
 
@@ -86,14 +99,23 @@ export default function Play() {
           ) : (
             <T v="small">Coordinators and admins create tournaments and leagues. Set your level in Me (top right).</T>
           )}
-          {(events ?? []).length === 0 ? (
+          <Segmented
+            value={when}
+            onChange={setWhen}
+            options={[
+              { value: 'open', label: `Open · ${byWhen.open.length}` },
+              { value: 'upcoming', label: `Upcoming · ${byWhen.upcoming.length}` },
+              { value: 'past', label: `Past · ${byWhen.past.length}` },
+            ]}
+          />
+          {byWhen[when].length === 0 ? (
             <EmptyState
               icon="trophy-outline"
-              title="No tournaments or leagues yet"
-              body="Create one, add the teams, then score games inside it to get standings, leaders and team reports."
+              title={when === 'open' ? 'Nothing on right now' : when === 'upcoming' ? 'Nothing coming up' : 'Nothing finished yet'}
+              body={when === 'past' ? 'Finished tournaments and leagues keep their standings and reports here.' : 'Create one, add the teams, then score games inside it to get standings, leaders and team reports.'}
             />
           ) : (
-            (events ?? []).map((e) => (
+            byWhen[when].map((e) => (
               <Card key={e.id} onPress={() => router.push(`/event/${e.id}`)}>
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   <Chip label={KIND_LABEL[e.kind] ?? e.kind} />

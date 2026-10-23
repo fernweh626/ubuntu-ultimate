@@ -119,7 +119,7 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
               </Card>
             ))
           ) : (
-            <T v="small">No registration link for this region yet. Coordinators add them in Me → Admin → Forms & payment links.</T>
+            <T v="small">No registration link for this region yet. The admins add them each January.</T>
           )}
           <Button label="Merch, pickup groups & more links" icon="tshirt-crew-outline" kind="ghost" onPress={() => router.push('/hub/links')} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
         </Section>

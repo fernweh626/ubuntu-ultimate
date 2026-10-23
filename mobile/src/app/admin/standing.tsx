@@ -29,7 +29,8 @@ export default function StandingUpload() {
   const [parsed, setParsed] = useState<{ rows: StandingRow[]; skipped: number; file: string; columns: { number: string; status: string | null; until: string | null } } | null>(null);
   const [busy, setBusy] = useState(false);
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
-  const allowed = bundle.access.level === 'admin' || bundle.access.level === 'coordinator';
+  // POPIA: member lists are admin-only.
+  const allowed = bundle.access.level === 'admin';
 
   const known = new Set(
     bundle.regs.map((r) => normNumber(association === 'safda' ? r.safda_number : r.region_code === association ? r.region_number : null)).filter(Boolean),
@@ -55,7 +56,7 @@ export default function StandingUpload() {
       setParsed(null);
       Alert.alert('Uploaded', `${n} ${nameOf(association)} members. Staff now see who’s in good standing.`);
     } catch (e) {
-      Alert.alert('Upload failed', `${e instanceof Error ? e.message : e}\n\nYou need to be signed in as a coordinator or admin, with signal.`);
+      Alert.alert('Upload failed', `${e instanceof Error ? e.message : e}\n\nYou need to be signed in as an admin, with signal.`);
     } finally {
       setBusy(false);
     }

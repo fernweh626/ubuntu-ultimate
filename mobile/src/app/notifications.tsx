@@ -17,7 +17,7 @@ const ITEMS: { key: keyof NotifyPrefs; title: string; body: string }[] = [
   { key: 'practices', title: 'Practices', body: 'Are you coming? the day before, a reminder if you are, and a 1-minute check-in after.' },
   { key: 'accreditation', title: 'Accreditation expiry', body: '6 months, 1 month and 1 week before it runs out.' },
   { key: 'development', title: 'Self-rating check-in', body: 'Every six months, a nudge to rate yourself again.' },
-  { key: 'admin', title: 'Yearly admin (coordinators)', body: 'Mondays in January: update the registration, fees and merch links.' },
+  { key: 'admin', title: 'Yearly admin (coordinators)', body: '1 December to 20 January: send or update next season’s registration, fees and merch links.' },
   { key: 'hats', title: 'Hat tournaments', body: 'New hats near you, a nudge to pay, and your team once it’s drawn.' },
   { key: 'announcements', title: 'Announcements', body: 'News from SAFDA and your region: Nationals dates, AGMs, reviews.' },
   { key: 'meetings', title: 'Meetings (AGM, SGM)', body: 'The evening before, and 15 minutes before with the join link.' },

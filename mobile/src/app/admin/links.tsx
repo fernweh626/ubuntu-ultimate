@@ -6,6 +6,7 @@ import { Alert, ScrollView, View } from 'react-native';
 import { LINK_KINDS, REGIONS } from '@/content/hub';
 import { deleteOrgLink, orgLinks, saveOrgLink, type OrgLink } from '@/db/development';
 import { useData } from '@/db/live';
+import { getAccess } from '@/db/repo';
 import { Button, Card, Choice, Field, IconButton, Screen, Sheet, T } from '@/ui/components';
 import { space } from '@/ui/theme';
 
@@ -15,6 +16,15 @@ export default function Links() {
   const links = useData(orgLinks) ?? [];
   const [edit, setEdit] = useState<Partial<OrgLink> | null>(null);
   const groups = [{ code: null as string | null, name: 'SAFDA (national)' }, ...REGIONS.map((r) => ({ code: r.code as string | null, name: `${r.body} · ${r.name}` }))];
+  const access = useData(getAccess);
+  if (access && access.level !== 'admin') {
+    return (
+      <Screen edges={[]}>
+        <T v="bodyStrong">Admins only</T>
+        <T v="small">Registration and payment links are managed by the admins. Coordinators: send your region’s new forms, fees and merch links to the admins by 20 January.</T>
+      </Screen>
+    );
+  }
 
   return (
     <>

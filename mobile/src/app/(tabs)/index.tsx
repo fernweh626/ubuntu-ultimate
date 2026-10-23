@@ -1,17 +1,19 @@
 import { Image } from 'expo-image';
 import { Redirect, router } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { dayLabel, homeFeed, type Competition, type TimelineItem } from '@/db/home';
-import { useData } from '@/db/live';
-import { getHomeRegion, isOnboarded, listAnnouncements, listCalendar, listGames, listPickups, type GameListItem } from '@/db/repo';
+import { notifyChanged, useData } from '@/db/live';
+import { getAccess, getHomeRegion, isOnboarded, listAnnouncements, listCalendar, listGames, listPickups, type GameListItem } from '@/db/repo';
 import { DAYS_LONG, dateRange, timeOfDay, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, Icon, Section, Screen, Segmented, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
 import { MeButton } from '@/ui/me-button';
 import { PREVIEW } from '@/lib/preview';
+import { yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
 import { KindIcon } from '@/ui/kind-icon';
 import { colors, font, space } from '@/ui/theme';
 
@@ -73,6 +75,7 @@ export default function Home() {
         ]}
       />
 
+      <YearlyInfoCard />
       <Button label="Score a game" icon="whistle" kind="primary" big onPress={() => router.push('/game/new')} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
         {(
@@ -105,6 +108,44 @@ export default function Home() {
 /* ------------------------------ Announcements ------------------------------ */
 
 /** Pinned and recent (two weeks) announcements for your region and nationally: at most two, newest first. */
+/** Pinned for coordinators and admins from 1 December to 20 January, until they tap Done. */
+function YearlyInfoCard() {
+  const db = useSQLiteContext();
+  const [now] = useState(() => new Date());
+  const season = yearlyInfoSeason(now);
+  const state = useData(
+    async (d) => {
+      const access = await getAccess(d);
+      const done = season ? !!(await d.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = ?`, `yearly_info_done:${season}`)) : true;
+      return { level: access.level, done };
+    },
+    [season],
+  );
+  if (!season || !state || state.done || (state.level !== 'admin' && state.level !== 'coordinator')) return null;
+  const text = yearlyInfoText(season, state.level);
+  const daysLeft = Math.max(0, Math.ceil((new Date(season, 0, 20, 23, 59).getTime() - now.getTime()) / 86400_000));
+  return (
+    <View style={{ backgroundColor: colors.brand, borderRadius: 14, padding: space.lg, gap: space.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <Icon name="pin" color="#fff" size={18} />
+        <T style={{ fontFamily: font.bold, fontSize: 12, letterSpacing: 1, color: '#fff' }}>{daysLeft <= 7 ? `${daysLeft} DAYS LEFT` : 'DUE 20 JANUARY'}</T>
+      </View>
+      <T style={{ fontFamily: font.bold, fontSize: 19, lineHeight: 24, color: '#fff' }}>{text.title}</T>
+      <T style={{ color: '#FBE9E0' }}>{text.body}</T>
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        {state.level === 'admin' ? <Button label="Update links" icon="link-variant" kind="dark" onPress={() => router.push('/admin/links')} style={{ flex: 1 }} /> : null}
+        <Button
+          label={state.level === 'admin' ? 'All updated' : 'I’ve sent it'}
+          icon="check"
+          kind="dark"
+          onPress={() => db.runAsync(`INSERT INTO app_meta (key, value) VALUES (?, '1') ON CONFLICT(key) DO UPDATE SET value = '1'`, `yearly_info_done:${season}`).then(() => notifyChanged())}
+          style={{ flex: 1 }}
+        />
+      </View>
+    </View>
+  );
+}
+
 function News({ region }: { region: string | null }) {
   const list = useData(listAnnouncements) ?? [];
   const [opened] = useState(() => Date.now());

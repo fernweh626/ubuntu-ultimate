@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { getAccess, getHomeRegion } from '@/db/repo';
 import { meetingStart } from '@/domain/calendar';
 import { shortDate, timeOfDay } from '@/domain/format';
+import { yearlyInfoReminders, yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
 
 /*
  * Which notifications this phone should have scheduled, worked out from local data. Everything here
@@ -121,11 +122,12 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
   };
   const access = await getAccess(db);
   if (prefs.admin && (access.level === 'admin' || access.level === 'coordinator')) {
-    const jan = now.getMonth() === 0 ? now.getFullYear() : now.getFullYear() + 1;
-    for (let day = 1; day <= 31; day++) {
-      const d = new Date(jan, 0, day, 9, 0, 0, 0);
-      if (d.getDay() !== 1) continue; // Mondays
-      out.push({ key: `adminlinks:${jan}-${day}`, kind: 'admin', at: d, title: `Update the ${jan} registration & payment links`, body: 'New season: check the SAFDA and regional forms, fees and merch links are current before 1 February.', url: '/admin/links' });
+    // From 1 December to 20 January: get the new season's forms, fees and merch links into the app.
+    const season = yearlyInfoSeason(now) ?? (now.getMonth() >= 1 ? now.getFullYear() + 1 : now.getFullYear());
+    const done = await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = ?`, `yearly_info_done:${season}`);
+    if (!done) {
+      const text = yearlyInfoText(season, access.level);
+      for (const d of yearlyInfoReminders(season)) out.push({ key: `yearlyinfo:${season}:${d.toISOString().slice(0, 10)}`, kind: 'admin', at: d, ...text, url: access.level === 'admin' ? '/admin/links' : '/' });
     }
   }
   if (prefs.fees) {

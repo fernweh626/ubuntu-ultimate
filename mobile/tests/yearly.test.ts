@@ -16,7 +16,10 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
   const lvl = (await repo.getAccess(db)).level;
   plan = await planNotifications(db, now);
   const adm = plan.filter((p) => p.kind === 'admin');
-  ok('coordinator: every Monday of January 2027 (4, 11, 18, 25)', adm.map((p) => p.at.getDate()).join() === '4,11,18,25' && adm.every((p) => p.at.getDay() === 1 && p.url === '/admin/links'), [lvl, adm.map((p) => p.at.toDateString())]);
+  const days = adm.map((p) => `${p.at.getMonth() + 1}/${p.at.getDate()}`).join();
+  ok('coordinator: send-by-20-Jan reminders from 1 Dec, Mondays, and 18 Jan', days === '12/1,12/7,12/14,12/21,12/28,1/4,1/11,1/18' && adm.every((p) => /20 January/.test(p.title)), [lvl, days]);
+  await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('yearly_info_done:2027', '1')`);
+  ok('marked as sent: no more reminders', !(await planNotifications(db, now)).some((p) => p.kind === 'admin'));
   const mid = await repo.saveCalendarEntry(db, { name: 'SAFDA AGM 2026', kind: 'agm', level: 'national', region: null, location: 'Online', start_date: '2026-11-01', end_date: '2026-11-01', month_hint: null, status: 'confirmed', url: null, notes: 'Agenda', start_time: '19:00', end_time: '20:30', meeting_url: 'https://meet.google.com/abc' });
   plan = await planNotifications(db, now);
   const m = plan.filter((p) => p.kind === 'meetings');
