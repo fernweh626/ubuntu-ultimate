@@ -71,21 +71,24 @@ export function Screen({
 }) {
   const body = scroll ? (
     <ScrollView
-      contentContainerStyle={[padded && styles.padded, { gap: space.lg, paddingBottom: space.xxl * 2 }]}
+      contentContainerStyle={[padded && styles.padded, { gap: space.lg, paddingBottom: space.xxl * 2 }, WIDE]}
       keyboardShouldPersistTaps="handled">
       {children}
     </ScrollView>
   ) : (
-    <View style={[{ flex: 1 }, padded && styles.padded]}>{children}</View>
+    <View style={[{ flex: 1 }, padded && styles.padded, WIDE]}>{children}</View>
   );
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
       {header}
       <View style={{ flex: 1 }}>{body}</View>
-      {footer}
+      {footer ? <View style={WIDE}>{footer}</View> : null}
     </SafeAreaView>
   );
 }
+
+/** On a computer screen, keep pages at a readable width in the middle instead of edge to edge. */
+const WIDE = Platform.OS === 'web' ? ({ width: '100%', maxWidth: 820, alignSelf: 'center' } as const) : undefined;
 
 export function Footer({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();

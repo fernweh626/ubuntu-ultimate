@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, Switch, View } from 'react-native';
+import { Alert, Platform, Pressable, Switch, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { ensurePermission, notificationsAvailable, refreshNotifications } from '@/notify/manager';
@@ -57,10 +57,10 @@ export default function NotificationSettings() {
         {!notificationsAvailable ? (
           <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
             <T v="bodyStrong" style={{ color: colors.warnInk }}>
-              Notifications aren’t available in this version of the app
+              {Platform.OS === 'web' ? 'Notifications come to your phone' : 'Notifications aren’t available in this version of the app'}
             </T>
             <T v="small" style={{ color: colors.warnInk }}>
-              They’ll work in the installed app. Your settings here are saved for then.
+              {Platform.OS === 'web' ? 'Open the app on your phone to get reminders. ' : 'They’ll work in the installed app. '}Your settings here are saved for then.
             </T>
           </Card>
         ) : allowed === false ? (

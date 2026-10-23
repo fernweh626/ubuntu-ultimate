@@ -62,6 +62,19 @@ After a few seconds it prints a **QR code** and an address like `exp://192.168.0
 
 ---
 
+### On a computer (web version)
+
+Handy for staff and coordinators doing bulk work (fixtures, CSV uploads, exports, readiness checks).
+
+1. Start the dev server as above (`npx expo start --lan`, from `mobile/`).
+2. On **the same computer**, open **http://localhost:8081** in **Chrome, Edge or Brave**.
+
+Notes:
+- It must be `localhost` (not the `192.168…` address): browsers only allow the in-browser database on `localhost` or https.
+- **Safari** isn't working yet (the in-browser database doesn't start in our tests); use a Chromium browser for now.
+- The browser keeps its own data, separate from your phone, like a second device. **Me → Go online** syncs them.
+- Notifications are phone-only.
+
 ## Playing around: what to try
 
 The app starts with the SA clubs, fields, the competitive calendar and two **sample teams** (Sample Light, Sample Dark) with made-up players, so you can score a game straight away. Everything is saved on the phone and works offline.

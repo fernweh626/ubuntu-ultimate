@@ -5,6 +5,7 @@
  * is null and the app simply runs without notifications.
  */
 import type * as Types from 'expo-notifications';
+import { Platform } from 'react-native';
 
 type NotifyApi = {
   scheduleNotificationAsync: typeof Types.scheduleNotificationAsync;
@@ -20,6 +21,8 @@ type NotifyApi = {
 };
 
 function load(): NotifyApi | null {
+  // Reminders are a phone thing; the web version (for staff on a computer) goes without.
+  if (Platform.OS === 'web') return null;
   try {
     /* eslint-disable @typescript-eslint/no-require-imports */
     return {
