@@ -73,6 +73,8 @@ function LogForm({ onClose, meId, teams, fixedTeamId }: { onClose: () => void; m
           options={[
             { value: 'practice', label: 'Practice' },
             { value: 'pickup', label: 'Pickup' },
+            { value: 'gym', label: 'Gym' },
+            { value: 'physio', label: 'Physio' },
             { value: 'other', label: 'Other' },
           ]}
         />
@@ -99,7 +101,7 @@ function LogForm({ onClose, meId, teams, fixedTeamId }: { onClose: () => void; m
           <Field label="Minutes" value={minutes} onChangeText={(v) => setMinutes(v.replace(/\D/g, '').slice(0, 3))} keyboardType="number-pad" />
         </View>
       </View>
-      <Field label="Name (optional)" value={title} onChangeText={setTitle} placeholder={kind === 'pickup' ? 'e.g. Green Point Tuesday' : kind === 'other' ? 'e.g. Throwing session' : 'e.g. Zone D practice'} />
+      <Field label="Name (optional)" value={title} onChangeText={setTitle} placeholder={{ pickup: 'e.g. Green Point Tuesday', gym: 'e.g. Legs & plyos', physio: 'e.g. Ankle rehab', other: 'e.g. Throwing session', practice: 'e.g. Zone D practice' }[kind]} />
       <Button label="Save and answer questions" kind="primary" big onPress={save} />
     </>
   );

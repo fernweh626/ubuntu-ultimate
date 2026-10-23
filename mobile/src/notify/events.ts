@@ -71,7 +71,7 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
     if (seen.shoutouts.includes(s.id)) continue;
     seen.shoutouts.push(s.id);
     if (!first && prefs.shoutouts) {
-      out.push({ key: `shout:${s.id}`, title: `🙌 ${name(s)} shouted you out`, body: s.reason ? `“${s.reason}”` : 'Open the app to see it.', url: '/log' });
+      out.push({ key: `shout:${s.id}`, title: `🙌 ${name(s)} shouted you out`, body: s.reason ? `“${s.reason}”` : 'Open the app to see it.', url: '/shoutouts' });
     }
   }
 

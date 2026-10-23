@@ -14,6 +14,8 @@ const KIND: Record<LogEntry['kind'], { label: string; icon: IconName }> = {
   game: { label: 'Game', icon: 'whistle' },
   practice: { label: 'Practice', icon: 'cone' },
   pickup: { label: 'Pickup', icon: 'account-group' },
+  gym: { label: 'Gym', icon: 'dumbbell' },
+  physio: { label: 'Physio', icon: 'medical-bag' },
   other: { label: 'Session', icon: 'disc' },
 };
 
@@ -66,11 +68,11 @@ export default function MyLog() {
         <Section title="This week">
           <View style={{ flexDirection: 'row', gap: space.sm }}>
             <StatTile value={now.count} label="Sessions" tone="brand" />
-            <StatTile value={hm(now.minutes)} label="On the field" />
+            <StatTile value={hm(now.minutes)} label="Total time" />
             <StatTile value={loadWeek || '–'} label="Load (effort × min)" />
           </View>
         </Section>
-        <Button label="Log a practice or pickup" icon="plus" kind="primary" onPress={() => setLogging(true)} />
+        <Button label="Log a session: practice, pickup, gym, physio" icon="plus" kind="primary" onPress={() => setLogging(true)} />
 
         {missing.length ? (
           <Section title="Tell us how these went">
@@ -94,7 +96,7 @@ export default function MyLog() {
 
         <Section title="Everything">
           {log.length === 0 ? (
-            <EmptyState icon="run" title="Nothing logged yet" body="Games you play are added automatically. Log practices and pickups with the button above." />
+            <EmptyState icon="run" title="Nothing logged yet" body="Games you play are added automatically. Log practices, pickups, gym and physio with the button above." />
           ) : (
             log.map((e) => (
               <Card

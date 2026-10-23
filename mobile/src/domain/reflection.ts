@@ -39,11 +39,16 @@ export type ReflectionRow = {
   created_at: string;
 };
 
-/** Which questions each kind asks (the table agreed in the spec). */
-export const ASKS: Record<ReflectionKind, Set<string>> = {
+/**
+ * Which questions each kind asks (the table agreed in the spec). Gym and physio are saved as personal
+ * practice reflections (no team), but ask their own, shorter questions.
+ */
+export const ASKS: Record<ReflectionKind | 'gym' | 'physio', Set<string>> = {
   game: new Set(['points', 'playingTime', 'rpe', 'niggles', 'selfRating', 'team', 'role', 'connections', 'shoutout', 'bestMoment', 'wentWell', 'workOn', 'spirit', 'leadership']),
   practice: new Set(['minutes', 'rpe', 'niggles', 'selfRating', 'shoutout', 'wentWell', 'workOn', 'drill', 'leadership']),
   pickup: new Set(['minutes', 'rpe', 'niggles', 'selfRating', 'spirit', 'shoutout']),
+  gym: new Set(['minutes', 'rpe', 'niggles', 'workOn']),
+  physio: new Set(['minutes', 'niggles', 'workOn']),
 };
 
 export const PLAYING_TIME_LABEL: Record<PlayingTime, string> = { too_little: 'Too little', right: 'About right', too_much: 'Too much' };

@@ -1118,6 +1118,39 @@ const MIGRATIONS: string[] = [
     WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
     BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('pickup_rsvp', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
   `,
+  // v20: gym and physio sessions in your ultimate log. The session table is rebuilt for the new CHECK
+  // (other tables point at it, so foreign keys are off and checked afterwards).
+  `
+  -- @fk-off
+  CREATE TABLE session_v20 (
+    id TEXT PRIMARY KEY NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('practice','pickup','gym','physio','other')),
+    team_id TEXT REFERENCES team(id),
+    title TEXT,
+    started_at TEXT NOT NULL,
+    duration_min INTEGER NOT NULL,
+    venue_id TEXT REFERENCES venue(id),
+    created_by_id TEXT REFERENCES person(id),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    notes TEXT,
+    cancelled_at TEXT,
+    series_id TEXT
+  );
+  INSERT INTO session_v20 (id, kind, team_id, title, started_at, duration_min, venue_id, created_by_id, created_at, updated_at, deleted_at, notes, cancelled_at, series_id) SELECT id, kind, team_id, title, started_at, duration_min, venue_id, created_by_id, created_at, updated_at, deleted_at, notes, cancelled_at, series_id FROM session;
+  DROP TABLE session;
+  ALTER TABLE session_v20 RENAME TO session;
+  CREATE TRIGGER sync_session_insert AFTER INSERT ON session
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('session', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_session_update AFTER UPDATE ON session
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('session', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_session_delete AFTER DELETE ON session
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('session', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

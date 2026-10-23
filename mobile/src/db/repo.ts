@@ -1560,7 +1560,7 @@ export function deleteAnnouncement(db: SQLiteDatabase, id: string) {
 
 export type SessionRow = {
   id: string;
-  kind: 'practice' | 'pickup' | 'other';
+  kind: 'practice' | 'pickup' | 'gym' | 'physio' | 'other';
   team_id: string | null;
   title: string | null;
   started_at: string;
@@ -1839,6 +1839,23 @@ export function shoutoutsForTeam(db: SQLiteDatabase, teamId: string, limit = 10)
   return db.getAllAsync<ShoutoutRow>(`SELECT * FROM shoutout WHERE team_id = ? ORDER BY created_at DESC LIMIT ?`, teamId, limit);
 }
 
+/** Shout-outs you got and gave, newest first, with names and what they were for. */
+export function shoutoutsForPerson(db: SQLiteDatabase, personId: string) {
+  return db.getAllAsync<ShoutoutRow & { from_first: string | null; from_last: string | null; to_first: string | null; to_last: string | null; team: string | null; what: string | null }>(
+    `SELECT s.*, pf.first_name AS from_first, pf.last_name AS from_last, pt.first_name AS to_first, pt.last_name AS to_last, t.name AS team,
+            COALESCE((SELECT ta.name || ' v ' || tb.name FROM game g JOIN team ta ON ta.id = g.team_a_id JOIN team tb ON tb.id = g.team_b_id WHERE g.id = s.game_id),
+                     (SELECT COALESCE(se.title, CASE se.kind WHEN 'pickup' THEN 'Pickup' ELSE 'Practice' END) FROM session se WHERE se.id = s.session_id)) AS what
+       FROM shoutout s
+       LEFT JOIN person pf ON pf.id = s.from_person_id
+       LEFT JOIN person pt ON pt.id = s.to_person_id
+       LEFT JOIN team t ON t.id = s.team_id
+      WHERE s.from_person_id = ? OR s.to_person_id = ?
+      ORDER BY s.created_at DESC`,
+    personId,
+    personId,
+  );
+}
+
 export function myShoutout(db: SQLiteDatabase, fromId: string, target: { gameId?: string; sessionId?: string }) {
   return db.getFirstAsync<ShoutoutRow>(
     `SELECT * FROM shoutout WHERE from_person_id = ? AND COALESCE(game_id, '') = ? AND COALESCE(session_id, '') = ?`,
@@ -1852,7 +1869,7 @@ export function myShoutout(db: SQLiteDatabase, fromId: string, target: { gameId?
 
 export type LogEntry = {
   key: string;
-  kind: 'game' | 'practice' | 'pickup' | 'other';
+  kind: 'game' | 'practice' | 'pickup' | 'gym' | 'physio' | 'other';
   date: string;
   title: string;
   minutes: number;
@@ -1906,7 +1923,7 @@ export async function personLog(db: SQLiteDatabase, personId: string): Promise<L
       key: `s-${s.id}`,
       kind: s.kind,
       date: s.date,
-      title: s.title || (s.kind === 'practice' ? `${s.team ?? 'Team'} practice` : s.kind === 'pickup' ? 'Pickup' : 'Session'),
+      title: s.title || (s.kind === 'practice' ? `${s.team ?? 'Team'} practice` : s.kind === 'pickup' ? 'Pickup' : s.kind === 'gym' ? 'Gym' : s.kind === 'physio' ? 'Physio' : 'Session'),
       minutes: s.minutes ?? s.duration_min,
       rpe: s.rpe,
       gameId: null,

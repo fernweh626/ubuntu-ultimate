@@ -38,6 +38,8 @@ import { colors, font, space } from '@/ui/theme';
 type Loaded = {
   me: Person;
   kind: ReflectionKind;
+  /** Gym and physio save as practice reflections but ask their own questions. */
+  ask: ReflectionKind | 'gym' | 'physio';
   title: string;
   teamId: string | null;
   teamName: string | null;
@@ -73,6 +75,7 @@ export default function Reflect() {
         return {
           me,
           kind: 'game',
+          ask: 'game',
           title: other ? `${team?.name ?? 'Your game'} v ${other.name}` : 'Your game',
           teamId,
           teamName: team?.name ?? null,
@@ -92,7 +95,8 @@ export default function Reflect() {
       return {
         me,
         kind: session.kind === 'pickup' ? 'pickup' : 'practice',
-        title: session.title || (session.kind === 'pickup' ? 'Pickup' : `${team?.name ?? 'Team'} practice`),
+        ask: session.kind === 'pickup' ? 'pickup' : session.kind === 'gym' || session.kind === 'physio' ? session.kind : 'practice',
+        title: session.title || (session.kind === 'pickup' ? 'Pickup' : session.kind === 'gym' ? 'Gym' : session.kind === 'physio' ? 'Physio' : `${team?.name ?? 'Team'} practice`),
         teamId: session.team_id,
         teamName: team?.name ?? null,
         teammates: mates,
@@ -152,7 +156,7 @@ function Q({ title, children, note }: { title: string; children: React.ReactNode
 
 function ReflectForm({ l, gameId, sessionId }: { l: Loaded; gameId: string | null; sessionId: string | null }) {
   const db = useSQLiteContext();
-  const asks = ASKS[l.kind];
+  const asks = ASKS[l.ask];
   const e = l.existing;
   const prev = parseAnswers(e?.answers_json);
   const [answers, setAnswers] = useState<Answers>(prev);
@@ -195,7 +199,7 @@ function ReflectForm({ l, gameId, sessionId }: { l: Loaded; gameId: string | nul
 
   return (
     <>
-      <Stack.Screen options={{ title: l.kind === 'game' ? 'How was the game?' : l.kind === 'practice' ? 'How was practice?' : 'How was pickup?' }} />
+      <Stack.Screen options={{ title: { game: 'How was the game?', practice: 'How was practice?', pickup: 'How was pickup?', gym: 'How was the gym?', physio: 'How was physio?' }[l.ask] }} />
       <Screen
         edges={[]}
         footer={
@@ -233,7 +237,7 @@ function ReflectForm({ l, gameId, sessionId }: { l: Loaded; gameId: string | nul
         ) : null}
 
         {asks.has('minutes') ? (
-          <Q title="How long did you play?">
+          <Q title={l.ask === 'gym' || l.ask === 'physio' ? 'How long was it?' : 'How long did you play?'}>
             <Field label="Minutes" value={minutes} onChangeText={(v) => setMinutes(v.replace(/\D/g, '').slice(0, 3))} keyboardType="number-pad" />
           </Q>
         ) : null}
@@ -255,7 +259,7 @@ function ReflectForm({ l, gameId, sessionId }: { l: Loaded; gameId: string | nul
         ) : null}
 
         {asks.has('niggles') ? (
-          <Q title="Any niggles or injuries?">
+          <Q title={l.ask === 'physio' ? 'What are you working on?' : 'Any niggles or injuries?'}>
             <Segmented
               value={niggle ?? ('' as 'no')}
               onChange={setNiggle}
@@ -365,7 +369,7 @@ function ReflectForm({ l, gameId, sessionId }: { l: Loaded; gameId: string | nul
           </Q>
         ) : null}
         {asks.has('workOn') ? (
-          <Q title="One thing to work on (you or the team)">
+          <Q title={l.ask === 'physio' ? 'Notes: exercises, what the physio said' : l.ask === 'gym' ? 'Notes: what you did' : 'One thing to work on (you or the team)'}>
             <Field label="" value={answers.workOn ?? ''} onChangeText={(v) => set('workOn', v)} multiline />
           </Q>
         ) : null}

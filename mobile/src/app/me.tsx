@@ -70,6 +70,7 @@ export default function Me() {
       .filter((f) => f.name);
   }) ?? [];
   const totals = useData(async (d) => (me ? playerTotals(await loadFinishedGames(d, await listGamesForPerson(d, me.id))).get(me.id) ?? null : null), [me?.id]);
+  const shouts = useData(async (d) => (me ? (await d.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM shoutout WHERE to_person_id = ?`, me.id))?.n ?? 0 : 0), [me?.id]);
   const [roleFor, setRoleFor] = useState<MyRole | null>(null);
 
   if (me === undefined) return <Screen edges={[]}>{null}</Screen>;
@@ -101,7 +102,7 @@ export default function Me() {
           <Button label="Edit profile" icon="account-edit-outline" onPress={() => router.push({ pathname: '/player/edit', params: { id: me.id } })} style={{ flex: 1 }} />
         </View>
 
-        <Section title="This week">
+        <Section title="My week">
           <View style={GROUP}>
             <Row title="My schedule" subtitle="Practices and games: going, late or can’t" left={<Icon name="calendar-check-outline" color={colors.brand} />} onPress={() => router.push('/schedule')} />
             <Row
@@ -110,6 +111,7 @@ export default function Me() {
               left={<Icon name="run" color={colors.brand} />}
               onPress={() => router.push('/log')}
             />
+            <Row title="Shout-outs" subtitle={shouts ? `${shouts} from teammates` : 'From teammates after games and practices'} left={<Icon name="hand-clap" color={colors.brand} />} onPress={() => router.push('/shoutouts')} />
           </View>
         </Section>
 
