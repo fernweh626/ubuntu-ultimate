@@ -166,6 +166,7 @@ export default function Me() {
               left={<Icon name={access?.signedIn ? 'cloud-check-outline' : 'cloud-upload-outline'} color={colors.brand} />}
               onPress={() => router.push('/account')}
             />
+            <Row title="Your data & privacy" subtitle="Where it’s kept, who sees it, download or delete" left={<Icon name="shield-lock-outline" color={colors.brand} />} onPress={() => router.push('/privacy')} />
             <Row title="Access level" subtitle={LEVEL_LABEL[level]} left={<Icon name="shield-account-outline" color={colors.brand} />} onPress={() => router.push('/access')} />
           </View>
         </Section>
@@ -199,6 +200,7 @@ export default function Me() {
 
         <Section title="Help">
           <View style={GROUP}>
+            <Row title="Help & how-to guide" subtitle="Every feature, step by step, with pictures" left={<Icon name="help-circle-outline" color={colors.brand} />} onPress={() => router.push('/guide')} />
             <Row title="Report a bug or suggest an idea" subtitle="Goes straight to the people building the app" left={<Icon name="lightbulb-on-outline" color={colors.brand} />} onPress={() => router.push('/feedback')} />
           </View>
         </Section>

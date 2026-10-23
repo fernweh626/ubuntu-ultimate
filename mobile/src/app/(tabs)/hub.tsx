@@ -34,6 +34,7 @@ const GROUPS: { title: string; tiles: Tile[] }[] = [
   {
     title: 'Learn',
     tiles: [
+      { title: 'Help & how-to guide', body: 'Every feature explained, step by step', icon: 'help-circle-outline', href: '/guide' },
       { title: 'Rules quick reference', body: 'The essentials, in plain words', icon: 'book-open-variant', href: '/hub/rules' },
       { title: 'What is ultimate?', body: 'New here? Start with this', icon: 'disc', href: '/hub/about' },
       { title: 'Who runs the sport', body: 'WFDF, AAFDF, SAFDA and its four regions', icon: 'sitemap', href: '/hub/governance' },

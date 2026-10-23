@@ -247,6 +247,7 @@ function Done({ onFinish }: { onFinish: () => void }) {
       />
       {asked === false ? <T v="small">No problem: you can turn them on later in Me → Notifications.</T> : null}
       <Button label="Go to Home" kind="primary" big onPress={onFinish} />
+      <T v="small" style={{ textAlign: 'center' }}>Stuck any time? Me → Help & how-to guide.</T>
     </View>
   );
 }
