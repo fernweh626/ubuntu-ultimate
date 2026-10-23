@@ -83,9 +83,16 @@ export default function Account() {
               <T>Last synced {ago(status.last)}</T>
               <T v="small">{status.pending ? `${status.pending} change${status.pending > 1 ? 's' : ''} waiting to upload` : 'Everything on this phone is backed up.'}</T>
               {status.rejected.length ? (
-                <T v="small" style={{ color: colors.warnInk }}>
-                  {status.rejected.length} change{status.rejected.length > 1 ? 's were' : ' was'} not allowed by the server (your level doesn’t cover {status.rejected.length > 1 ? 'them' : 'it'}) and stayed on this phone only.
-                </T>
+                <View style={{ gap: 2 }}>
+                  <T v="small" style={{ color: colors.warnInk }}>
+                    {status.rejected.length} change{status.rejected.length > 1 ? 's were' : ' was'} not accepted by the server and stayed on this phone only:
+                  </T>
+                  {[...new Map(status.rejected.map((r) => [`${r.table}: ${r.message}`, r])).keys()].slice(0, 4).map((line) => (
+                    <T key={line} v="small" selectable style={{ color: colors.warnInk }}>
+                      • {line}
+                    </T>
+                  ))}
+                </View>
               ) : null}
               <Button
                 label={busy ? 'Syncing…' : 'Sync now'}

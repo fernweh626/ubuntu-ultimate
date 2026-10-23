@@ -299,6 +299,41 @@ export async function pruneSharedOutbox(db: SQLiteDatabase) {
   return dropped;
 }
 
+// Rows that belong to one player, by the column that names them.
+const MINE: [string, string][] = [
+  ['membership', 'person_id'],
+  ['registration', 'person_id'],
+  ['accreditation', 'person_id'],
+  ['self_rating', 'person_id'],
+  ['fitness_test', 'person_id'],
+  ['practice_rsvp', 'person_id'],
+  ['game_availability', 'person_id'],
+  ['meeting_rsvp', 'person_id'],
+  ['hat_signup', 'person_id'],
+  ['pickup_rsvp', 'person_id'],
+  ['reflection', 'person_id'],
+  ['join_request', 'person_id'],
+  ['shoutout', 'from_person_id'],
+];
+
+/**
+ * Queue (again) the signed-in player and everything that belongs to them, once per account on this
+ * phone. A safety net: if an earlier sync dropped any of it (e.g. refused before their level arrived),
+ * it goes up now. Upserts, so re-sending what's already there is harmless.
+ */
+export async function requeueMine(db: SQLiteDatabase) {
+  const me = await meta(db, 'me_person_id');
+  const user = await meta(db, 'signed_in');
+  if (!me || !user || (await meta(db, 'requeued_mine')) === user) return;
+  const at = new Date().toISOString();
+  const q = (tbl: string, id: string) =>
+    db.runAsync(`INSERT INTO sync_outbox (tbl, pk, op, at) VALUES (?, ?, 'upsert', ?) ON CONFLICT(tbl, pk) DO NOTHING`, tbl, JSON.stringify({ id }), at);
+  await q('person', me);
+  for (const [tbl, col] of MINE) for (const r of await db.getAllAsync<{ id: string }>(`SELECT id FROM ${tbl} WHERE ${col} = ?`, me)) await q(tbl, r.id);
+  for (const r of await db.getAllAsync<{ id: string }>(`SELECT id FROM follow`)) await q('follow', r.id);
+  await setMeta(db, 'requeued_mine', user);
+}
+
 export async function prepareFirstSync(db: SQLiteDatabase) {
   await asPull(db, async () => {
     // 1. Shared ids for starting data.
@@ -384,10 +419,12 @@ export function syncNow(db: SQLiteDatabase): Promise<SyncResult> {
       await setMeta(db, 'sync_user', user.id);
     }
     await pruneSharedOutbox(db);
+    await requeueMine(db);
     const { pushed, rejected } = await push(db);
+    // Save refusals before pulling, so they survive a failed pull and show on Account & sync.
+    if (rejected.length) await setMeta(db, 'sync_rejected', JSON.stringify(rejected.slice(-20)));
     const pulled = await pull(db);
     await setMeta(db, 'sync_last', new Date().toISOString());
-    if (rejected.length) await setMeta(db, 'sync_rejected', JSON.stringify(rejected.slice(-20)));
     if (pushed || pulled) notifyChanged();
     return { pushed, pulled, rejected };
   })().finally(() => {
