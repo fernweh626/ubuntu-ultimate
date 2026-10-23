@@ -1,12 +1,14 @@
 import { Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { useData } from '@/db/live';
+import { sendRequest } from '@/db/feedback-send';
 import { getAccess, getMe, joinTeam, listTeams, myRoles, setMembershipRole, setTestLevel, type MyRole } from '@/db/repo';
+import { displayName } from '@/domain/format';
 import { grantSummary, LEVEL_LABEL } from '@/domain/permissions';
-import { Card, Choice, Icon, Screen, Section, Sheet, T } from '@/ui/components';
+import { Button, Card, Choice, Field, Icon, Screen, Section, Sheet, T } from '@/ui/components';
 import { colors, space } from '@/ui/theme';
 
 const ROLE_LABEL: Record<MyRole['role'], string> = {
@@ -112,6 +114,7 @@ export default function Access() {
           </Card>
           ) : null}
         </Section>
+        <RequestAccess level={level} meName={displayName(me)} meId={me.id} />
       </Screen>
 
       <Sheet visible={staffPicker} onClose={() => setStaffPicker(false)} title="Be team staff for…">
@@ -135,5 +138,36 @@ export default function Access() {
           ))}
       </Sheet>
     </>
+  );
+}
+
+const ASKS = [
+  { key: 'coordinator', label: 'Coordinator', body: 'Host hat tournaments, run leagues and tournaments, post announcements and AGMs.' },
+  { key: 'scorekeeper', label: 'Scorekeeper', body: 'Score league and tournament games for any team.' },
+  { key: 'staff', label: 'Team staff', body: 'Captain, coach or manager of your team. Usually your team’s captain gives you this, from the team page.' },
+] as const;
+
+/** Ask the admins for a level, e.g. to host a hat. Goes to their inbox with your name. */
+function RequestAccess({ level, meName, meId }: { level: string; meName: string; meId: string }) {
+  const db = useSQLiteContext();
+  const [ask, setAsk] = useState<(typeof ASKS)[number]['key']>('coordinator');
+  const [why, setWhy] = useState('');
+  if (level === 'admin') return null;
+  async function send() {
+    if (!why.trim()) return Alert.alert('Say what it’s for', 'e.g. “I’m organising the Halloween hat at Woolsack on 31 Oct.”');
+    const a = ASKS.find((x) => x.key === ask)!;
+    const sent = await sendRequest(db, `[Access] ${meName} asks to be ${a.label.toLowerCase()}`, why.trim(), meId);
+    setWhy('');
+    Alert.alert('Request sent', `${sent ? 'The admins will' : 'It sends when you have signal, then the admins will'} look at it and reply. You need to be signed in (Me → Go online) for a level to stick.`);
+  }
+  return (
+    <Section title="Need more access?">
+      <T v="small">Admins give out levels. Tell them what you need it for: they usually reply within a few days.</T>
+      {ASKS.map((a) => (
+        <Choice key={a.key} label={a.label} sublabel={a.body} selected={ask === a.key} onPress={() => setAsk(a.key)} style={{ alignItems: 'flex-start' }} />
+      ))}
+      <Field label="What’s it for?" value={why} onChangeText={setWhy} multiline placeholder="e.g. I’m organising the Halloween hat on 31 Oct" />
+      <Button label="Send request to the admins" icon="send" kind="primary" onPress={send} />
+    </Section>
   );
 }

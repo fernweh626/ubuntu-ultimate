@@ -1095,6 +1095,29 @@ const MIGRATIONS: string[] = [
   ALTER TABLE event ADD COLUMN eft_details TEXT;
   ALTER TABLE event ADD COLUMN pop_contact TEXT;
   `,
+  // v19: "I'm going" for a pickup on a given day, so it lands in My schedule. id = pickup_id:date:person_id.
+  `
+  CREATE TABLE pickup_rsvp (
+    id TEXT PRIMARY KEY NOT NULL,
+    pickup_id TEXT NOT NULL REFERENCES pickup_spot(id),
+    on_date TEXT NOT NULL,
+    person_id TEXT NOT NULL REFERENCES person(id),
+    status TEXT NOT NULL CHECK (status IN ('going','late','not_going')),
+    note TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX idx_pickup_rsvp_day ON pickup_rsvp (pickup_id, on_date);
+  CREATE TRIGGER sync_pickup_rsvp_insert AFTER INSERT ON pickup_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('pickup_rsvp', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_pickup_rsvp_update AFTER UPDATE ON pickup_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('pickup_rsvp', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_pickup_rsvp_delete AFTER DELETE ON pickup_rsvp
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('pickup_rsvp', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

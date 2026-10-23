@@ -12,6 +12,7 @@ const PERSON_TABLES: [string, string[]][] = [
   ['game_availability', ['person_id']],
   ['meeting_rsvp', ['person_id']],
   ['hat_signup', ['person_id']],
+  ['pickup_rsvp', ['person_id']],
   ['game_player', ['person_id']],
   ['point_player', ['person_id']],
   ['saved_line_member', ['person_id']],

@@ -11,6 +11,7 @@ import { DAYS_LONG, dateRange, timeOfDay, weekdayIndex } from '@/domain/format';
 import { Button, Card, Chip, EmptyState, Icon, Section, Screen, Segmented, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
 import { MeButton } from '@/ui/me-button';
+import { KindIcon } from '@/ui/kind-icon';
 import { colors, font, space } from '@/ui/theme';
 
 const LOGO = require('../../../assets/images/logo-mark.png');
@@ -222,6 +223,7 @@ function TimelineRow({ it, first }: { it: TimelineItem; first: boolean }) {
       onPress={() => router.push(it.url as never)}
       accessibilityRole="button"
       style={{ flexDirection: 'row', gap: space.md, padding: space.md, borderTopWidth: first ? 0 : 1, borderTopColor: colors.divider, alignItems: 'center' }}>
+      <KindIcon kind={it.kind} />
       <Text style={{ width: 52, fontFamily: font.display, fontSize: 20, color: colors.ink }}>{timeOfDay(it.at)}</Text>
       <View style={{ flex: 1, gap: 3 }}>
         <T v="bodyStrong" numberOfLines={1}>
@@ -237,7 +239,7 @@ function TimelineRow({ it, first }: { it: TimelineItem; first: boolean }) {
           ) : null}
         </View>
       </View>
-      <Icon name={it.kind === 'game' ? 'flag-variant-outline' : it.kind === 'pickup' ? 'account-group-outline' : 'run'} color={colors.faint} />
+      <Icon name="chevron-right" color={colors.faint} />
     </Pressable>
   );
 }

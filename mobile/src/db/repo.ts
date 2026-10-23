@@ -1473,6 +1473,42 @@ export function setMeetingRsvp(db: SQLiteDatabase, entryId: string, personId: st
   });
 }
 
+/* ---------------- Pickup RSVPs ---------------- */
+
+/** "I'm going" to a pickup on one day (YYYY-MM-DD). Clearing deletes it. */
+export function setPickupRsvp(db: SQLiteDatabase, pickupId: string, onDate: string, personId: string, status: RsvpStatus | null, note: string | null = null) {
+  return write(db, async () => {
+    const id = `${pickupId}:${onDate}:${personId}`;
+    if (!status) return void (await db.runAsync(`DELETE FROM pickup_rsvp WHERE id = ?`, id));
+    const ts = now();
+    await db.runAsync(
+      `INSERT INTO pickup_rsvp (id, pickup_id, on_date, person_id, status, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET status = excluded.status, note = excluded.note, updated_at = excluded.updated_at`,
+      id,
+      pickupId,
+      onDate,
+      personId,
+      status,
+      status === 'going' ? null : note,
+      ts,
+      ts,
+    );
+  });
+}
+
+/** Head count and my answer for each pickup on one day. */
+export async function pickupDay(db: SQLiteDatabase, onDate: string, personId: string | null) {
+  const rows = await db.getAllAsync<{ pickup_id: string; person_id: string; status: RsvpStatus }>(`SELECT pickup_id, person_id, status FROM pickup_rsvp WHERE on_date = ?`, onDate);
+  const out = new Map<string, { going: number; mine: RsvpStatus | null }>();
+  for (const r of rows) {
+    const e = out.get(r.pickup_id) ?? { going: 0, mine: null };
+    if (r.status !== 'not_going') e.going += 1;
+    if (r.person_id === personId) e.mine = r.status;
+    out.set(r.pickup_id, e);
+  }
+  return out;
+}
+
 export function meetingRsvps(db: SQLiteDatabase, entryId: string) {
   return db.getAllAsync<{ person_id: string; status: RsvpStatus; note: string | null; first_name: string; last_name: string; birth_date: string | null }>(
     `SELECT r.person_id, r.status, r.note, p.first_name, p.last_name, p.birth_date FROM meeting_rsvp r JOIN person p ON p.id = r.person_id

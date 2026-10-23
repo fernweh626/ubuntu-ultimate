@@ -245,7 +245,7 @@ export async function ensureStarterContent(db: SQLiteDatabase) {
 }
 
 /** Bump with tools/demo/build.ts's `version` when the demo content changes. */
-const DEMO_VERSION = 2;
+const DEMO_VERSION = 3;
 
 type DemoFile = {
   version: number;

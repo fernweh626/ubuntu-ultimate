@@ -97,7 +97,7 @@ const T: Record<string, Row[]> = {};
 const add = (table: string, row: Row) => (T[table] ??= []).push(row);
 // game_player isn't stored: everyone on the two teams' rosters played (the loader and the SQL fill it in).
 const ORDER = ['club', 'venue', 'team', 'person', 'membership', 'event', 'event_team', 'game', 'point', 'point_player', 'game_event', 'game_status_log', 'spirit_score', 'session', 'practice_rsvp', 'practice_attendance', 'game_availability', 'calendar_entry', 'announcement', 'hat_signup'];
-const VERSION = 2;
+const VERSION = 3;
 
 /* ---------------- clubs, teams and venues from the public directory ---------------- */
 
@@ -514,6 +514,19 @@ add('calendar_entry', {
 });
 add('announcement', { id: demoId('ann:nationals'), region_code: null, title: 'Mixed Nationals 2026: 4–6 December, KwaZulu-Natal', body: 'Team registrations open soon. Check your accreditation is valid and your SAFDA and regional fees are paid.\n\n(Demo announcement.)', link_url: 'https://safda.org.za/new-safda-events/', link_label: 'SAFDA events', pinned: 1, published_at: '2026-10-20T08:00:00.000Z', created_by_id: null, created_at: CREATED, updated_at: CREATED });
 add('announcement', { id: demoId('ann:constitution'), region_code: 'western', title: 'CTFDA constitution review: comments by 15 November', body: 'The committee is reviewing the constitution. Read the current version and send comments to the committee.\n\n(Demo announcement.)', link_url: 'https://drive.google.com/open?id=1M6J8if-22sOxGus-Ut3syubY3mKEIGZmmNDvSZYT-ho', link_label: 'Read the constitution', pinned: 0, published_at: '2026-10-18T08:00:00.000Z', created_by_id: null, created_at: CREATED, updated_at: CREATED });
+add('announcement', {
+  id: demoId('ann:agm'), region_code: null, title: 'SAFDA AGM: Sunday 1 November, 19:00, online',
+  body: [
+    'The SAFDA Annual General Meeting is on Google Meet. Everyone is welcome; members vote.',
+    '',
+    'On the agenda: the 2026 season report, 2027 affiliation fees, Nationals 2027 hosts, constitution amendments and electing the executive committee.',
+    '',
+    'Tap below to see the full agenda and say if you’re coming. Voting members: have your SAFDA number ready.',
+    '',
+    '(Demo announcement: the meeting and link are placeholders.)',
+  ].join('\n'),
+  link_url: `/hub/meeting/${seedId('calendar', 'SAFDA AGM 2026 (demo)')}`, link_label: 'Agenda & RSVP', pinned: 0, published_at: '2026-10-22T08:00:00.000Z', created_by_id: null, created_at: CREATED, updated_at: CREATED,
+});
 
 /* ---------------- Hats (demo) ---------------- */
 
@@ -604,7 +617,7 @@ sql.push(`insert into game_player (id, game_id, team_id, person_id, jersey_numbe
 on conflict do nothing;`);
 sql.push(`update calendar_entry set end_date = '2026-11-14', status = 'confirmed' where id = ${lit(seedId('calendar', 'Cape Town Mixed League 2026'))};`);
 // Each demo version is its own (idempotent) migration, so already-applied versions are never edited.
-const MIGRATION: Record<number, string> = { 1: '20261024150000_demo_content.sql', 2: '20261024210000_demo_content_v2.sql' };
+const MIGRATION: Record<number, string> = { 1: '20261024150000_demo_content.sql', 2: '20261024210000_demo_content_v2.sql', 3: '20261025000000_demo_content_v3.sql' };
 writeFileSync(join(ROOT, 'supabase/migrations', MIGRATION[VERSION]), sql.join('\n') + '\n');
 
 console.log(`clubs ${counts.club} · new teams ${counts.team} (+${teamUpdates.length} updated) · people ${counts.person} · games ${counts.game} (WR ${wr.imported}, Res ${res.imported}, league ${leagueGames}) · points ${counts.point} · events ${counts.game_event} · practices ${practices}`);

@@ -6,7 +6,7 @@ import { listHats } from '@/db/hats';
 import { useData } from '@/db/live';
 import { getAccess } from '@/db/repo';
 import { shortDate } from '@/domain/format';
-import { Card, Chip, EmptyState, IconButton, Screen, Section, T } from '@/ui/components';
+import { Button, Card, Chip, EmptyState, IconButton, Screen, Section, T } from '@/ui/components';
 import { RegionChips, useRegionFilter } from '@/ui/region-filter';
 import { space } from '@/ui/theme';
 
@@ -41,6 +41,14 @@ export default function Hats() {
         <T v="small">Sign up on your own: say how good you are and whether you’d captain. Teams are drawn 48 hours before, balanced by skill and ratio.</T>
         {upcoming.length ? <Section title="Coming up">{upcoming.map(card)}</Section> : <EmptyState icon="hat-fedora" title="No hats coming up" body={runs ? 'Tap + to set one up.' : 'Hats in your region show up here.'} />}
         {past.length ? <Section title="Past">{past.map(card)}</Section> : null}
+        {runs ? (
+          <Button label="Set up a hat" icon="plus" kind="primary" onPress={() => router.push('/hat/edit')} />
+        ) : (
+          <Card onPress={() => router.push('/access')}>
+            <T v="bodyStrong">Want to host a hat?</T>
+            <T v="small">Hosts need coordinator access. Tap here to ask the admins: say which hat and when.</T>
+          </Card>
+        )}
       </Screen>
     </>
   );

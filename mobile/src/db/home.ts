@@ -27,7 +27,7 @@ export type Competition = {
 export type TimelineItem = {
   key: string;
   at: string;
-  kind: 'game' | 'pickup' | 'practice';
+  kind: 'game' | 'pickup' | 'practice' | 'hat' | 'meeting';
   title: string;
   subtitle: string;
   tag: Tag | null;
@@ -185,6 +185,25 @@ export async function homeFeed(db: SQLiteDatabase, now = new Date()) {
         url: `/practice/${s.id}`,
       });
     }
+  }
+  if (meId) {
+    // Hats you've signed up for and meetings you're going to, from My schedule.
+    const fromDay = new Date(now.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+    const toDay = new Date(end).toISOString().slice(0, 10);
+    const hats = await db.getAllAsync<{ id: string; name: string; start_date: string; start_time: string | null; location: string | null; attending: string }>(
+      `SELECT e.id, e.name, e.start_date, e.start_time, e.location, h.attending FROM hat_signup h JOIN event e ON e.id = h.event_id
+        WHERE h.person_id = ? AND h.attending IN ('yes','maybe') AND e.deleted_at IS NULL AND e.start_date >= ? AND e.start_date <= ?`,
+      meId, fromDay, toDay,
+    );
+    for (const h of hats)
+      items.push({ key: `h:${h.id}`, at: new Date(`${h.start_date}T${h.start_time || '09:00'}:00`).toISOString(), kind: 'hat', title: h.name, subtitle: [h.attending === 'yes' ? 'You’re signed up' : 'Maybe', h.location].filter(Boolean).join(' · '), tag: null, following: false, url: `/hat/${h.id}` });
+    const meetings = await db.getAllAsync<{ id: string; name: string; start_date: string; start_time: string | null; meeting_url: string | null; location: string | null }>(
+      `SELECT c.id, c.name, c.start_date, c.start_time, c.meeting_url, c.location FROM meeting_rsvp r JOIN calendar_entry c ON c.id = r.calendar_entry_id
+        WHERE r.person_id = ? AND r.status IN ('going','late') AND c.deleted_at IS NULL AND c.start_date >= ? AND c.start_date <= ?`,
+      meId, fromDay, toDay,
+    );
+    for (const m of meetings)
+      items.push({ key: `m:${m.id}`, at: new Date(`${m.start_date}T${m.start_time || '09:00'}:00`).toISOString(), kind: 'meeting', title: m.name, subtitle: ['You’re going', m.meeting_url ? 'Online' : m.location].filter(Boolean).join(' · '), tag: null, following: false, url: `/hub/meeting/${m.id}` });
   }
   items.sort((a, b) => a.at.localeCompare(b.at));
 

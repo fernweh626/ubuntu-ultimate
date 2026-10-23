@@ -6,18 +6,19 @@ import { View } from 'react-native';
 import { setAvailability } from '@/db/development';
 import { dayLabel } from '@/db/home';
 import { useData } from '@/db/live';
-import { setRsvp } from '@/db/repo';
+import { setMeetingRsvp, setPickupRsvp, setRsvp } from '@/db/repo';
 import { mySchedule, type ScheduleItem } from '@/db/schedule';
 import { timeOfDay } from '@/domain/format';
 import { AnswerButtons, type Answer } from '@/ui/answer';
 import { Button, Card, Chip, EmptyState, Screen, Section, T } from '@/ui/components';
+import { KindIcon } from '@/ui/kind-icon';
 import { colors, font, space } from '@/ui/theme';
 
 const PRACTICE: Record<Answer, string> = { yes: 'going', late: 'late', no: 'not_going' };
 const GAME: Record<Answer, string> = { yes: 'available', late: 'late', no: 'unavailable' };
 const toAnswer = (s: string | null): Answer | null => (s === 'going' || s === 'available' ? 'yes' : s === 'late' ? 'late' : s === 'not_going' || s === 'unavailable' ? 'no' : null);
 
-/** Your practices and games: answer in one tap, see who's coming, do the check-in afterwards. */
+/** Your practices, games, hats, meetings and pickups: answer in one tap, see who's coming, check in afterwards. */
 export default function Schedule() {
   const db = useSQLiteContext();
   const data = useData((d) => mySchedule(d));
@@ -25,9 +26,10 @@ export default function Schedule() {
   if (!data) return <Screen edges={[]}>{null}</Screen>;
   const { meId, items, teams } = data;
 
-  const done = items.filter((i) => Date.parse(i.endAt) < opened && !i.cancelled && i.played && !i.checkedIn && i.gameStatus !== 'scheduled');
+  const done = items.filter((i) => (i.kind === 'practice' || i.kind === 'game') && Date.parse(i.endAt) < opened && !i.cancelled && i.played && !i.checkedIn && i.gameStatus !== 'scheduled');
   const upcoming = items.filter((i) => Date.parse(i.endAt) >= opened);
   const unanswered = upcoming.filter((i) => !i.status && !i.cancelled && (i.kind === 'practice' || i.gameStatus === 'scheduled')).length;
+  const ANSWERS: Record<Answer, 'going' | 'late' | 'not_going'> = { yes: 'going', late: 'late', no: 'not_going' };
   const days: { label: string; items: ScheduleItem[] }[] = [];
   for (const it of upcoming) {
     const label = dayLabel(it.at);
@@ -39,6 +41,9 @@ export default function Schedule() {
   async function answer(it: ScheduleItem, a: Answer | null, note: string | null) {
     if (!meId) return;
     if (it.kind === 'practice') await setRsvp(db, it.id, meId, a ? (PRACTICE[a] as 'going') : null, note);
+    else if (it.kind === 'pickup') await setPickupRsvp(db, it.id, it.onDate!, meId, a ? ANSWERS[a] : null, note);
+    else if (it.kind === 'meeting') await setMeetingRsvp(db, it.id, meId, a ? ANSWERS[a] : null, note);
+    else if (it.kind === 'hat') return;
     else await setAvailability(db, it.id, it.teamId, meId, a ? (GAME[a] as 'available') : null, note);
   }
 
@@ -46,8 +51,8 @@ export default function Schedule() {
     <>
       <Stack.Screen options={{ title: 'My schedule' }} />
       <Screen edges={[]}>
-        {!meId || !teams ? (
-          <EmptyState icon="calendar-account-outline" title="Nothing to show yet" body="Pick yourself in Me and join a team: its practices and games show up here." />
+        {!meId ? (
+          <EmptyState icon="calendar-account-outline" title="Nothing to show yet" body="Pick yourself in Me first. Then your team’s practices and games, hats you sign up for, meetings and the pickups you go to all show up here." />
         ) : (
           <>
             {unanswered ? (
@@ -78,32 +83,45 @@ export default function Schedule() {
               </Section>
             ) : null}
 
-            {days.length === 0 ? <EmptyState icon="calendar-blank" title="Nothing coming up" body="When your staff schedule practices or fixtures, they appear here." /> : null}
+            {days.length === 0 ? (
+              <EmptyState
+                icon="calendar-blank"
+                title="Nothing coming up"
+                body={teams ? 'When your staff schedule practices or fixtures, they appear here. So do hats you sign up for and pickups you go to.' : 'Join a team, sign up for a hat, or tap “I go here” on a pickup, and it shows up here.'}
+                action={<Button label="Find pickup" icon="map-marker-radius" onPress={() => router.push('/hub/pickups')} />}
+              />
+            ) : null}
             {days.map((d) => (
               <Section key={d.label} title={d.label}>
                 {d.items.map((it) => {
                   const live = it.gameStatus === 'live';
-                  const canAnswer = !it.cancelled && (it.kind === 'practice' ? Date.parse(it.at) > opened : it.gameStatus === 'scheduled');
+                  const canAnswer = !it.cancelled && (it.kind === 'game' ? it.gameStatus === 'scheduled' : it.kind !== 'hat' && Date.parse(it.at) > opened);
+                  const href =
+                    it.kind === 'practice' ? `/practice/${it.id}` : it.kind === 'hat' ? `/hat/${it.id}` : it.kind === 'meeting' ? `/hub/meeting/${it.id}` : it.kind === 'pickup' ? '/hub/pickups' : live ? `/game/${it.id}/report` : `/game/${it.id}/fixture`;
                   return (
                     <Card
                       key={it.key}
-                      onPress={() => router.push(it.kind === 'practice' ? `/practice/${it.id}` : live ? `/game/${it.id}/report` : `/game/${it.id}/fixture`)}
+                      onPress={() => router.push(href as never)}
                       style={live ? { borderColor: colors.brand, borderWidth: 2 } : undefined}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                        <KindIcon kind={it.kind} />
                         <T style={{ fontFamily: font.display, fontSize: 22, width: 56, textDecorationLine: it.cancelled ? 'line-through' : 'none' }}>{timeOfDay(it.at)}</T>
                         <View style={{ flex: 1 }}>
                           <T v="bodyStrong" style={{ textDecorationLine: it.cancelled ? 'line-through' : 'none' }}>
                             {it.title}
                           </T>
-                          <T v="small">{[it.kind === 'game' ? 'Game' : null, it.place].filter(Boolean).join(' · ')}</T>
+                          <T v="small">{it.place}</T>
                         </View>
-                        {it.cancelled ? <Chip label="Cancelled" tone="danger" /> : live ? <Chip label="LIVE" tone="danger" icon="circle" /> : null}
+                        {it.cancelled ? <Chip label="Cancelled" tone="danger" /> : live ? <Chip label="LIVE" tone="danger" icon="circle" /> : it.kind === 'hat' ? <Chip label={it.status === 'going' ? 'Signed up' : 'Maybe'} tone={it.status === 'going' ? 'brand' : 'warn'} /> : null}
                       </View>
-                      {!it.cancelled ? (
+                      {it.cancelled ? null : it.kind === 'hat' ? (
+                        <T v="small">{it.coming} signed up · tap for your team, payment and schedule</T>
+                      ) : (
                         <T v="small">
-                          {it.coming} coming{it.late ? ` (${it.late} late)` : ''} · {it.cant} can’t
+                          {it.coming} coming{it.late ? ` (${it.late} late)` : ''}
+                          {it.kind === 'practice' || it.kind === 'game' ? ` · ${it.cant} can’t` : ''}
                         </T>
-                      ) : null}
+                      )}
                       {canAnswer ? (
                         <AnswerButtons
                           compact
