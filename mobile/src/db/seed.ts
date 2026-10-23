@@ -1,6 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { CONTENT_VERSION, pickupSeedKey, SEED_CLUBS, STARTER_LINKS, STARTER_PICKUPS } from '@/content/hub';
+import { CONTENT_VERSION, pickupSeedKey, RETIRED_PICKUP_KEYS, SEED_CLUBS, STARTER_LINKS, STARTER_PICKUPS } from '@/content/hub';
+import { md5 } from './md5';
+import { adoptSharedIds } from './shared-ids';
 
 import { now, uuid } from './repo';
 import { seedId } from './seed-ids';
@@ -195,20 +197,28 @@ export async function ensureStarterContent(db: SQLiteDatabase) {
   await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sync_pulling', '1')`);
   try {
     await db.withTransactionAsync(async () => {
-      // The made-up sample pickups are replaced by real ones.
+      // The made-up sample pickups, and website pickups that aren't running any more, are replaced.
       await db.runAsync(`DELETE FROM pickup_spot WHERE is_sample = 1`);
+      const current = new Set(await Promise.all(STARTER_PICKUPS.map((p) => seedId('pickup', pickupSeedKey(p)))));
+      for (const key of RETIRED_PICKUP_KEYS) {
+        const id = await seedId('pickup', key);
+        if (!current.has(id)) await db.runAsync(`DELETE FROM pickup_spot WHERE id = ?`, id);
+      }
       for (const p of STARTER_PICKUPS) {
         await db.runAsync(
-          `INSERT OR IGNORE INTO pickup_spot (id, name, region, city, area, day_of_week, start_time, venue_text, whatsapp_url, level, cost, notes, is_sample, created_at, updated_at)
-           VALUES (?, ?, 'western', ?, ?, ?, ?, ?, ?, 'all', 'Free', ?, 0, ?, ?)`,
+          `INSERT INTO pickup_spot (id, name, region, city, area, day_of_week, start_time, venue_text, whatsapp_url, contact_name, level, cost, notes, is_sample, created_at, updated_at)
+           VALUES (?, ?, 'western', ?, ?, ?, ?, ?, ?, ?, 'all', 'Free', ?, 0, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET start_time = excluded.start_time, venue_text = excluded.venue_text, notes = excluded.notes,
+             contact_name = excluded.contact_name, name = excluded.name`,
           await seedId('pickup', pickupSeedKey(p)),
           p.name,
           p.city,
-          p.area,
+          p.area || null,
           p.day,
           p.start,
           p.venue,
           p.whatsapp,
+          p.contact ?? null,
           p.notes,
           ts,
           ts,
@@ -228,6 +238,73 @@ export async function ensureStarterContent(db: SQLiteDatabase) {
         );
       }
       await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('content_version', ?)`, String(CONTENT_VERSION));
+    });
+  } finally {
+    await db.runAsync(`DELETE FROM app_meta WHERE key = 'sync_pulling'`);
+  }
+}
+
+/** Bump with tools/demo/build.ts's `version` when the demo content changes. */
+const DEMO_VERSION = 1;
+
+type DemoFile = {
+  version: number;
+  teamUpdates: Record<string, string | number | null>[];
+  tables: Record<string, { cols: string[]; rows: (string | number | null)[][] }>;
+};
+
+/**
+ * Demo content for sharing the app (tools/demo/build.ts): clubs and teams from the public directories,
+ * real Western Regionals and Residence League results with invented player names, a made-up Cape Town
+ * Mixed League, Chilli Legends practices, an AGM and two announcements. Same ids as the server's copy.
+ */
+export async function ensureDemoContent(db: SQLiteDatabase) {
+  const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'demo_version'`);
+  if (Number(row?.value ?? 0) >= DEMO_VERSION) return;
+  // Only read the (large) demo file when it's actually needed.
+  const demo = require('@/content/demo/demo-2026.json') as DemoFile;
+  // Demo rows point at the shared starting teams and fields, so older phones adopt the shared ids first.
+  await adoptSharedIds(db);
+  await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sync_pulling', '1')`);
+  try {
+    await db.withTransactionAsync(async () => {
+      for (const [table, { cols, rows }] of Object.entries(demo.tables)) {
+        // Several rows per statement, under SQLite's variable limit.
+        const per = Math.max(1, Math.floor(900 / cols.length));
+        for (let i = 0; i < rows.length; i += per) {
+          const chunk = rows.slice(i, i + per);
+          await db.runAsync(
+            `INSERT OR IGNORE INTO ${table} (${cols.join(', ')}) VALUES ${chunk.map(() => `(${cols.map(() => '?').join(', ')})`).join(', ')}`,
+            ...chunk.flat(),
+          );
+        }
+      }
+      for (const u of demo.teamUpdates) {
+        const sets = Object.keys(u).filter((k) => k !== 'id');
+        await db.runAsync(`UPDATE team SET ${sets.map((k) => `${k} = COALESCE(${k}, ?)`).join(', ')} WHERE id = ?`, ...sets.map((k) => u[k]), u.id);
+      }
+      // Squads: everyone on the two demo rosters played in each played demo game.
+      const played = (demo.tables.game?.rows ?? []).map((r) => Object.fromEntries(demo.tables.game.cols.map((c, i) => [c, r[i]]))).filter((g) => g.started_at);
+      const members = await db.getAllAsync<{ person_id: string; team_id: string; jersey_number: string | null }>(
+        `SELECT m.person_id, m.team_id, m.jersey_number FROM membership m JOIN person p ON p.id = m.person_id WHERE p.is_placeholder = 1`,
+      );
+      const byTeam = new Map<string, typeof members>();
+      for (const m of members) byTeam.set(m.team_id, [...(byTeam.get(m.team_id) ?? []), m]);
+      for (const g of played) {
+        const squad = [...(byTeam.get(String(g.team_a_id)) ?? []), ...(byTeam.get(String(g.team_b_id)) ?? [])];
+        for (let i = 0; i < squad.length; i += 100) {
+          const chunk = squad.slice(i, i + 100);
+          await db.runAsync(
+            `INSERT OR IGNORE INTO game_player (id, game_id, team_id, person_id, jersey_number, status, confirmation, added_in_game) VALUES ${chunk.map(() => `(?, ?, ?, ?, ?, 'available', 'confirmed', 0)`).join(', ')}`,
+            ...chunk.flatMap((m) => {
+              const h = md5(`gp:${g.id}:${m.person_id}`);
+              return [`${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`, g.id, m.team_id, m.person_id, m.jersey_number];
+            }),
+          );
+        }
+      }
+      await db.runAsync(`UPDATE calendar_entry SET end_date = '2026-11-14', status = 'confirmed' WHERE id = ?`, await seedId('calendar', 'Cape Town Mixed League 2026'));
+      await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('demo_version', ?)`, String(demo.version));
     });
   } finally {
     await db.runAsync(`DELETE FROM app_meta WHERE key = 'sync_pulling'`);

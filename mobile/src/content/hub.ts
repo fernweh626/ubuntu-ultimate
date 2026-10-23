@@ -200,7 +200,7 @@ export const RULES_URL = 'https://rules.wfdf.sport';
  * Other regions' links get added by coordinators in the app (Me → Admin → Forms & payment links).
  * Bump CONTENT_VERSION when this changes so existing phones pick it up.
  */
-export const CONTENT_VERSION = 1;
+export const CONTENT_VERSION = 2;
 
 export type LinkKind = 'merch' | 'register' | 'website' | 'community' | 'social' | 'calendar' | 'contact' | 'policy' | 'rules';
 
@@ -249,19 +249,18 @@ export const STARTER_LINKS: { region: string | null; kind: LinkKind; label: stri
 ];
 
 const CT_PICKUP_GROUP = 'https://chat.whatsapp.com/H9zDUGxsezM8nDM2IBzlOI';
-const NO_STUDS = 'No soccer boots or studs. Confirm on the day in the WhatsApp community.';
 
-/** Cape Town's regular pickups (capetownultimate.co.za/pickup). Day: Monday = 0. Free, all levels, no membership needed. */
-export const STARTER_PICKUPS: { name: string; day: number; start: string; venue: string; area: string; notes: string; whatsapp: string; city: string }[] = [
-  { name: 'Rondebosch pickup', day: 0, start: '17:15', venue: 'Rondebosch Boys’ High sports fields, Oakhurst Ave', area: 'Rondebosch', notes: NO_STUDS },
-  { name: 'Rondebosch pickup', day: 6, start: '15:00', venue: 'Rondebosch Boys’ High sports fields, Oakhurst Ave', area: 'Rondebosch', notes: NO_STUDS },
-  { name: 'Pinelands pickup', day: 3, start: '17:15', venue: 'Scoville Cricket Oval, bottom field', area: 'Pinelands', notes: NO_STUDS },
-  { name: 'Maties pickup', day: 2, start: '17:50', venue: 'Coetzenburg B fields', area: 'Stellenbosch', notes: 'Student-run: quieter in holidays, extra games in exam periods (June, November).' },
-  { name: 'Maties pickup', day: 6, start: '16:00', venue: 'Coetzenburg B fields', area: 'Stellenbosch', notes: 'Student-run: quieter in holidays, extra games in exam periods (June, November).' },
-  { name: 'UCT social', day: 4, start: '17:00', venue: 'Woolsack Cricket Oval, Middle Campus', area: 'UCT', notes: 'Student-run: may be quieter in holidays.' },
-  { name: 'Clifton beach pickup', day: 6, start: '09:00', venue: 'Clifton 1st or 2nd beach (whichever has space)', area: 'Clifton', notes: 'First pull 9–10am, earlier in summer. Barefoot. Details in the WhatsApp community a few days before.' },
-  { name: 'Muizenberg beach pickup', day: 5, start: '09:30', venue: 'Behind the colourful huts', area: 'Muizenberg', notes: 'Park at the water slides. Barefoot. Details in the WhatsApp community a few days before.' },
-  { name: 'Muizenberg beach pickup', day: 6, start: '09:30', venue: 'Behind the colourful huts', area: 'Muizenberg', notes: 'Park at the water slides. Barefoot. Details in the WhatsApp community a few days before.' },
-].map((p) => ({ ...p, whatsapp: CT_PICKUP_GROUP, city: p.area === 'Stellenbosch' ? 'Stellenbosch' : 'Cape Town' }));
+/**
+ * Cape Town's current pickups (from the community, Oct 2026). Day: Monday = 0. Free, all levels.
+ * The WhatsApp link is the CTFDA pickup community until each game's own group link is added.
+ */
+export const STARTER_PICKUPS: { name: string; day: number; start: string; venue: string; area: string; notes: string; whatsapp: string; city: string; contact?: string }[] = [
+  { name: 'Herzlia pickup', day: 3, start: '17:00', venue: 'Herzlia fields', area: '', notes: 'Wear tekkies: no cleats. Bring your own water.', contact: 'Tev', whatsapp: CT_PICKUP_GROUP, city: 'Cape Town' },
+  { name: 'Clifton beach pickup', day: 6, start: '08:30', venue: 'Clifton 1st beach', area: 'Clifton', notes: '8:30 for a 9:00 start. Barefoot on the beach. Bring water.', whatsapp: CT_PICKUP_GROUP, city: 'Cape Town' },
+  { name: 'Rondebosch Sunday pickup', day: 6, start: '16:00', venue: 'Rondebosch Boys’ High sports fields, Oakhurst Ave', area: 'Rondebosch', notes: 'Cleats welcome.', whatsapp: CT_PICKUP_GROUP, city: 'Cape Town' },
+];
+
+/** Pickups from the CTFDA website that the community says aren't running now (removed in content v2). */
+export const RETIRED_PICKUP_KEYS = ['Rondebosch pickup|0', 'Rondebosch pickup|6', 'Pinelands pickup|3', 'Maties pickup|2', 'Maties pickup|6', 'UCT social|4', 'Clifton beach pickup|6', 'Muizenberg beach pickup|5', 'Muizenberg beach pickup|6'];
 
 export const pickupSeedKey = (p: { name: string; day: number }) => `${p.name}|${p.day}`;
