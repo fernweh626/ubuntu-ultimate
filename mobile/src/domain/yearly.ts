@@ -1,4 +1,5 @@
 import { COUNTRY } from '@/content/countries';
+import { ADMIN_EMAIL } from '@/content/hub';
 
 /*
  * The yearly admin deadline (from the country settings; South Africa: 20 January): coordinators send
@@ -31,5 +32,24 @@ export function yearlyInfoReminders(season: number) {
 export function yearlyInfoText(season: number, level: 'admin' | 'coordinator') {
   return level === 'admin'
     ? { title: `Update the ${season} forms & payment links by ${deadlineLabel}`, body: `Coordinators send you their region’s registration form, fees and merch links. Update them in Me → Admin before fees open on ${feesLabel}.` }
-    : { title: `Send your ${season} registration info by ${deadlineLabel}`, body: `Email or WhatsApp the admins your region’s new registration form, fee amounts and merch links, so the app is ready before fees open on ${feesLabel}.` };
+    : { title: `Send your ${season} registration info by ${deadlineLabel}`, body: `Email ${ADMIN_EMAIL} your region’s new registration form, fee amounts and merch links, so the app is ready before fees open on ${feesLabel}.` };
+}
+
+/** A ready-to-fill email from a coordinator to the admins. */
+export function yearlyInfoMailto(season: number, region: string | null) {
+  const subject = `${season} registration info${region ? ` · ${region}` : ''}`;
+  const body = [
+    `Hi admins,`,
+    ``,
+    `Here’s our ${season} info for the app:`,
+    ``,
+    `Registration form link: `,
+    `Fees (and what they include): `,
+    `Payment link or banking details: `,
+    `Merch / kit order link: `,
+    `Anything else that changed: `,
+    ``,
+    `Thanks!`,
+  ].join('\n');
+  return `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

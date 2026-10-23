@@ -175,6 +175,9 @@ export const RULES_URL = 'https://rules.wfdf.sport';
  */
 export const PRIVACY_EMAIL = 'privacy@ubuntuultimate.example';
 
+/** Where coordinators send next season's forms, fees and links. TEMPORARY placeholder, like the above. */
+export const ADMIN_EMAIL = 'admin@ubuntuultimate.example';
+
 /*
  * Real starting content from the associations' own sites (checked Oct 2026):
  * capetownultimate.co.za (CTFDA, Western) and safda.org.za (SAFDA, national).

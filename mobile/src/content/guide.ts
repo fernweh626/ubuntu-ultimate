@@ -2,7 +2,7 @@ import type { Href } from 'expo-router';
 
 import type { IconName } from '@/ui/components';
 
-import { PRIVACY_EMAIL } from './hub';
+import { ADMIN_EMAIL, PRIVACY_EMAIL } from './hub';
 
 /*
  * The in-app guide: every feature, what it's for, and how to use it, in plain words.
@@ -478,7 +478,7 @@ export const GUIDE: GuideSection[] = [
         who: 'Coordinators and admins',
         why: 'Keep the yearly admin in one place: who’s paid, where to register, and what players are asking for. Member lists are personal information (POPIA), so only admins upload them.',
         steps: [
-          'Coordinators: by 20 January, send the admins your region’s new registration form, fee amounts and merch links. From 1 December a pinned card on your Home reminds you.',
+          `Coordinators: by 20 January, email ${ADMIN_EMAIL} your region’s new registration form, fee amounts and merch links. From 1 December a pinned card on your Home has an “Email the admins” button with the email ready to fill in.`,
           'Admins: Me → Admin → Forms & payment links, and update them by 20 January (fees open on 1 February).',
           'Admins: Me → Admin → Paid-up lists: upload the SAFDA and regional member lists (CSV).',
           'Admins: Me → Admin → Bugs & ideas inbox, which also has access and privacy requests.',

@@ -21,7 +21,7 @@ export default function Links() {
     return (
       <Screen edges={[]}>
         <T v="bodyStrong">Admins only</T>
-        <T v="small">Registration and payment links are managed by the admins. Coordinators: send your region’s new forms, fees and merch links to the admins by 20 January.</T>
+        <T v="small">Registration and payment links are managed by the admins. Coordinators: email your region’s new forms, fees and merch links to the admins by 20 January.</T>
       </Screen>
     );
   }

@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { Redirect, router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { regionName } from '@/content/hub';
 import { dayLabel, homeFeed, type Competition, type TimelineItem } from '@/db/home';
@@ -14,7 +14,7 @@ import { GameCard } from '@/ui/game-bits';
 import { MeButton } from '@/ui/me-button';
 import { PREVIEW } from '@/lib/preview';
 import { COUNTRY } from '@/content/countries';
-import { deadlineLabel, yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
+import { deadlineLabel, yearlyInfoMailto, yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
 import { KindIcon } from '@/ui/kind-icon';
 import { colors, font, space } from '@/ui/theme';
 
@@ -118,7 +118,8 @@ function YearlyInfoCard() {
     async (d) => {
       const access = await getAccess(d);
       const done = season ? !!(await d.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = ?`, `yearly_info_done:${season}`)) : true;
-      return { level: access.level, done };
+      const home = await getHomeRegion(d);
+      return { level: access.level, done, region: home && home !== 'all' ? regionName(home) : null };
     },
     [season],
   );
@@ -134,7 +135,11 @@ function YearlyInfoCard() {
       <T style={{ fontFamily: font.bold, fontSize: 19, lineHeight: 24, color: '#fff' }}>{text.title}</T>
       <T style={{ color: '#FBE9E0' }}>{text.body}</T>
       <View style={{ flexDirection: 'row', gap: space.sm }}>
-        {state.level === 'admin' ? <Button label="Update links" icon="link-variant" kind="dark" onPress={() => router.push('/admin/links')} style={{ flex: 1 }} /> : null}
+        {state.level === 'admin' ? (
+          <Button label="Update links" icon="link-variant" kind="dark" onPress={() => router.push('/admin/links')} style={{ flex: 1 }} />
+        ) : (
+          <Button label="Email the admins" icon="email-outline" kind="dark" onPress={() => Linking.openURL(yearlyInfoMailto(season, state.region))} style={{ flex: 1 }} />
+        )}
         <Button
           label={state.level === 'admin' ? 'All updated' : 'I’ve sent it'}
           icon="check"
