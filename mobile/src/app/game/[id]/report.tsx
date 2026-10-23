@@ -113,6 +113,8 @@ export default function GameReport() {
       <Stack.Screen
         options={{
           title: final ? 'Game report' : 'Live stats',
+          // Arrived straight from scoring (the scorer screen was replaced), so there's no back arrow: offer a way out.
+          ...(router.canGoBack() ? {} : { headerLeft: () => <IconButton icon="close" label="Close" onPress={() => router.replace('/')} /> }),
           headerRight: () => (
             <View style={{ flexDirection: 'row' }}>
               {!final ? <IconButton icon="broadcast" label="Share live link" onPress={() => shareLiveLink(game.id, `${ta.name} v ${tb.name}`, access.signedIn)} /> : null}
@@ -181,7 +183,7 @@ export default function GameReport() {
           )}
         </View>
         {final ? <Button label="Full report · PDF & images" icon="file-document-multiple-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'game', gameId: id } })} /> : null}
-        {!final ? <Button label="Back to scoring" icon="whistle" onPress={() => router.replace(`/game/${id}`)} /> : null}
+        {!final ? <Button label="Back to scoring" icon="whistle" onPress={() => router.replace(`/game/${id}`)} /> : <Button label="Done" icon="check" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />}
         {final && myGame && !data.game.forfeit_team_id ? (
           <Card onPress={() => router.push({ pathname: '/reflect', params: { gameId: id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, borderColor: myReflection ? colors.border : colors.brand, borderWidth: myReflection ? 1 : 2 }}>
             <Icon name={myReflection ? 'check-circle' : 'comment-question-outline'} color={colors.brand} />
