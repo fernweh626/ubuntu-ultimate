@@ -2,6 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
+import { claimFirstAdmin } from './account';
 import { sendPendingFeedback } from './feedback-send';
 import { onChanged } from './live';
 import { syncNow } from './sync';
@@ -15,12 +16,18 @@ export function SyncManager() {
   const db = useSQLiteContext();
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let adminChecked = false;
     const signedIn = async () => !!(await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'signed_in'`));
     const run = async () => {
       // Feedback goes even when signed out.
       sendPendingFeedback(db).catch(() => {});
       if (!(await signedIn())) return;
       try {
+        // A brand-new server has no admin yet: the first signed-in account claims it (once per session).
+        if (!adminChecked) {
+          adminChecked = true;
+          await claimFirstAdmin(db);
+        }
         await syncNow(db);
       } catch {
         // Offline or a hiccup: try again on the next trigger.

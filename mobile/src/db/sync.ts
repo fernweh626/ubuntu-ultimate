@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { SEED_CLUBS } from '@/content/hub';
+import { pickupSeedKey, SEED_CLUBS, STARTER_PICKUPS } from '@/content/hub';
 import { supabase } from '@/lib/supabase';
 
 import { notifyChanged } from './live';
@@ -236,6 +236,61 @@ async function pull(db: SQLiteDatabase) {
 
 /* -------------------------------- First sync -------------------------------- */
 
+type DemoFile = { tables: Record<string, { cols: string[]; rows: unknown[][] }> };
+
+/**
+ * Everything this phone holds that the server already has as shared content: the demo season (every
+ * row in the bundled demo file, plus game rows that hang off demo games) and starter content whose id
+ * is the one derived from its name. Anything else was made on this phone and needs uploading.
+ */
+export async function sharedContent(db: SQLiteDatabase) {
+  const demo = require('@/content/demo/demo-2026.json') as DemoFile;
+  const ids = new Map<string, Set<string>>();
+  for (const [tbl, t] of Object.entries(demo.tables)) {
+    const at = t.cols.indexOf('id');
+    if (at >= 0) ids.set(tbl, new Set(t.rows.map((r) => String(r[at]))));
+  }
+  const demoGames = ids.get('game') ?? new Set<string>();
+  const demoPoints = ids.get('point') ?? new Set<string>();
+  const add = (tbl: string, id: string) => (ids.get(tbl) ?? ids.set(tbl, new Set()).get(tbl)!).add(id);
+  for (const [tbl, kind, col] of [
+    ['team', 'team', 'name'],
+    ['venue', 'venue', 'name'],
+    ['calendar_entry', 'calendar', 'name'],
+    ['club', 'club', 'name'],
+    ['org_link', 'link', 'url'],
+  ] as const) {
+    for (const r of await db.getAllAsync<{ id: string; v: string }>(`SELECT id, ${col} AS v FROM ${tbl}`)) if (r.id === (await seedId(kind, r.v))) add(tbl, r.id);
+  }
+  for (const p of STARTER_PICKUPS) add('pickup_spot', await seedId('pickup', pickupSeedKey(p)));
+  // Squads of demo games are derived on the phone, so they're not in the file by id.
+  for (const r of await db.getAllAsync<{ id: string; game_id: string }>(`SELECT id, game_id FROM game_player`)) if (demoGames.has(r.game_id)) add('game_player', r.id);
+
+  return {
+    has(tbl: string, key: Record<string, string>) {
+      if (key.point_id) return demoPoints.has(key.point_id);
+      return !!key.id && !!ids.get(tbl)?.has(key.id);
+    },
+  };
+}
+
+/**
+ * One-off clean-up for phones that ran earlier builds, where the first sync queued every row, demo
+ * season included. The server already has shared content; keep only what was made on this phone.
+ */
+export async function pruneSharedOutbox(db: SQLiteDatabase) {
+  if (await meta(db, 'outbox_pruned')) return 0;
+  const shared = await sharedContent(db);
+  let dropped = 0;
+  for (const r of await db.getAllAsync<{ tbl: string; pk: string }>(`SELECT tbl, pk FROM sync_outbox`)) {
+    if (!shared.has(r.tbl, JSON.parse(r.pk))) continue;
+    await db.runAsync(`DELETE FROM sync_outbox WHERE tbl = ? AND pk = ?`, r.tbl, r.pk);
+    dropped += 1;
+  }
+  await setMeta(db, 'outbox_pruned', String(dropped));
+  return dropped;
+}
+
 export async function prepareFirstSync(db: SQLiteDatabase) {
   await asPull(db, async () => {
     // 1. Shared ids for starting data.
@@ -280,18 +335,20 @@ export async function prepareFirstSync(db: SQLiteDatabase) {
     await db.runAsync(`DELETE FROM pickup_spot WHERE is_sample = 1`);
   });
 
-  // 3. Queue everything that isn't shared starting data.
+  // 3. Queue everything made on this phone (not shared starting data or the demo season).
   const seedTeamIds = await Promise.all(SEED_CLUBS.map((c) => seedId('team', c.name)));
   const seedVenueIds = await Promise.all(['Plumstead 1', 'Plumstead 2', 'Wynberg 1'].map((n) => seedId('venue', n)));
   const seedCal = new Set(
     await Promise.all((await db.getAllAsync<{ name: string }>(`SELECT name FROM calendar_entry`)).map((c) => seedId('calendar', c.name))),
   );
   const skip = new Set([...seedTeamIds, ...seedVenueIds, ...seedCal]);
+  const shared = await sharedContent(db);
   const at = new Date().toISOString();
   for (const spec of TABLES.filter((t) => t.push !== false)) {
     const rows = await db.getAllAsync<Record<string, string>>(`SELECT ${spec.pk.join(', ')} FROM ${spec.name}`);
     for (const r of rows) {
       if (spec.pk.length === 1 && skip.has(r.id)) continue;
+      if (shared.has(spec.name, r)) continue;
       await db.runAsync(
         `INSERT OR IGNORE INTO sync_outbox (tbl, pk, op, at) VALUES (?, ?, 'upsert', ?)`,
         spec.name,
@@ -318,6 +375,7 @@ export function syncNow(db: SQLiteDatabase): Promise<SyncResult> {
       await prepareFirstSync(db);
       await setMeta(db, 'sync_user', user.id);
     }
+    await pruneSharedOutbox(db);
     const { pushed, rejected } = await push(db);
     const pulled = await pull(db);
     await setMeta(db, 'sync_last', new Date().toISOString());
