@@ -257,7 +257,7 @@ export const GUIDE: GuideSection[] = [
           'Tap I go here on the ones you play: they show in your schedule every week, with Going or Can’t.',
           'WhatsApp group, Map and Call are on each card.',
         ],
-        tips: ['Know a regular game that isn’t listed? Tap + to add it.'],
+        tips: ['Know a regular game that isn’t listed? Tap + to add it.', 'Want a reminder 2 hours before, or to hear about new pickups? Me → Notifications → Pickups (off until you turn it on).'],
         shot: 'pickups',
         open: { label: 'Find pickup', href: '/hub/pickups' },
       },

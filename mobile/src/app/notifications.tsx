@@ -27,6 +27,7 @@ const ITEMS: { key: keyof NotifyPrefs; title: string; body: string }[] = [
   { key: 'spirit', title: 'Spirit score due', body: 'Captains and spirit captains, 2 hours after a game.' },
   { key: 'roster', title: 'Confirm who played', body: 'Team staff, the morning after, if anyone is unconfirmed.' },
   { key: 'joinRequests', title: 'Join requests', body: 'Staff: someone wants to join. Players: your request was answered.' },
+  { key: 'pickups', title: 'Pickups', body: '2 hours before the pickups you go to, and new pickups in your region. Off by default.' },
   { key: 'followedResults', title: 'Results of teams you follow', body: 'Final scores. Off by default — it can get busy.' },
 ];
 

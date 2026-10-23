@@ -27,6 +27,7 @@ export type NotifyPrefs = {
   fixtureChanges: boolean;
   joinRequests: boolean;
   followedResults: boolean;
+  pickups: boolean;
   quietStart: number | null; // hour, e.g. 21
   quietEnd: number | null; // hour, e.g. 7
 };
@@ -48,6 +49,8 @@ export const DEFAULT_PREFS: NotifyPrefs = {
   fixtureChanges: true,
   joinRequests: true,
   followedResults: false,
+  // Off by default: pickups are casual, and a weekly ping gets old fast. Opt in from Notifications.
+  pickups: false,
   quietStart: 21,
   quietEnd: 7,
 };
@@ -169,6 +172,35 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
   }
 
   if (!me) return out.filter((p) => p.at > now);
+
+  // Pickups you go to ("I go here", or said Going for that day): a reminder 2 hours before.
+  if (prefs.pickups) {
+    const spots = await db.getAllAsync<{ id: string; name: string; day_of_week: number; start_time: string; venue_text: string | null; followed: number }>(
+      `SELECT p.id, p.name, p.day_of_week, p.start_time, p.venue_text, p.id IN (SELECT target_id FROM follow WHERE kind = 'pickup') AS followed
+         FROM pickup_spot p WHERE p.deleted_at IS NULL
+          AND (p.id IN (SELECT target_id FROM follow WHERE kind = 'pickup') OR p.id IN (SELECT pickup_id FROM pickup_rsvp WHERE person_id = ? AND status != 'not_going'))`,
+      me,
+    );
+    const answers = await db.getAllAsync<{ pickup_id: string; on_date: string; status: string }>(`SELECT pickup_id, on_date, status FROM pickup_rsvp WHERE person_id = ?`, me);
+    for (const p of spots) {
+      const [h, m] = p.start_time.split(':').map(Number);
+      for (let k = 0; k < 14; k++) {
+        const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k, h || 0, m || 0);
+        if (day.getDay() !== p.day_of_week || day <= now) continue;
+        const ymd = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+        const mine = answers.find((a) => a.pickup_id === p.id && a.on_date === ymd)?.status;
+        if (mine === 'not_going' || (!p.followed && !mine)) continue;
+        out.push({
+          key: `pickup:${p.id}:${ymd}`,
+          kind: 'pickups',
+          at: respectQuiet(new Date(day.getTime() - 2 * 3600_000), prefs, day),
+          title: `Pickup at ${p.start_time}: ${p.name}`,
+          body: `${p.venue_text ? `📍 ${p.venue_text}. ` : ''}Not going this time? Tap to say so.`,
+          url: '/schedule',
+        });
+      }
+    }
+  }
 
   // Accreditation: 6 months, 1 month and 1 week before it expires, and on the day.
   const acc = await db.getFirstAsync<{ level: string; expires_on: string | null }>(`SELECT level, expires_on FROM accreditation WHERE person_id = ?`, me);

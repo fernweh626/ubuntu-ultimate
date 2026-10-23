@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { shortDate, timeOfDay } from '@/domain/format';
+import { DAYS_LONG, shortDate, timeOfDay } from '@/domain/format';
 import { STATUS_REASONS, type StatusReason } from '@/domain/fixtures';
 
 import { getPrefs } from './plan';
@@ -21,6 +21,7 @@ type Seen = {
   cancelled?: string[];
   announcements?: string[];
   hats?: string[];
+  pickups?: string[];
   hatTeams?: string[];
   fixtures: Record<string, string>;
 };
@@ -36,7 +37,7 @@ async function load(db: SQLiteDatabase) {
 
 async function save(db: SQLiteDatabase, s: Seen) {
   const trim = (xs: string[]) => xs.slice(-500);
-  const v = { ...s, hats: trim(s.hats ?? []), hatTeams: trim(s.hatTeams ?? []), announcements: trim(s.announcements ?? []), cancelled: trim(s.cancelled ?? []), shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
+  const v = { ...s, hats: trim(s.hats ?? []), pickups: trim(s.pickups ?? []), hatTeams: trim(s.hatTeams ?? []), announcements: trim(s.announcements ?? []), cancelled: trim(s.cancelled ?? []), shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
   await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('notify:seen', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, JSON.stringify(v));
 }
 
@@ -169,6 +170,23 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
       seen.cancelled.push(c.id);
       if (!first && c.status !== 'not_going') {
         out.push({ key: `pcx:${c.id}`, title: `${c.team} practice cancelled`, body: `${shortDate(c.started_at)} ${timeOfDay(c.started_at)} is off.`, url: `/practice/${c.id}` });
+      }
+    }
+  }
+
+  // Pickups (opt-in): a new one listed in my region. Always remember what's listed, so switching
+  // this on later doesn't announce every existing pickup as new.
+  {
+    seen.pickups ??= [];
+    const home = (await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'home_region'`))?.value ?? null;
+    const spots = await db.getAllAsync<{ id: string; name: string; region: string | null; day_of_week: number; start_time: string; city: string }>(
+      `SELECT id, name, region, day_of_week, start_time, city FROM pickup_spot WHERE deleted_at IS NULL AND is_sample = 0`,
+    );
+    for (const p of spots) {
+      if (seen.pickups.includes(p.id)) continue;
+      seen.pickups.push(p.id);
+      if (!first && prefs.pickups && (!p.region || !home || home === 'all' || p.region === home)) {
+        out.push({ key: `newpickup:${p.id}`, title: `New pickup: ${p.name}`, body: `${DAYS_LONG[p.day_of_week]}s ${p.start_time}, ${p.city}. Tap “I go here” if it’s yours.`, url: '/hub/pickups' });
       }
     }
   }
