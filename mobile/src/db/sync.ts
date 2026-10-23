@@ -127,7 +127,18 @@ async function push(db: SQLiteDatabase): Promise<Pick<SyncResult, 'pushed' | 're
         if (row) rows.push(Object.fromEntries(cols.map((c) => [c, row[c] ?? null])));
       }
       const ok = async (subset: Record<string, unknown>[], items2: typeof chunk) => {
-        if (subset.length) {
+        if (subset.length && spec.name === 'person') {
+          // Surnames aren't readable on the server (minors show an initial), and an upsert's
+          // "on conflict update" needs read access to every column it sets. So: add new players,
+          // then update existing ones; an update only needs to read the id.
+          const { error } = await supabase.from('person').upsert(subset, { onConflict: 'id', ignoreDuplicates: true });
+          if (error) return error;
+          for (const r of subset) {
+            const { id, ...rest } = r;
+            const { error: e2 } = await supabase.from('person').update(rest).eq('id', id as string);
+            if (e2) return e2;
+          }
+        } else if (subset.length) {
           const { error } = await supabase.from(spec.name).upsert(subset, { onConflict: spec.pk.join(',') });
           if (error) return error;
         }
@@ -324,14 +335,15 @@ const MINE: [string, string][] = [
 export async function requeueMine(db: SQLiteDatabase) {
   const me = await meta(db, 'me_person_id');
   const user = await meta(db, 'signed_in');
-  if (!me || !user || (await meta(db, 'requeued_mine')) === user) return;
+  // v2: players couldn't upload at all before the person-table fix, so everyone re-sends once more.
+  if (!me || !user || (await meta(db, 'requeued_mine')) === `${user}:2`) return;
   const at = new Date().toISOString();
   const q = (tbl: string, id: string) =>
     db.runAsync(`INSERT INTO sync_outbox (tbl, pk, op, at) VALUES (?, ?, 'upsert', ?) ON CONFLICT(tbl, pk) DO NOTHING`, tbl, JSON.stringify({ id }), at);
   await q('person', me);
   for (const [tbl, col] of MINE) for (const r of await db.getAllAsync<{ id: string }>(`SELECT id FROM ${tbl} WHERE ${col} = ?`, me)) await q(tbl, r.id);
   for (const r of await db.getAllAsync<{ id: string }>(`SELECT id FROM follow`)) await q('follow', r.id);
-  await setMeta(db, 'requeued_mine', user);
+  await setMeta(db, 'requeued_mine', `${user}:2`);
 }
 
 export async function prepareFirstSync(db: SQLiteDatabase) {
