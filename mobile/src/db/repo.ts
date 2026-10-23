@@ -1085,6 +1085,8 @@ export function endGame(db: SQLiteDatabase, data: GameData, reason: EndReason = 
     // Drop the empty point that was waiting for a pull.
     const open = data.points.filter((p) => !p.pulled_at && !p.scored_at);
     for (const p of open) {
+      // A timeout (or sub) called before the pull still happened: keep it, just not on a point that never started.
+      await db.runAsync(`UPDATE game_event SET point_id = NULL WHERE point_id = ?`, p.id);
       await db.runAsync(`DELETE FROM point_player WHERE point_id = ?`, p.id);
       await db.runAsync(`DELETE FROM point WHERE id = ?`, p.id);
     }
@@ -1145,6 +1147,8 @@ export function undo(db: SQLiteDatabase, data: GameData) {
     const previous = current && !current.pulled_at ? points[1] : current;
     if (!previous?.scored_at) return 'nothing';
     if (current && current !== previous) {
+      // Undone pre-pull timeouts still name this point; unhook them so it can go.
+      await db.runAsync(`UPDATE game_event SET point_id = NULL WHERE point_id = ?`, current.id);
       await db.runAsync(`DELETE FROM point_player WHERE point_id = ?`, current.id);
       await db.runAsync(`DELETE FROM point WHERE id = ?`, current.id);
     }
