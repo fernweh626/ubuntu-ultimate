@@ -109,6 +109,13 @@ export async function grantLevel(db: SQLiteDatabase, personId: string, level: 'a
   await syncNow(db);
 }
 
+/** Several at once (staff's "Approve selected"), optionally labelling them core / guest / mercenary. */
+export async function decideJoinRequests(db: SQLiteDatabase, requestIds: string[], approve: boolean, kind?: 'core' | 'guest' | 'mercenary' | null) {
+  const { error } = await supabase.rpc('decide_join_requests', { reqs: requestIds, approve, as_kind: kind ?? null });
+  if (error) throw new Error(friendly(error.message));
+  await syncNow(db);
+}
+
 export async function decideJoinRequest(db: SQLiteDatabase, requestId: string, approve: boolean) {
   const { error } = await supabase.rpc('decide_join_request', { req: requestId, approve });
   if (error) throw new Error(friendly(error.message));

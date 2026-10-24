@@ -463,11 +463,27 @@ export function pendingJoinRequests(db: SQLiteDatabase, teamId: string) {
 }
 
 /** Without an account the decision is local: approving adds them to the team. */
-export async function decideJoinLocally(db: SQLiteDatabase, id: string, approve: boolean) {
+export async function decideJoinLocally(db: SQLiteDatabase, id: string, approve: boolean, kind?: JoinKind | null) {
   const r = await db.getFirstAsync<{ person_id: string; team_id: string; kind: JoinKind }>(`SELECT person_id, team_id, kind FROM join_request WHERE id = ?`, id);
   if (!r) return;
-  await write(db, () => db.runAsync(`UPDATE join_request SET status = ?, updated_at = ? WHERE id = ?`, approve ? 'approved' : 'declined', now(), id));
-  if (approve) await joinTeam(db, r.person_id, r.team_id, r.kind, null);
+  const as = kind ?? r.kind;
+  await write(db, () => db.runAsync(`UPDATE join_request SET status = ?, kind = ?, updated_at = ? WHERE id = ?`, approve ? 'approved' : 'declined', as, now(), id));
+  if (approve) await joinTeam(db, r.person_id, r.team_id, as, null);
+}
+
+/** Pending requests for every team I run, for the "people want to join" pop-up. */
+export function pendingForStaff(db: SQLiteDatabase, teamIds: string[]) {
+  if (!teamIds.length) return Promise.resolve([] as { id: string; team_id: string; team: string }[]);
+  return db.getAllAsync<{ id: string; team_id: string; team: string }>(
+    `SELECT r.id, r.team_id, t.name AS team FROM join_request r JOIN team t ON t.id = r.team_id
+      WHERE r.status = 'pending' AND r.team_id IN (${teamIds.map(() => '?').join(',')}) ORDER BY r.created_at`,
+    ...teamIds,
+  );
+}
+
+/** Label someone already on the roster: core, guest or pick-up (mercenary). */
+export function setMembershipKind(db: SQLiteDatabase, membershipId: string, kind: JoinKind) {
+  return write(db, () => db.runAsync(`UPDATE membership SET kind = ?, updated_at = ? WHERE id = ?`, kind, now(), membershipId));
 }
 
 /** Banking details for a team or club (staff edit them; shown with Copy and Share). */
@@ -630,6 +646,7 @@ export type GameListItem = Game & {
   a_short: string | null;
   b_short: string | null;
   event_name: string | null;
+  event_kind: string | null;
   score_a: number;
   score_b: number;
   venue_name: string | null;
@@ -640,7 +657,7 @@ export type GameListItem = Game & {
 
 const GAME_LIST_SQL = `
   SELECT g.*, ta.name AS a_name, tb.name AS b_name, ta.primary_color AS a_color, tb.primary_color AS b_color,
-         ta.short_name AS a_short, tb.short_name AS b_short, e.name AS event_name,
+         ta.short_name AS a_short, tb.short_name AS b_short, e.name AS event_name, e.kind AS event_kind,
          CASE WHEN g.forfeit_team_id = g.team_a_id THEN 0
               WHEN g.forfeit_team_id = g.team_b_id THEN COALESCE(json_extract(g.rules_json, '$.pointTarget'), 15)
               WHEN g.result_mode = 'score' THEN COALESCE(g.final_a, 0)

@@ -7,10 +7,10 @@ import { setAvailability } from '@/db/development';
 import { dayLabel } from '@/db/home';
 import { useData } from '@/db/live';
 import { setMeetingRsvp, setPickupRsvp, setRsvp } from '@/db/repo';
-import { mySchedule, type ScheduleItem } from '@/db/schedule';
+import { attended, myPastSchedule, mySchedule, type ScheduleItem } from '@/db/schedule';
 import { timeOfDay } from '@/domain/format';
 import { AnswerButtons, type Answer } from '@/ui/answer';
-import { Button, Card, Chip, EmptyState, Screen, Section, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, EmptyState, Screen, Section, Segmented, StatTile, T } from '@/ui/components';
 import { KindIcon } from '@/ui/kind-icon';
 import { colors, font, space } from '@/ui/theme';
 
@@ -23,7 +23,18 @@ export default function Schedule() {
   const db = useSQLiteContext();
   const data = useData((d) => mySchedule(d));
   const [opened] = useState(() => Date.now());
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   if (!data) return <Screen edges={[]}>{null}</Screen>;
+  if (tab === 'past')
+    return (
+      <>
+        <Stack.Screen options={{ title: 'My schedule' }} />
+        <Screen edges={[]}>
+          <Segmented value={tab} onChange={setTab} options={[{ value: 'upcoming', label: 'Upcoming' }, { value: 'past', label: 'Past' }]} />
+          <PastSchedule />
+        </Screen>
+      </>
+    );
   const { meId, items, teams } = data;
 
   const done = items.filter((i) => (i.kind === 'practice' || i.kind === 'game') && Date.parse(i.endAt) < opened && !i.cancelled && i.played && !i.checkedIn && i.gameStatus !== 'scheduled');
@@ -51,6 +62,7 @@ export default function Schedule() {
     <>
       <Stack.Screen options={{ title: 'My schedule' }} />
       <Screen edges={[]}>
+        {meId ? <Segmented value={tab} onChange={setTab} options={[{ value: 'upcoming', label: 'Upcoming' }, { value: 'past', label: 'Past' }]} /> : null}
         {!meId ? (
           <EmptyState icon="calendar-account-outline" title="Nothing to show yet" body="Pick yourself in Me first. Then your team’s practices and games, hats you sign up for, meetings and the pickups you go to all show up here." />
         ) : (
@@ -139,6 +151,71 @@ export default function Schedule() {
           </>
         )}
       </Screen>
+    </>
+  );
+}
+
+const WENT: Record<ReturnType<typeof attended>, { label: string; tone: 'brand' | 'neutral' | 'warn' }> = {
+  went: { label: 'Went', tone: 'brand' },
+  missed: { label: 'Missed', tone: 'neutral' },
+  unknown: { label: 'No answer', tone: 'warn' },
+};
+const KIND_PLURAL: Record<ScheduleItem['kind'], string> = { practice: 'Practices', game: 'Games', pickup: 'Pickups', hat: 'Hats', meeting: 'Meetings' };
+
+/** The last year: what you went to, month by month, with totals at the top. */
+function PastSchedule() {
+  const data = useData((d) => myPastSchedule(d));
+  const [kind, setKind] = useState<'all' | ScheduleItem['kind']>('all');
+  if (!data) return null;
+  const all = data.items.filter((i) => !i.cancelled);
+  const shown = all.filter((i) => kind === 'all' || i.kind === kind);
+  const went = (k: ScheduleItem['kind']) => all.filter((i) => i.kind === k && attended(i) === 'went').length;
+  const months: { label: string; items: ScheduleItem[] }[] = [];
+  for (const it of shown) {
+    const label = new Date(it.at).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+    const last = months[months.length - 1];
+    if (last?.label === label) last.items.push(it);
+    else months.push({ label, items: [it] });
+  }
+  const kinds = (['practice', 'game', 'pickup', 'hat', 'meeting'] as const).filter((k) => all.some((i) => i.kind === k));
+  return (
+    <>
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <StatTile value={went('practice')} label="Practices" />
+        <StatTile value={went('game')} label="Games" />
+        <StatTile value={went('pickup')} label="Pickups" />
+        <StatTile value={went('hat')} label="Hats" />
+      </View>
+      <T v="small">What you went to in the last 12 months.</T>
+      {kinds.length > 1 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {(['all', ...kinds] as const).map((k) => (
+            <Choice key={k} label={k === 'all' ? 'All' : KIND_PLURAL[k]} selected={kind === k} onPress={() => setKind(k)} style={{ minHeight: 36, paddingHorizontal: 12 }} />
+          ))}
+        </View>
+      ) : null}
+      {months.length === 0 ? <EmptyState icon="history" title="Nothing yet" body="Practices, games, hats and pickups you go to show up here once they’re over." /> : null}
+      {months.map((m) => (
+        <Section key={m.label} title={m.label}>
+          {m.items.map((it) => {
+            const w = WENT[attended(it)];
+            const href =
+              it.kind === 'practice' ? `/practice/${it.id}` : it.kind === 'hat' ? `/hat/${it.id}` : it.kind === 'meeting' ? `/hub/meeting/${it.id}` : it.kind === 'pickup' ? '/hub/pickups' : it.gameStatus === 'final' ? `/game/${it.id}/report` : `/game/${it.id}/fixture`;
+            return (
+              <Card key={it.key} onPress={() => router.push(href as never)}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                  <KindIcon kind={it.kind} />
+                  <View style={{ flex: 1 }}>
+                    <T v="bodyStrong">{it.title}</T>
+                    <T v="small">{[dayLabel(it.at), it.place].filter(Boolean).join(' · ')}</T>
+                  </View>
+                  <Chip label={w.label} tone={w.tone} />
+                </View>
+              </Card>
+            );
+          })}
+        </Section>
+      ))}
     </>
   );
 }

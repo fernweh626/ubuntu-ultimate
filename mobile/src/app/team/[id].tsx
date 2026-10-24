@@ -6,7 +6,7 @@ import { Alert, Linking, Pressable, View } from 'react-native';
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
 import { loadFinishedGames, peopleById, teamAggregate } from '@/db/reports';
-import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, sessionsForTeam, setMembershipRole, upcomingPractices, setTeamLogo, shoutoutsForTeam } from '@/db/repo';
+import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, sessionsForTeam, setMembershipKind, setMembershipRole, upcomingPractices, setTeamLogo, shoutoutsForTeam } from '@/db/repo';
 import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format';
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
@@ -39,6 +39,7 @@ export default function TeamPage() {
   const players = useData((d) => roster(d, id), [id]);
   const access = useData(getAccess);
   const [rolesSheet, setRolesSheet] = useState(false);
+  const [labelFor, setLabelFor] = useState<string | null>(null);
   const [rolePerson, setRolePerson] = useState<string | null>(null);
   const lines = useData((d) => savedLines(d, id), [id]);
   const games = useData((d) => listGamesForTeam(d, id), [id]);
@@ -196,6 +197,7 @@ export default function TeamPage() {
               </View>
             ) : undefined
           }>
+          {canManage && players?.length ? <T v="small">Tap a player to label them core, guest or pick-up, or to open their page.</T> : null}
           {players && players.length ? (
             <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
               <MatchingGroups
@@ -212,7 +214,7 @@ export default function TeamPage() {
                       </View>
                     }
                     left={<Avatar uri={p.photo_uri} name={displayName(p)} size={36} tone="tint" />}
-                    onPress={() => router.push(`/player/${p.id}`)}
+                    onPress={() => (canManage ? setLabelFor(p.id) : router.push(`/player/${p.id}`))}
                   />
                 )}
               />
@@ -318,6 +320,15 @@ export default function TeamPage() {
           )}
         </Section>
       </Screen>
+      <LabelSheet
+        player={players?.find((x) => x.id === labelFor) ?? null}
+        onClose={() => setLabelFor(null)}
+        onRole={(pid) => {
+          setLabelFor(null);
+          setRolePerson(pid);
+          setRolesSheet(true);
+        }}
+      />
       <Sheet
         visible={rolesSheet}
         onClose={() => {
@@ -371,5 +382,41 @@ export default function TeamPage() {
         }}
       />
     </>
+  );
+}
+
+/** Staff: label someone on the roster (core, guest or pick-up), open their page, or set their role. */
+function LabelSheet({ player, onClose, onRole }: { player: { id: string; membership_id: string; membership_kind: 'core' | 'guest' | 'mercenary'; first_name: string; last_name: string; birth_date: string | null } | null; onClose: () => void; onRole: (personId: string) => void }) {
+  const db = useSQLiteContext();
+  return (
+    <Sheet visible={!!player} onClose={onClose} title={player ? displayName(player) : ''}>
+      {player ? (
+        <>
+          <Button
+            label="Open their page (stats, seasons)"
+            icon="account-outline"
+            onPress={() => {
+              onClose();
+              router.push(`/player/${player.id}`);
+            }}
+          />
+          <T v="smallStrong">Label on this team</T>
+          {(['core', 'guest', 'mercenary'] as const).map((k) => (
+            <Choice
+              key={k}
+              label={k === 'mercenary' ? 'Pick-up (one tournament)' : KIND_LABEL[k]}
+              sublabel={k === 'core' ? 'Regular member' : k === 'guest' ? 'Playing with you for a while' : 'Filling in for one event'}
+              selected={player.membership_kind === k}
+              onPress={async () => {
+                await setMembershipKind(db, player.membership_id, k);
+                onClose();
+              }}
+              style={{ alignItems: 'flex-start' }}
+            />
+          ))}
+          <Button label="Role (captain, coach…)" icon="shield-account-outline" kind="ghost" onPress={() => onRole(player.id)} />
+        </>
+      ) : null}
+    </Sheet>
   );
 }

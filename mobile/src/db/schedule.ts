@@ -34,7 +34,20 @@ export type ScheduleItem = {
 const localIso = (date: string, time: string | null) => new Date(`${date}T${time || '09:00'}:00`).toISOString();
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-export async function mySchedule(db: SQLiteDatabase, now = new Date(), weeks = 4) {
+/** What's over: the last year of practices, games, hats, meetings and pickups, newest first. */
+export async function myPastSchedule(db: SQLiteDatabase, now = new Date()) {
+  const r = await mySchedule(db, now, 0, 365);
+  return { ...r, items: r.items.filter((i) => Date.parse(i.endAt) < now.getTime()).reverse() };
+}
+
+/** Did I go? Practices and pickups from my answer (or check-in), games from the confirmed line-up. */
+export function attended(i: ScheduleItem): 'went' | 'missed' | 'unknown' {
+  if (i.kind === 'game') return i.played ? 'went' : i.status === 'unavailable' ? 'missed' : 'unknown';
+  if (i.kind === 'practice') return i.status === 'not_going' ? 'missed' : i.played || i.checkedIn ? 'went' : 'unknown';
+  return i.status === 'not_going' ? 'missed' : i.status ? 'went' : 'unknown';
+}
+
+export async function mySchedule(db: SQLiteDatabase, now = new Date(), weeks = 4, daysBack = 7) {
   const meId = await getMeId(db);
   if (!meId) return { meId: null, items: [] as ScheduleItem[], teams: 0 };
   const teams = await db.getAllAsync<{ team_id: string; name: string }>(
@@ -44,7 +57,7 @@ export async function mySchedule(db: SQLiteDatabase, now = new Date(), weeks = 4
   );
   const ids = teams.map((t) => t.team_id);
   const q = ids.map(() => '?').join(',');
-  const from = new Date(now.getTime() - 7 * 86400_000).toISOString();
+  const from = new Date(now.getTime() - daysBack * 86400_000).toISOString();
   const to = new Date(now.getTime() + weeks * 7 * 86400_000).toISOString();
   const multi = teams.length > 1;
 
@@ -177,6 +190,16 @@ async function personalItems(db: SQLiteDatabase, meId: string, now: Date, from: 
       const endAt = p.end_time ? localIso(day, p.end_time) : new Date(d.getTime() + 2 * 3600_000).toISOString();
       out.push({ ...base, key: `k:${p.id}:${day}`, kind: 'pickup', id: p.id, onDate: day, at, endAt, title: p.name, place: [p.venue_text, p.city].filter(Boolean).join(' · '), status: mine, coming: here.filter((r) => r.status !== 'not_going').length, late: here.filter((r) => r.status === 'late').length, cant: here.filter((r) => r.status === 'not_going').length });
     }
+  }
+  // Pickups that are over: the days I said I'd come.
+  const past = await db.getAllAsync<{ id: string; name: string; start_time: string; end_time: string | null; venue_text: string | null; city: string; on_date: string; status: string }>(
+    `SELECT p.id, p.name, p.start_time, p.end_time, p.venue_text, p.city, r.on_date, r.status FROM pickup_rsvp r JOIN pickup_spot p ON p.id = r.pickup_id
+      WHERE r.person_id = ? AND r.on_date >= ? AND r.on_date < ? AND p.deleted_at IS NULL`,
+    meId, fromDay, ymd(now),
+  );
+  for (const p of past) {
+    const at = localIso(p.on_date, p.start_time);
+    out.push({ ...base, key: `k:${p.id}:${p.on_date}`, kind: 'pickup', id: p.id, onDate: p.on_date, at, endAt: p.end_time ? localIso(p.on_date, p.end_time) : new Date(Date.parse(at) + 2 * 3600_000).toISOString(), title: p.name, place: [p.venue_text, p.city].filter(Boolean).join(' · '), status: p.status });
   }
   return out;
 }

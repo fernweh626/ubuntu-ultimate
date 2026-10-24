@@ -5,6 +5,7 @@ import type { GameListItem } from '@/db/repo';
 import { shortDate, timeOfDay } from '@/domain/format';
 
 import { Card, Chip, Icon, T, TeamSwatch } from './components';
+import { TeamLink } from './links';
 import { colors, font, space } from './theme';
 
 const isYouTube = (url: string) => /youtube\.com|youtu\.be/i.test(url);
@@ -45,17 +46,17 @@ export function GameCard({ g }: { g: GameListItem }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
           <TeamSwatch color={g.a_color} />
-          <T v="bodyStrong" numberOfLines={2} style={{ flex: 1, opacity: bWon ? 0.6 : 1 }}>
+          <TeamLink id={g.team_a_id} v="bodyStrong" numberOfLines={2} style={{ flex: 1, opacity: bWon ? 0.6 : 1 }}>
             {g.a_name}
-          </T>
+          </TeamLink>
         </View>
         <T style={{ fontFamily: font.display, fontSize: 34, lineHeight: 38 }}>
           {g.result_mode === 'winner' ? (g.score_a > g.score_b ? 'W – L' : 'L – W') : g.result_mode === 'none' ? 'Played' : `${g.score_a} – ${g.score_b}`}
         </T>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, justifyContent: 'flex-end' }}>
-          <T v="bodyStrong" numberOfLines={2} style={{ flex: 1, textAlign: 'right', opacity: aWon ? 0.6 : 1 }}>
+          <TeamLink id={g.team_b_id} v="bodyStrong" numberOfLines={2} style={{ flex: 1, textAlign: 'right', opacity: aWon ? 0.6 : 1 }}>
             {g.b_name}
-          </T>
+          </TeamLink>
           <TeamSwatch color={g.b_color} />
         </View>
       </View>
@@ -79,14 +80,14 @@ export function FixtureCard({ g }: { g: GameListItem }) {
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <TeamSwatch color={homeColor} size="sm" />
-        <T style={{ fontFamily: font.bold, fontSize: 17, flexShrink: 1 }} numberOfLines={1}>
+        <TeamLink id={home} style={{ fontFamily: font.bold, fontSize: 17, flexShrink: 1 }} numberOfLines={1}>
           {homeName}
-        </T>
+        </TeamLink>
         <T v="small">v</T>
         <TeamSwatch color={awayColor} size="sm" />
-        <T style={{ fontFamily: font.bold, fontSize: 17, flexShrink: 1 }} numberOfLines={1}>
+        <TeamLink id={home === g.team_a_id ? g.team_b_id : g.team_a_id} style={{ fontFamily: font.bold, fontSize: 17, flexShrink: 1 }} numberOfLines={1}>
           {awayName}
-        </T>
+        </TeamLink>
       </View>
       <T v="small" numberOfLines={1}>
         {[g.venue_name, g.event_name, `${homeName} sets up`].filter(Boolean).join(' · ')}

@@ -18,6 +18,7 @@ import { BreakClock } from '@/ui/break-clock';
 import { Button, Card, Chip, Field, Icon, IconButton, RatioBadge, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
+import { PlayerLink, TeamLink } from '@/ui/links';
 import { colors, font, space } from '@/ui/theme';
 
 export default function GameReport() {
@@ -248,7 +249,9 @@ export default function GameReport() {
               const s = t.id === ta.id ? A : B;
               return (
                 <View key={t.id} style={{ gap: space.sm, marginBottom: space.sm }}>
-                  <T v="smallStrong">{t.name}</T>
+                  <TeamLink id={t.id} v="smallStrong">
+                    {t.name}
+                  </TeamLink>
                   <Bars
                     rows={[
                       { label: 'Throwaways', value: s.throwaways, color: t.primary_color ?? undefined },
@@ -355,7 +358,9 @@ export default function GameReport() {
               return (
                 <Card key={t.id}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <T v="bodyStrong">{t.name}</T>
+                    <TeamLink id={t.id} v="bodyStrong">
+                      {t.name}
+                    </TeamLink>
                     {pending ? <Chip label={`${pending} to confirm`} tone="warn" /> : <Chip label="Confirmed" icon="check" />}
                   </View>
                   {isStaff && pending ? <Button label="Confirm everyone below" icon="check-all" kind="primary" onPress={() => confirmTeamRoster(db, id, t.id)} /> : null}
@@ -368,7 +373,9 @@ export default function GameReport() {
                       <View key={gp.person_id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 44, opacity: gp.confirmation === 'removed' ? 0.5 : 1 }}>
                         <View style={{ flex: 1 }}>
                           <T v="smallStrong">
-                            {displayName(p)}
+                            <PlayerLink id={gp.person_id} v="smallStrong">
+                              {displayName(p)}
+                            </PlayerLink>
                             {gp.added_in_game ? <T v="small"> · added on the day</T> : null}
                           </T>
                           <T v="small">{status}</T>

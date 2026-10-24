@@ -9,7 +9,7 @@ import { addGamePlayer, getPerson, getTeam, loadGameData, recentLoad, saveLine, 
 import type { GamePlayer } from '@/db/types';
 import { deriveState, fitness, lineFor, type Fitness } from '@/domain/engine';
 import { shortName } from '@/domain/format';
-import { lineNeed, ratioCode } from '@/domain/rules';
+import { canAddToLine, lineNeed, ratioCode } from '@/domain/rules';
 import { BreakClock } from '@/ui/break-clock';
 import { Button, Choice, Field, Footer, Icon, RatioBadge, Screen, Sheet, T } from '@/ui/components';
 import { QuickAddPlayer } from '@/ui/quick-add-player';
@@ -78,8 +78,14 @@ export default function LineBuilder() {
     return [...ws, ...ms, ...rest].slice(0, LINE_SIZE);
   }
 
-  const toggle = (pid: string) =>
-    setChosen(chosen.includes(pid) ? chosen.filter((x) => x !== pid) : chosen.length >= LINE_SIZE ? chosen : [...chosen, pid]);
+  const fits = (pid: string) => canAddToLine(chosen.map(gender), gender(pid), need, LINE_SIZE);
+  const toggle = (pid: string) => {
+    if (chosen.includes(pid)) return setChosen(chosen.filter((x) => x !== pid));
+    if (fits(pid)) return setChosen([...chosen, pid]);
+    const g = gender(pid);
+    if (chosen.length < LINE_SIZE && need && (g === 'W' || g === 'M'))
+      Alert.alert(`${need[g]} ${g === 'W' ? 'women' : 'men'} already on`, `This point is ${need.W}F ${need.M}M. Take someone off first.`);
+  };
 
   function suggestFor(pid: string) {
     const p = person(pid);
@@ -130,6 +136,7 @@ export default function LineBuilder() {
     const level = gp.status === 'tired' ? 'tired' : heavy && base === 'fresh' ? 'tiring' : base;
     const injured = gp.status === 'injured';
     const subs = on && level !== 'fresh' ? suggestFor(pid) : [];
+    const full = !on && !fits(pid);
     return (
       <View key={pid} style={{ gap: 6 }}>
         <Pressable
@@ -155,7 +162,7 @@ export default function LineBuilder() {
             borderWidth: on ? 2 : 1,
             borderColor: on ? (level === 'tired' ? colors.danger : colors.brand) : colors.border,
             backgroundColor: injured ? colors.neutralTint : on ? colors.brandTint : pressed ? colors.neutralTint : colors.surface,
-            opacity: injured ? 0.55 : 1,
+            opacity: injured ? 0.55 : full ? 0.45 : 1,
           })}>
           <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: injured ? colors.faint : DOT[level] }} />
           <View style={{ flex: 1 }}>
@@ -170,7 +177,7 @@ export default function LineBuilder() {
             </T>
           </View>
           <PosTag position={gp.position ?? p.position} />
-          <Icon name={on ? 'check-circle' : 'plus-circle-outline'} color={on ? colors.brand : colors.faint} />
+          <Icon name={on ? 'check-circle' : full ? 'minus-circle-outline' : 'plus-circle-outline'} color={on ? colors.brand : colors.faint} />
         </Pressable>
         {subs.length ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingLeft: space.xl }}>

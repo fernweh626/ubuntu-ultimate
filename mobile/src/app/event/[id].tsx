@@ -14,6 +14,7 @@ import { FollowButton } from '@/ui/follow-button';
 import { FormDots, GameCard } from '@/ui/game-bits';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
+import { TeamLink } from '@/ui/links';
 import { colors, font, space } from '@/ui/theme';
 
 type Tab = 'standings' | 'games' | 'playoffs' | 'results' | 'leaders' | 'teams' | 'spirit';
@@ -119,9 +120,9 @@ export default function EventPage() {
             </T>
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
               <TeamSwatch color={t.primary_color} size="sm" />
-              <T v="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
+              <TeamLink id={t.id} v="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
                 {t.name}
-              </T>
+              </TeamLink>
             </View>
             <View style={{ width: 64 }}>
               <FormDots form={a.form} />
@@ -340,9 +341,9 @@ export default function EventPage() {
                 key={a.teamId}
                 onPress={() => router.push({ pathname: '/team/report', params: { id: a.teamId, eventId: id } })}
                 style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.md, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.divider }}>
-                <T v="smallStrong" numberOfLines={1} style={{ flex: 1 }}>
+                <TeamLink id={a.teamId} v="smallStrong" numberOfLines={1} style={{ flex: 1 }}>
                   {teamById.get(a.teamId)?.name}
-                </T>
+                </TeamLink>
                 <T style={{ width: 52, textAlign: 'center' }}>{pct(a.holds, a.oPoints)}</T>
                 <T style={{ width: 52, textAlign: 'center' }}>{pct(a.breaks, a.dPoints)}</T>
                 <T style={{ width: 52, textAlign: 'center' }}>{pct(a.cleanHolds, a.oPoints)}</T>

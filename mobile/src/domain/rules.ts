@@ -24,6 +24,16 @@ export function lineNeed(ratio: 'W' | 'M' | string | null, perSide = 7) {
   return { W: ratio === 'W' ? major : minor, M: ratio === 'M' ? major : minor };
 }
 
+/**
+ * Whether one more player of this gender fits on the line: never more than the line size, and on a
+ * ratio point never more than that ratio's women / men (e.g. a 3F point can't take a 4th woman).
+ */
+export function canAddToLine(chosen: (string | null | undefined)[], gender: string | null | undefined, need: { W: number; M: number } | null, perSide = 7) {
+  if (chosen.length >= perSide) return false;
+  if (!need || (gender !== 'W' && gender !== 'M')) return true;
+  return chosen.filter((g) => g === gender).length < need[gender];
+}
+
 export type RulesPreset = { id: string; name: string; summary: string; rules: Rules };
 
 const WFDF: Rules = {

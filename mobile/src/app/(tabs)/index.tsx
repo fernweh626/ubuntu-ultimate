@@ -15,6 +15,7 @@ import { MeButton } from '@/ui/me-button';
 import { PREVIEW } from '@/lib/preview';
 import { COUNTRY } from '@/content/countries';
 import { deadlineLabel, yearlyInfoMailto, yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
+import { JoinRequestPrompt } from '@/ui/join-team';
 import { KindIcon } from '@/ui/kind-icon';
 import { colors, font, space } from '@/ui/theme';
 
@@ -42,6 +43,7 @@ export default function Home() {
 
   return (
     <Screen>
+      <JoinRequestPrompt />
       {PREVIEW ? (
         <Pressable
           onPress={() => router.push('/feedback')}
