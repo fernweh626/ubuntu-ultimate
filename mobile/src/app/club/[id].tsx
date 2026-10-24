@@ -12,6 +12,7 @@ import { displayName } from '@/domain/format';
 import { whatsappLink } from '@/domain/standing';
 import { Button, Card, Chip, Choice, EmptyState, IconButton, Row, Screen, Section, Sheet, T } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
+import { BankingCard } from '@/ui/banking';
 import { colors, font, space } from '@/ui/theme';
 
 /** A club: its teams side by side, everyone across them, upcoming games and club staff. */
@@ -89,6 +90,7 @@ export default function ClubPage() {
           )}
         </Section>
 
+        <BankingCard name={club.name} details={club.banking_details} />
         {live.length ? (
           <Section title="Live now">
             {live.map((g) => (

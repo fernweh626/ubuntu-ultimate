@@ -12,6 +12,7 @@ import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
 import { TeamFixtures } from '@/ui/team-fixtures';
+import { BankingCard } from '@/ui/banking';
 import { MatchingGroups, PosTag } from '@/ui/roster';
 import { JoinRequests, JoinTeamBar } from '@/ui/join-team';
 import { getClub } from '@/db/clubs';
@@ -131,6 +132,8 @@ export default function TeamPage() {
         ) : null}
 
         <TeamFixtures teamId={id} games={games ?? []} meId={access?.meId ?? null} onSquad={onSquad} />
+
+        <BankingCard name={team.name} details={team.banking_details} />
 
         <Section title="Contact">
           {hasContact ? (

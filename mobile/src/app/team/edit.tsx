@@ -6,7 +6,7 @@ import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { REGIONS } from '@/content/hub';
 import { getClub, listClubs } from '@/db/clubs';
 import { useData } from '@/db/live';
-import { getTeam, saveTeam, type TeamInput } from '@/db/repo';
+import { getTeam, saveTeam, type TeamInput, setBankingDetails } from '@/db/repo';
 import { DIVISIONS } from '@/domain/divisions';
 import { Button, Choice, Field, Footer, Icon, Screen, Section, T } from '@/ui/components';
 import { PhoneField } from '@/ui/phone-field';
@@ -46,6 +46,7 @@ export default function TeamEdit() {
   async function save() {
     if (!f.name.trim()) return Alert.alert('Add the team name');
     const newId = await saveTeam(db, { ...f, id });
+    await setBankingDetails(db, 'team', newId, f.banking_details ?? null);
     if (id) router.back();
     else router.replace(`/team/${newId}`);
   }
@@ -126,6 +127,7 @@ export default function TeamEdit() {
           <Field label="Website" value={f.website ?? ''} onChangeText={opt('website')} autoCapitalize="none" />
           <Field label="Instagram or Facebook link" value={f.social ?? ''} onChangeText={opt('social')} autoCapitalize="none" />
         </Section>
+        <Field label="Banking details (optional)" value={f.banking_details ?? ''} onChangeText={opt('banking_details')} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + FEES'} hint="Shown on the team page with Copy and Share, for paying team fees." />
         <Field label="About the team" value={f.about ?? ''} onChangeText={opt('about')} multiline placeholder="Training times, who can join, anything new players should know" />
       </Screen>
     </>

@@ -22,6 +22,8 @@ export type Person = {
 
 export type Team = {
   id: string;
+  /** Account details for fees; shown to everyone who opens the team. */
+  banking_details?: string | null;
   name: string;
   short_name: string | null;
   kind: string;
@@ -43,6 +45,7 @@ export type Team = {
 
 export type Club = {
   id: string;
+  banking_details?: string | null;
   name: string;
   short_name: string | null;
   region: string | null;

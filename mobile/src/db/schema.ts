@@ -1218,6 +1218,11 @@ const MIGRATIONS: string[] = [
     WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
     BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('person_demographic', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
   `,
+  // v25: banking details for clubs and teams, easy to find and share when fees are due.
+  `
+  ALTER TABLE team ADD COLUMN banking_details TEXT;
+  ALTER TABLE club ADD COLUMN banking_details TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

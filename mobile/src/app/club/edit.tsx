@@ -5,7 +5,7 @@ import { Alert, Pressable, View } from 'react-native';
 
 import { REGIONS } from '@/content/hub';
 import { getClub, saveClub, type ClubInput } from '@/db/clubs';
-import { getMeId } from '@/db/repo';
+import { getMeId, setBankingDetails } from '@/db/repo';
 import { Button, Choice, Field, Footer, Icon, Screen, Section } from '@/ui/components';
 import { PhoneField } from '@/ui/phone-field';
 import { colors, space } from '@/ui/theme';
@@ -26,6 +26,7 @@ export default function ClubEdit() {
   async function save() {
     if (!f.name.trim()) return Alert.alert('Add the club name');
     const clubId = await saveClub(db, { ...f, id }, await getMeId(db));
+    await setBankingDetails(db, 'club', clubId, f.banking_details ?? null);
     if (id) router.back();
     else router.replace(`/club/${clubId}`);
   }
@@ -66,6 +67,7 @@ export default function ClubEdit() {
         </Section>
         <Field label="Home town / campus" value={f.city ?? ''} onChangeText={opt('city')} />
         <Field label="About the club" value={f.about ?? ''} onChangeText={opt('about')} multiline placeholder="Who you are, when you train, how to join" />
+        <Field label="Banking details (optional)" value={f.banking_details ?? ''} onChangeText={opt('banking_details')} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …'} hint="Shown on the club page with Copy and Share." />
         <Section title="Contact">
           <PhoneField label="Phone / WhatsApp" value={f.contact_phone ?? ''} onChange={opt('contact_phone')} />
           <Field label="Email" value={f.contact_email ?? ''} onChangeText={opt('contact_email')} keyboardType="email-address" autoCapitalize="none" />

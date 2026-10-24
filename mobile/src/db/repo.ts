@@ -470,6 +470,11 @@ export async function decideJoinLocally(db: SQLiteDatabase, id: string, approve:
   if (approve) await joinTeam(db, r.person_id, r.team_id, r.kind, null);
 }
 
+/** Banking details for a team or club (staff edit them; shown with Copy and Share). */
+export function setBankingDetails(db: SQLiteDatabase, table: 'team' | 'club', id: string, text: string | null) {
+  return write(db, () => db.runAsync(`UPDATE ${table} SET banking_details = ?, updated_at = ? WHERE id = ?`, text?.trim() || null, now(), id));
+}
+
 /** Leaving keeps the history: the membership gets an end date instead of being deleted. */
 export function leaveTeam(db: SQLiteDatabase, membershipId: string) {
   return write(db, () =>

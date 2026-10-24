@@ -11,7 +11,7 @@ const ok = (name: string, cond: boolean, extra: unknown = '') => console.log(con
 (async () => {
   const db: any = open();
   await migrate(db); await migrate(db);
-  ok('migrate twice', (await db.getFirstAsync('PRAGMA user_version')).user_version === 24);
+  ok('migrate twice', (await db.getFirstAsync('PRAGMA user_version')).user_version === 25);
   await seedIfEmpty(db); await seedIfEmpty(db); await ensureStarterContent(db);
   const teams = await repo.listTeams(db);
   ok('seed teams (24 clubs + 2 samples)', teams.length === 26, teams.length);
