@@ -34,6 +34,31 @@ export async function pickPhoto(source: 'camera' | 'library', name: string): Pro
   return dest.uri;
 }
 
+/** Pick up to `max` screenshots (no cropping), kept until they're sent. Returns file or data URIs. */
+export async function pickScreenshots(max: number): Promise<string[]> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    Alert.alert('Permission needed', 'Allow photo access to add screenshots.');
+    return [];
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: max, quality: 0.6, base64: IS_WEB });
+  if (result.canceled) return [];
+  const out: string[] = [];
+  for (const a of result.assets.slice(0, max)) {
+    if (IS_WEB) {
+      out.push(a.base64 ? `data:${a.mimeType ?? 'image/jpeg'};base64,${a.base64}` : await webDataUrl(a.uri));
+      continue;
+    }
+    const dir = new Directory(Paths.document, 'feedback');
+    if (!dir.exists) dir.create();
+    const ext = a.uri.split('.').pop()?.toLowerCase() === 'png' ? 'png' : 'jpg';
+    const dest = new File(dir, `shot-${Date.now()}-${out.length}.${ext}`);
+    new File(a.uri).copy(dest);
+    out.push(dest.uri);
+  }
+  return out;
+}
+
 /** Remove a photo we stored earlier; ignores anything outside our photos folder. */
 export function deletePhoto(uri: string | null | undefined) {
   if (!uri || !uri.includes('/photos/')) return;

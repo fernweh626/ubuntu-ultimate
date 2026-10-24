@@ -1,8 +1,9 @@
+import { Image } from 'expo-image';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, View } from 'react-native';
 
-import { allFeedback, setFeedbackStatus, type ServerFeedback } from '@/db/feedback-send';
+import { allFeedback, feedbackImageUrls, setFeedbackStatus, type ServerFeedback } from '@/db/feedback-send';
 import { shortDate } from '@/domain/format';
 import { Button, Card, Chip, Choice, Field, Screen, Segmented, Sheet, T } from '@/ui/components';
 import { colors, space } from '@/ui/theme';
@@ -63,6 +64,7 @@ export default function FeedbackAdmin() {
                 {f.body}
               </T>
             ) : null}
+            {f.images ? <T v="small">📎 {(JSON.parse(f.images) as string[]).length} screenshot(s)</T> : null}
           </Card>
         ))}
       </Screen>
@@ -70,6 +72,7 @@ export default function FeedbackAdmin() {
         {open ? (
           <>
             {open.body ? <T>{open.body}</T> : null}
+            <Screenshots images={open.images} />
             <T v="small">{[open.app_version, open.device, open.person_id && open.contact_ok ? `player ${open.person_id.slice(0, 8)}` : null].filter(Boolean).join(' · ')}</T>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
               {(Object.keys(STATUS) as ServerFeedback['status'][]).map((s) => (
@@ -100,5 +103,28 @@ export default function FeedbackAdmin() {
         ) : null}
       </Sheet>
     </>
+  );
+}
+
+/** A report's screenshots, from the private bucket (links last an hour). Tap to open full size. */
+function Screenshots({ images }: { images: string | null }) {
+  const [urls, setUrls] = useState<string[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    feedbackImageUrls(images).then((u) => live && setUrls(u)).catch(() => live && setUrls([]));
+    return () => {
+      live = false;
+    };
+  }, [images]);
+  if (!images) return null;
+  if (!urls) return <T v="small">Loading screenshots…</T>;
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+      {urls.map((u) => (
+        <Pressable key={u} onPress={() => Linking.openURL(u)} accessibilityRole="imagebutton" accessibilityLabel="Open screenshot">
+          <Image source={{ uri: u }} style={{ width: 96, height: 170, borderRadius: 8, borderWidth: 1, borderColor: colors.border }} contentFit="cover" />
+        </Pressable>
+      ))}
+    </View>
   );
 }

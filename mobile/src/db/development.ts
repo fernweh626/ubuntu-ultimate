@@ -260,13 +260,13 @@ export async function attendanceRanking(db: SQLiteDatabase, teamId: string, sinc
 /* ---------------- Feedback ---------------- */
 
 export type FeedbackKind = 'bug' | 'feature' | 'enhancement' | 'other';
-export type FeedbackRow = { id: string; kind: FeedbackKind; title: string; body: string | null; screen: string | null; app_version: string | null; device: string | null; contact_ok: number; person_id: string | null; created_at: string; sent_at: string | null };
+export type FeedbackRow = { id: string; kind: FeedbackKind; title: string; body: string | null; screen: string | null; app_version: string | null; device: string | null; contact_ok: number; person_id: string | null; created_at: string; sent_at: string | null; images_json?: string | null };
 
 export function saveFeedback(db: SQLiteDatabase, f: Omit<FeedbackRow, 'id' | 'created_at' | 'sent_at'>) {
   return write(db, async () => {
     const id = uuid();
     await db.runAsync(
-      `INSERT INTO feedback (id, kind, title, body, screen, app_version, device, contact_ok, person_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO feedback (id, kind, title, body, screen, app_version, device, contact_ok, person_id, images_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       f.kind,
       f.title,
@@ -276,6 +276,7 @@ export function saveFeedback(db: SQLiteDatabase, f: Omit<FeedbackRow, 'id' | 'cr
       f.device,
       f.contact_ok,
       f.person_id,
+      f.images_json ?? null,
       now(),
     );
     return id;

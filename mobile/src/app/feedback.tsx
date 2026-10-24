@@ -3,14 +3,16 @@ import * as Device from 'expo-device';
 import { router, Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Alert, Platform, Switch, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Alert, Platform, Pressable, Switch, View } from 'react-native';
 
 import { myFeedback, saveFeedback, type FeedbackKind } from '@/db/development';
 import { sendPendingFeedback } from '@/db/feedback-send';
 import { useData } from '@/db/live';
 import { getAccess } from '@/db/repo';
 import { shortDate } from '@/domain/format';
-import { Button, Card, Chip, Choice, Field, Footer, Screen, Section, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, Field, Footer, Icon, Screen, Section, T } from '@/ui/components';
+import { pickScreenshots } from '@/ui/photo';
 import { colors, space } from '@/ui/theme';
 
 const KINDS: { value: FeedbackKind; label: string; hint: string; titleHint: string }[] = [
@@ -30,6 +32,7 @@ export default function Feedback() {
   const [body, setBody] = useState('');
   const [where, setWhere] = useState('');
   const [contact, setContact] = useState(true);
+  const [shots, setShots] = useState<string[]>([]);
   const k = KINDS.find((x) => x.value === kind)!;
 
   async function send() {
@@ -43,10 +46,12 @@ export default function Feedback() {
       device: `${Device.manufacturer ?? ''} ${Device.modelName ?? ''} · ${Platform.OS} ${Device.osVersion ?? ''}`.trim().slice(0, 200),
       contact_ok: contact ? 1 : 0,
       person_id: access?.meId ?? null,
+      images_json: shots.length ? JSON.stringify(shots) : null,
     });
     const n = await sendPendingFeedback(db).catch(() => 0);
     setTitle('');
     setBody('');
+    setShots([]);
     setWhere('');
     Alert.alert('Thank you! 🙌', n ? 'Sent. We read every one.' : 'Saved. It will send next time you have signal.');
   }
@@ -77,6 +82,26 @@ export default function Feedback() {
           maxLength={5000}
         />
         {kind === 'bug' ? <Field label="Which screen? (optional)" value={where} onChangeText={setWhere} placeholder="e.g. scoring, team page, pickups" /> : null}
+        <T v="smallStrong">Screenshots (optional, up to 3)</T>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {shots.map((uri) => (
+            <Pressable key={uri} onPress={() => setShots(shots.filter((x) => x !== uri))} accessibilityRole="button" accessibilityLabel="Remove screenshot">
+              <Image source={{ uri }} style={{ width: 84, height: 150, borderRadius: 8, borderWidth: 1, borderColor: colors.border }} contentFit="cover" />
+              <View style={{ position: 'absolute', top: 4, right: 4, backgroundColor: colors.surface, borderRadius: 10 }}>
+                <Icon name="close-circle" size={20} color={colors.danger} />
+              </View>
+            </Pressable>
+          ))}
+          {shots.length < 3 ? (
+            <Pressable
+              onPress={async () => setShots([...shots, ...(await pickScreenshots(3 - shots.length))].slice(0, 3))}
+              accessibilityRole="button"
+              style={{ width: 84, height: 150, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              <Icon name="image-plus" color={colors.brand} />
+              <T v="small">Add</T>
+            </Pressable>
+          ) : null}
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <T v="bodyStrong">You can contact me about this</T>

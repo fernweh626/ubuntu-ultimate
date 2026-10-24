@@ -1223,6 +1223,10 @@ const MIGRATIONS: string[] = [
   ALTER TABLE team ADD COLUMN banking_details TEXT;
   ALTER TABLE club ADD COLUMN banking_details TEXT;
   `,
+  // v26: screenshots on bug reports (local file or data URIs until sent; then storage paths).
+  `
+  ALTER TABLE feedback ADD COLUMN images_json TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {
