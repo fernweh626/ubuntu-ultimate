@@ -3,8 +3,10 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Linking, ScrollView, View } from 'react-native';
 
+import { ASSOCIATIONS } from '@/content/associations';
 import { REGIONS } from '@/content/hub';
 import { getRegistration, orgLinks, saveRegistration, standingFor, type OrgLink, type Registration } from '@/db/development';
+import { getMembership } from '@/db/membership';
 import { useData } from '@/db/live';
 import { getHomeRegion, getMeId } from '@/db/repo';
 import { standingCheck } from '@/domain/standing';
@@ -22,7 +24,7 @@ export default function RegistrationScreen() {
   if (!bundle.meId) {
     return (
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Membership numbers' }} />
+        <Stack.Screen options={{ title: 'Membership & fees' }} />
         <Card>
           <T v="bodyStrong">Pick yourself first</T>
           <T v="small">In Me, choose which player you are.</T>
@@ -79,7 +81,7 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Membership numbers' }} />
+      <Stack.Screen options={{ title: 'Membership & fees' }} />
       <Screen
         edges={[]}
         footer={
@@ -87,6 +89,7 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
             <Button label="Save" kind="primary" big onPress={save} />
           </Footer>
         }>
+        <AssociationCards meId={meId} />
         <T v="small">To play leagues, regionals and nationals you need to be paid up with SAFDA and your region. Your team staff and coordinators can see these numbers so they can help you get sorted before a tournament.</T>
         <Card>
           {line('SAFDA', reg?.safda_number, standing?.safda)}
@@ -131,6 +134,31 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
           <Button label="Merch, pickup groups & more links" icon="tshirt-crew-outline" kind="ghost" onPress={() => router.push('/hub/links')} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
         </Section>
       </Screen>
+    </>
+  );
+}
+
+const MEMBER_STATUS: Record<string, string> = { social: 'Registered (social)', waived: 'Registered', unpaid: 'Waiting for payment', claimed: 'Paid · being confirmed', paid: 'Paid ✓' };
+
+/** This year's membership with each association that runs its form in the app (CTFDA first). */
+function AssociationCards({ meId }: { meId: string }) {
+  const rows = useData(async (d) => Promise.all(Object.values(ASSOCIATIONS).map(async (a) => ({ a, m: await getMembership(d, meId, a.code, a.season) }))), [meId]) ?? [];
+  return (
+    <>
+      {rows.map(({ a, m }) => (
+        <Card key={a.code} onPress={() => router.push({ pathname: '/membership/[assoc]', params: { assoc: a.code } })} style={{ borderColor: m?.submitted_at ? colors.border : colors.brand, borderWidth: m?.submitted_at ? 1 : 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <Icon name={m?.status === 'paid' || m?.status === 'social' || m?.status === 'waived' ? 'check-decagram' : 'card-account-details-outline'} color={colors.brand} size={28} />
+            <View style={{ flex: 1 }}>
+              <T v="bodyStrong">
+                {a.short} {a.season} membership
+              </T>
+              <T v="small">{m?.submitted_at ? `${MEMBER_STATUS[m.status]}${m.number ? ` · ${m.number}` : ''}` : 'Register for the year: free for social players, fees for competitive club play'}</T>
+            </View>
+            <Icon name="chevron-right" color={colors.faint} />
+          </View>
+        </Card>
+      ))}
     </>
   );
 }

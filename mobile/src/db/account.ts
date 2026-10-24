@@ -1,8 +1,10 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { ASSOCIATIONS } from '@/content/associations';
 import { supabase } from '@/lib/supabase';
 
 import { notifyChanged } from './live';
+import { prefillFromRoster } from './membership';
 import { setMeId } from './repo';
 import { syncNow } from './sync';
 
@@ -65,6 +67,8 @@ export async function linkAccount(db: SQLiteDatabase, personId: string) {
   await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('signed_in', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, user.id);
   // Before any upload: the very first account becomes admin. It only needs the account link above.
   const admin = await claimFirstAdmin(db);
+  // Members already on an association's list (past forms): fill in what's missing from their row.
+  for (const a of Object.values(ASSOCIATIONS)) await prefillFromRoster(db, pid, a).catch(() => []);
   // The first upload can be big; let it run in the background instead of holding up this screen.
   syncNow(db).catch(() => {});
   notifyChanged();

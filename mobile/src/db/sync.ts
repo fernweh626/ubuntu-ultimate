@@ -62,6 +62,8 @@ export const TABLES: TableSpec[] = [
   { name: 'meeting_rsvp', pk: ['id'] },
   { name: 'hat_signup', pk: ['id'] },
   { name: 'pickup_rsvp', pk: ['id'] },
+  { name: 'association_membership', pk: ['id'] },
+  { name: 'person_demographic', pk: ['id'] },
   { name: 'fitness_test', pk: ['id'] },
   { name: 'reflection', pk: ['id'] },
   { name: 'shoutout', pk: ['id'] },
@@ -325,6 +327,8 @@ const MINE: [string, string][] = [
   ['reflection', 'person_id'],
   ['join_request', 'person_id'],
   ['shoutout', 'from_person_id'],
+  ['association_membership', 'person_id'],
+  ['person_demographic', 'person_id'],
 ];
 
 /**

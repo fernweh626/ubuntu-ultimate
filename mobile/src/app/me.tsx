@@ -191,6 +191,7 @@ export default function Me() {
         {level === 'admin' ? (
           <Section title="Admin">
             <View style={GROUP}>
+              <Row title="Membership register" subtitle="Who’s registered and paid, totals, exports, past forms" left={<Icon name="card-account-details-star-outline" color={colors.brand} />} onPress={() => router.push('/admin/members')} />
               <Row title="Paid-up lists" subtitle="Upload SAFDA and regional member lists (CSV)" left={<Icon name="file-upload-outline" color={colors.brand} />} onPress={() => router.push('/admin/standing')} />
               <Row title="Forms & payment links" subtitle="Where players register and pay" left={<Icon name="link-variant" color={colors.brand} />} onPress={() => router.push('/admin/links')} />
               <Row title="Bugs & ideas inbox" subtitle="Reports, access and privacy requests" left={<Icon name="inbox-full-outline" color={colors.brand} />} onPress={() => router.push('/feedback-admin')} />

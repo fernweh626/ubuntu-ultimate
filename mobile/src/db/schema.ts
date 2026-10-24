@@ -1166,6 +1166,58 @@ const MIGRATIONS: string[] = [
   ALTER TABLE event ADD COLUMN map_url TEXT;
   ALTER TABLE event ADD COLUMN website TEXT;
   `,
+  // v24: association membership (one row per person, association and season; id = assoc:season:person)
+  // and demographics (one row per person, private to them and admins).
+  `
+  CREATE TABLE association_membership (
+    id TEXT PRIMARY KEY NOT NULL,
+    person_id TEXT NOT NULL REFERENCES person(id),
+    association TEXT NOT NULL,
+    season INTEGER NOT NULL,
+    number TEXT,
+    involvement TEXT,
+    option TEXT,
+    fee_cents INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'social' CHECK (status IN ('social','unpaid','claimed','paid','waived')),
+    pay_reference TEXT,
+    consents_json TEXT,
+    note TEXT,
+    submitted_at TEXT,
+    paid_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX idx_association_membership_person ON association_membership (person_id);
+  CREATE TABLE person_demographic (
+    id TEXT PRIMARY KEY NOT NULL,
+    person_id TEXT NOT NULL UNIQUE REFERENCES person(id),
+    population_group TEXT,
+    origin TEXT CHECK (origin IN ('local','transplant')),
+    birth_year INTEGER,
+    suburb TEXT,
+    consent_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TRIGGER sync_association_membership_insert AFTER INSERT ON association_membership
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('association_membership', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_association_membership_update AFTER UPDATE ON association_membership
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('association_membership', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_association_membership_delete AFTER DELETE ON association_membership
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('association_membership', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_person_demographic_insert AFTER INSERT ON person_demographic
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('person_demographic', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_person_demographic_update AFTER UPDATE ON person_demographic
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('person_demographic', json_object('id', NEW.id), 'upsert', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  CREATE TRIGGER sync_person_demographic_delete AFTER DELETE ON person_demographic
+    WHEN (SELECT value FROM app_meta WHERE key = 'sync_pulling') IS NULL
+    BEGIN INSERT INTO sync_outbox (tbl, pk, op, at) VALUES ('person_demographic', json_object('id', OLD.id), 'delete', strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ON CONFLICT(tbl, pk) DO UPDATE SET op = excluded.op, at = excluded.at; END;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {
