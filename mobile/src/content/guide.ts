@@ -440,6 +440,21 @@ export const GUIDE: GuideSection[] = [
         steps: ['You get a notification when someone asks.', 'Open your team: “Wants to join” is near the top.', 'Tap Add to team, or No.'],
       },
       {
+        id: 'nationals',
+        title: 'What your team needs for Nationals',
+        who: 'Team staff',
+        why: 'SAFDA’s “Road to Nationals” sets out what every team must have done to qualify. The app’s Ready to play page checks most of it for you.',
+        steps: [
+          'Every player is a paid-up SAFDA member before Regionals (and with your region).',
+          'Everyone has Standard rules accreditation by Regionals; your captain and spirit captain have Advanced.',
+          'At Nationals, at least half of each team has Advanced accreditation.',
+          'Submit your potential Nationals squad to SAFDA by the Regionals deadline. After that, only 3 changes are allowed without SAFDA’s approval.',
+          'Run a development clinic, tournament or event, and send SAFDA a short report (with photos if you can). SAFDA has some funding for these.',
+          'Finish in a qualifying spot at your Regionals.',
+        ],
+        tips: ['Team page → Ready to play & development shows who’s missing what, and the Advanced count.', 'The full document: Hub → Merch & links → Rules & accreditation → Road to Nationals.'],
+      },
+      {
         id: 'export',
         title: 'Export your data',
         who: 'Team staff and coordinators',
@@ -549,6 +564,19 @@ export const GUIDE: GuideSection[] = [
     title: 'Help and feedback',
     icon: 'lifebuoy',
     articles: [
+      {
+        id: 'harassment',
+        title: 'Something happened: harassment, safety or conduct',
+        why: 'Everyone should feel safe at ultimate. CTFDA’s Code of Conduct and Anti-Harassment Policy apply at games, tournaments, meetings and socials, before and after play. Don’t use the bug button for this: it isn’t private enough.',
+        steps: [
+          'Talk to someone you trust first (informal): your captain, coach or manager, a teammate, or anyone on the CTFDA committee. Say whether you want them to help sort it out or just to listen.',
+          'Make a formal complaint (in writing) to the CTFDA Chairperson at helloctfda@gmail.com if it isn’t resolved, or if you’d rather go straight there. A Complaints Officer is appointed and you choose whether to try mediation.',
+          'Both sides are heard, and you can bring a support person. Names and details are kept confidential.',
+          'Either side can appeal the outcome in writing within 7 days. You can also go to bodies outside CTFDA.',
+          'In danger right now? Call 10111 (police) or 112 from a cellphone.',
+        ],
+        tips: ['Read the policies: Hub → Merch & links → Policies & guidelines.', 'Players under 18: a parent or guardian can raise it for you.'],
+      },
       {
         id: 'bugs',
         title: 'Report a bug or suggest an idea',

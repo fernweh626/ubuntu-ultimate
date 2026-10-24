@@ -29,12 +29,18 @@ export default function SquadDevelopment() {
         : st === 'expiring'
           ? { check: 'warn', text: `${ACCREDITATION_LEVELS[p.level]} · expires ${shortDate(p.expires_on)}` }
           : { check: st === 'valid' ? 'ok' : 'warn', text: `${ACCREDITATION_LEVELS[p.level]}${p.expires_on ? ` · until ${shortDate(p.expires_on)}` : ' · no expiry date'}` };
+    // SAFDA Road to Nationals: captains and spirit captains need Advanced.
+    const leads = p.role === 'captain' || p.role === 'spirit_captain';
+    if (leads && acc.check === 'ok' && p.level !== 'advanced') Object.assign(acc, { check: 'warn', text: `${acc.text} · ${p.role === 'captain' ? 'captains' : 'spirit captains'} need Advanced` });
     const safda = standingCheck(p.reg?.safda_number, p.safda, p.safdaListed);
     const body = REGIONS.find((r) => r.code === p.reg?.region_code)?.body ?? 'Region';
     const region = standingCheck(p.reg?.region_number, p.region, p.regionListed);
     return { acc, safda, region, body, ready: acc.check === 'ok' && safda.check === 'ok' && region.check === 'ok' };
   };
   const readyCount = squad.filter((p) => checks(p).ready).length;
+  // SAFDA Road to Nationals: at Nationals at least half of each team needs valid Advanced accreditation.
+  const advanced = squad.filter((p) => p.level === 'advanced' && accreditationState(p.expires_on) !== 'expired').length;
+  const advancedNeeded = Math.ceil(squad.length / 2);
   const rows = [...squad].map((p) => {
     if (view === 'ready') {
       const c = checks(p);
@@ -63,6 +69,14 @@ export default function SquadDevelopment() {
               {readyCount} of {squad.length} ready to play
             </T>
             <T v="small">Ready = valid accreditation, and paid up with SAFDA and their region (from the lists admins upload). Tap WhatsApp to follow up with anyone who isn’t.</T>
+          </Card>
+        ) : null}
+        {view === 'ready' && squad.length ? (
+          <Card style={{ backgroundColor: advanced >= advancedNeeded ? colors.brandTint : colors.warnTint, borderColor: 'transparent' }}>
+            <T v="bodyStrong">
+              Nationals: {advanced} of {squad.length} have Advanced accreditation (need {advancedNeeded})
+            </T>
+            <T v="small">SAFDA’s Road to Nationals: everyone needs Standard by Regionals, captains and spirit captains need Advanced, and at Nationals half of each team needs Advanced.</T>
           </Card>
         ) : null}
         <Segmented

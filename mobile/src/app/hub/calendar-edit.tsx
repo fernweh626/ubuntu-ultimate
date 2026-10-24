@@ -62,6 +62,21 @@ export default function CalendarEdit() {
     const meeting = isMeeting(f.kind);
     if (meeting && ((f.start_time && !TIME.test(f.start_time)) || (f.end_time && !TIME.test(f.end_time)))) return Alert.alert('Check the times', 'Use HH:MM, for example 19:00.');
     if (meeting && f.meeting_url && !/^https?:\/\//i.test(f.meeting_url)) return Alert.alert('Check the meeting link', 'Paste the full link, starting with https://');
+    // CTFDA's constitution: 14 days' notice for general meetings (21 if a special resolution is proposed).
+    const days = start_date ? Math.floor((Date.parse(start_date) - Date.parse(new Date().toISOString().slice(0, 10))) / 86400_000) : null;
+    if (!id && (f.kind === 'agm' || f.kind === 'sgm') && days !== null && days >= 0 && days < 21) {
+      const go = await new Promise<boolean>((resolve) =>
+        Alert.alert(
+          days < 14 ? 'Less than 14 days’ notice' : 'Less than 21 days’ notice',
+          `This meeting is ${days} day${days === 1 ? '' : 's'} away. CTFDA’s constitution needs at least 14 days’ notice for general meetings, and 21 if a special resolution (e.g. a constitution change) is proposed. Email notices count as received 4 days after sending.`,
+          [
+            { text: 'Change the date', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Save anyway', onPress: () => resolve(true) },
+          ],
+        ),
+      );
+      if (!go) return;
+    }
     await saveCalendarEntry(db, {
       ...f,
       start_date,

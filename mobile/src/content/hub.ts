@@ -184,7 +184,7 @@ export const ADMIN_EMAIL = 'admin@ubuntuultimate.example';
  * Other regions' links get added by coordinators in the app (Me → Admin → Forms & payment links).
  * Bump CONTENT_VERSION when this changes so existing phones pick it up.
  */
-export const CONTENT_VERSION = 2;
+export const CONTENT_VERSION = 3;
 
 export type LinkKind = 'merch' | 'register' | 'website' | 'community' | 'social' | 'calendar' | 'contact' | 'policy' | 'rules';
 
@@ -228,6 +228,7 @@ export const STARTER_LINKS: { region: string | null; kind: LinkKind; label: stri
   { region: null, kind: 'website', label: 'National teams', url: 'https://safda.org.za/new-national-teams/' },
   { region: null, kind: 'rules', label: 'WFDF Rules of Ultimate', url: 'https://rules.wfdf.org/' },
   { region: null, kind: 'rules', label: 'WFDF rules accreditation', url: 'https://rules.wfdf.org/accreditation' },
+  { region: null, kind: 'rules', label: 'SAFDA Road to Nationals', url: 'https://docs.google.com/document/d/1sqGRiItAwXSNKzZOwN4yZy7I7M6ad1Y0newAAg9oRwg/edit' },
   { region: null, kind: 'merch', label: 'Custom discs: Discraft (US)', url: 'https://www.discraft.com/' },
   { region: null, kind: 'merch', label: 'Custom discs: Eurodisc (UK)', url: 'https://www.eurodisc.biz/en/' },
 ];

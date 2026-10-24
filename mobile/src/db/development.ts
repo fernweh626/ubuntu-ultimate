@@ -94,8 +94,8 @@ export function deleteFitnessResult(db: SQLiteDatabase, id: string) {
 
 /** Staff view: everyone on the squad with accreditation, latest self-rating and test results. */
 export async function squadDevelopment(db: SQLiteDatabase, teamId: string) {
-  const people = await db.getAllAsync<{ id: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; photo_uri: string | null; level: AccreditationLevel | null; expires_on: string | null }>(
-    `SELECT p.id, p.first_name, p.last_name, p.birth_date, p.gender, p.photo_uri, a.level, a.expires_on
+  const people = await db.getAllAsync<{ id: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; photo_uri: string | null; level: AccreditationLevel | null; expires_on: string | null; role: string | null }>(
+    `SELECT p.id, p.first_name, p.last_name, p.birth_date, p.gender, p.photo_uri, a.level, a.expires_on, MAX(m.role) AS role
        FROM membership m JOIN person p ON p.id = m.person_id LEFT JOIN accreditation a ON a.person_id = p.id
       WHERE m.team_id = ? AND m.end_date IS NULL AND m.deleted_at IS NULL AND p.deleted_at IS NULL
       GROUP BY p.id ORDER BY p.first_name COLLATE NOCASE`,
