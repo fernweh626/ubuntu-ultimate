@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import { Pressable, View, type GestureResponderEvent } from 'react-native';
 import Svg, { G, Path, Text as SvgText } from 'react-native-svg';
 
@@ -46,7 +46,7 @@ function inside([x, y]: [number, number], pts: [number, number][]) {
  */
 export function RegionMap({ value, onChange }: { value: string | null; onChange: (region: string | null) => void }) {
   const [width, setWidth] = useState(0);
-  const ref = useRef<View>(null);
+  const ref = useRef<ComponentRef<typeof Pressable>>(null);
   const all = value == null;
   const fill = (region: string) => (value === region ? colors.brand : all ? IDLE_ALL : IDLE);
 

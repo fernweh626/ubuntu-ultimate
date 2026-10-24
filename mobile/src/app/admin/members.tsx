@@ -61,7 +61,7 @@ export default function Members() {
     const f = new File(Paths.cache, name);
     if (f.exists) f.delete();
     f.create();
-    f.write(csv);
+    f.writeSync(csv);
     await Sharing.shareAsync(f.uri, { mimeType: 'text/csv', dialogTitle: name });
   }
 

@@ -66,7 +66,7 @@ export default function Export() {
       const file = new File(Paths.cache, `${slug}-${name}-${stamp}.csv`);
       if (file.exists) file.delete();
       file.create();
-      file.write(make());
+      file.writeSync(make());
       await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: `${label}: ${name}`, UTI: 'public.comma-separated-values-text' });
     } catch (e) {
       Alert.alert('Couldn’t export', String(e));

@@ -44,7 +44,7 @@ export default function Privacy() {
         const file = new File(Paths.cache, name);
         if (file.exists) file.delete();
         file.create();
-        file.write(json);
+        file.writeSync(json);
         await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'My data', UTI: 'public.json' });
       }
     } catch (e) {
