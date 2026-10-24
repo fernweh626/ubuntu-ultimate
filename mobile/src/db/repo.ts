@@ -567,6 +567,17 @@ export function listEvents(db: SQLiteDatabase) {
   );
 }
 
+/** An event's games starting soon (from 3 hours ago to `hours` ahead) that haven't been started yet. */
+export function soonFixtures(db: SQLiteDatabase, eventId: string, now = new Date(), hours = 36) {
+  return db.getAllAsync<GameListItem>(
+    `${GAME_LIST_SQL} AND g.event_id = ? AND g.status = 'scheduled' AND g.scheduled_at >= ? AND g.scheduled_at <= ?
+     ORDER BY g.scheduled_at`,
+    eventId,
+    new Date(now.getTime() - 3 * 3600_000).toISOString(),
+    new Date(now.getTime() + hours * 3600_000).toISOString(),
+  );
+}
+
 export function getEvent(db: SQLiteDatabase, id: string) {
   return db.getFirstAsync<EventRow>(`SELECT * FROM event WHERE id = ?`, id);
 }

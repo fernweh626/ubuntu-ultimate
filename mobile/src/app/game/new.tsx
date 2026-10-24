@@ -35,6 +35,7 @@ import {
   T,
   TeamSwatch,
 } from "@/ui/components";
+import { EventPicker, SoonFixtures } from "@/ui/event-picker";
 import { FieldPicker } from "@/ui/field-picker";
 import { QuickAddPlayer } from "@/ui/quick-add-player";
 import { colors, font, space } from "@/ui/theme";
@@ -421,28 +422,11 @@ export default function NewGame() {
           </Card>
         ) : null}
 
-        {!isPlayer ? (
-          <Section title="Tournament or league (optional)">
-            <View
-              style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}
-            >
-              <Choice
-                label="None (friendly)"
-                selected={!eventId}
-                onPress={() => setEventId(null)}
-                style={{ paddingHorizontal: 14 }}
-              />
-              {events.map((e) => (
-                <Choice
-                  key={e.id}
-                  label={e.name}
-                  selected={eventId === e.id}
-                  onPress={() => setEventId(e.id)}
-                  style={{ paddingHorizontal: 14 }}
-                />
-              ))}
-            </View>
-          </Section>
+        {!isPlayer && !fixtureId ? (
+          <EventPicker value={eventId} onChange={setEventId} />
+        ) : null}
+        {!isPlayer && !fixtureId && eventId ? (
+          <SoonFixtures eventId={eventId} />
         ) : null}
 
         <Section title="Division">
