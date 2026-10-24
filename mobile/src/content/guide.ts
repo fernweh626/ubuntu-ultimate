@@ -111,6 +111,16 @@ export const GUIDE: GuideSection[] = [
         open: { label: 'Open Home', href: '/' },
       },
       {
+        id: 'apple',
+        title: 'I have an iPhone or a Mac',
+        why: 'The app is on Android, plus a web version. Apple browsers can’t run the web version yet (we’re working on it), and there won’t be an App Store version.',
+        steps: [
+          'On a Mac: open the web link in Google Chrome, Edge or Brave instead of Safari.',
+          'On an iPhone or iPad: every browser there uses Safari underneath, so for now use a computer with Chrome, or an Android phone.',
+          'When iPhone support arrives, you’ll open the link in Safari and tap Share → Add to Home Screen, and it works like an app.',
+        ],
+      },
+      {
         id: 'account',
         title: 'Do I need an account?',
         why: 'No, to try it. Yes, to share with your team. Without an account everything stays on this phone only. With one, it’s backed up and your answers reach your captains.',
