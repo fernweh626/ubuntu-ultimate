@@ -17,7 +17,7 @@ import {
 } from '@/db/repo';
 import { canPostpone, postponeRuleText, STATUS_REASONS, type StatusReason } from '@/domain/fixtures';
 import { dmyTimeToIso as toIso, localDmy, shortDate, timeOfDay } from '@/domain/format';
-import { Button, Card, Chip, Choice, DateField, Field, IconButton, Screen, Section, Sheet, T, TeamSwatch } from '@/ui/components';
+import { Button, Card, Chip, Choice, DateField, Field, Icon, IconButton, Screen, Section, Sheet, T, TeamSwatch } from '@/ui/components';
 import { Availability } from '@/ui/availability';
 import { FieldPicker } from '@/ui/field-picker';
 import { VideoLink } from '@/ui/game-bits';
@@ -90,13 +90,14 @@ export default function Fixture() {
         </Card>
 
         {[homeId, awayId].map((t) => (
-          <Card key={t} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+          <Card key={t} onPress={() => router.push(`/team/${t}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <TeamSwatch color={color(t)} />
             <View style={{ flex: 1 }}>
               <T v="bodyStrong">{name(t)}</T>
               <T v="small">{t === homeId ? 'Home — sets up the field (cones, discs, lines)' : 'Away'}</T>
             </View>
             {t === homeId ? <Chip label="Home" /> : null}
+            <Icon name="chevron-right" color={colors.faint} />
           </Card>
         ))}
 

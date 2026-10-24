@@ -90,7 +90,7 @@ export default function ClubPage() {
           )}
         </Section>
 
-        <BankingCard name={club.name} details={club.banking_details} />
+        <BankingCard name={club.name} details={club.banking_details} path={`/club/${club.id}`} />
         {live.length ? (
           <Section title="Live now">
             {live.map((g) => (

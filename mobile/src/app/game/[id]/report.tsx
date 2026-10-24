@@ -1,7 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Alert, Linking, View } from 'react-native';
+import { Alert, Linking, View, Pressable } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
@@ -136,17 +136,17 @@ export default function GameReport() {
             </T>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm }}>
-            <View style={{ flex: 1, gap: 6 }}>
+            <Pressable onPress={() => router.push(`/team/${ta.id}`)} accessibilityRole="link" accessibilityLabel={`${ta.name} team page`} style={{ flex: 1, gap: 6 }}>
               <TeamSwatch color={ta.primary_color} size="sm" />
-              <T style={{ fontFamily: font.bold, fontSize: 17, color: '#fff' }}>{ta.name}</T>
-            </View>
+              <T style={{ fontFamily: font.bold, fontSize: 17, color: '#fff', textDecorationLine: 'underline' }}>{ta.name}</T>
+            </Pressable>
             <T style={{ fontFamily: font.display, fontSize: 56, lineHeight: 60, color: '#fff' }}>
               {A.score}–{B.score}
             </T>
-            <View style={{ flex: 1, gap: 6, alignItems: 'flex-end' }}>
+            <Pressable onPress={() => router.push(`/team/${tb.id}`)} accessibilityRole="link" accessibilityLabel={`${tb.name} team page`} style={{ flex: 1, gap: 6, alignItems: 'flex-end' }}>
               <TeamSwatch color={tb.primary_color} size="sm" />
-              <T style={{ fontFamily: font.bold, fontSize: 17, color: '#fff', textAlign: 'right' }}>{tb.name}</T>
-            </View>
+              <T style={{ fontFamily: font.bold, fontSize: 17, color: '#fff', textAlign: 'right', textDecorationLine: 'underline' }}>{tb.name}</T>
+            </Pressable>
           </View>
           <T style={{ fontFamily: font.regular, fontSize: 13, color: colors.nightMuted, marginTop: space.sm }}>
             {[

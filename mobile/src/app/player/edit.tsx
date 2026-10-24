@@ -3,11 +3,13 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
+import { POPULATION_GROUPS, ORIGINS } from '@/content/associations';
 import { useData } from '@/db/live';
+import { getDemographic, saveDemographic } from '@/db/membership';
 import { clearPrivateField, getMeId, getPersonForEdit, savePerson, setPersonPhoto, type PersonForEdit, type PersonInput } from '@/db/repo';
 import type { Gender, Position } from '@/db/types';
 import { dmyToIso, isMinor } from '@/domain/format';
-import { Button, DateField, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
+import { Button, Choice, DateField, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
 import { Avatar, deletePhoto, PhotoSheet } from '@/ui/photo';
 import { colors, space } from '@/ui/theme';
 
@@ -22,6 +24,11 @@ export default function PlayerEdit() {
   const [dob, setDob] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoSheet, setPhotoSheet] = useState(false);
+  // About you (own profile only): asked once here instead of on every year's membership form.
+  const [population, setPopulation] = useState<string | null>(null);
+  const [origin, setOrigin] = useState<'local' | 'transplant' | null>(null);
+  const [suburb, setSuburb] = useState('');
+  const [birthYear, setBirthYear] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -31,6 +38,13 @@ export default function PlayerEdit() {
       setF({ ...rest, email: null, birth_date: null });
       setPhoto(photo_uri);
       setOnFile({ has_email, is_minor });
+    });
+    getDemographic(db, id).then((d) => {
+      if (!d) return;
+      setPopulation(d.population_group);
+      setOrigin(d.origin);
+      setSuburb(d.suburb ?? '');
+      setBirthYear(d.birth_year);
     });
   }, [db, id]);
 
@@ -61,6 +75,9 @@ export default function PlayerEdit() {
     if (dob && !birth) return Alert.alert('Check the birth date', 'Use dd/mm/yyyy, for example 30/06/2001.');
     const savedId = await savePerson(db, { ...f, birth_date: birth, id }, teamId && !id ? { teamId, kind, jersey: f.preferred_number ?? null } : undefined);
     if (!id && photo) await setPersonPhoto(db, savedId, photo);
+    if (isMe && (population || origin || suburb.trim() || birth)) {
+      await saveDemographic(db, savedId, { population_group: population, origin, birth_year: birth ? Number(birth.slice(0, 4)) : birthYear, suburb: suburb.trim() || null });
+    }
     if (another) {
       setF({ first_name: '', last_name: '', gender: f.gender, position: null });
       setDob('');
@@ -168,6 +185,24 @@ export default function PlayerEdit() {
           hint="Never shown to anyone, including admins. Only used to send game summaries and reminders."
         />
         {onFile?.has_email ? <Button label="Remove email" kind="ghost" onPress={() => clear('email')} style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }} /> : null}
+        {isMe ? (
+          <Section title="About you">
+            <T v="small">For your association membership (CTFDA and others). Only you and the admins see it; reports only show totals. Answer once and every year’s form uses it.</T>
+            <T v="smallStrong">Population group (Census 2022 categories)</T>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+              {POPULATION_GROUPS.map((p) => (
+                <Choice key={p} label={p} selected={population === p} onPress={() => setPopulation(population === p ? null : p)} style={{ minHeight: 40, paddingHorizontal: 12 }} />
+              ))}
+            </View>
+            <T v="smallStrong">Local or transplant</T>
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              {ORIGINS.map((o) => (
+                <Choice key={o.key} label={o.label} selected={origin === o.key} onPress={() => setOrigin(origin === o.key ? null : o.key)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 8 }} />
+              ))}
+            </View>
+            <Field label="Suburb where you live (optional)" value={suburb} onChangeText={setSuburb} hint="Helps find where a new pickup game could start." />
+          </Section>
+        ) : null}
       </Screen>
       <PhotoSheet
         visible={photoSheet}

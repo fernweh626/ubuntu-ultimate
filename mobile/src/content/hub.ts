@@ -178,6 +178,13 @@ export const PRIVACY_EMAIL = 'privacy@ubuntuultimate.example';
 /** Where coordinators send next season's forms, fees and links. TEMPORARY placeholder, like the above. */
 export const ADMIN_EMAIL = 'admin@ubuntuultimate.example';
 
+/** The web app, for links people share (team pages, banking details). The preview address for now. */
+export const WEB_URL = 'https://ubuntu-ultimate--preview.expo.app';
+
+/** Made-up banking details shown on demo teams until clubs add their real ones. */
+export const demoBanking = (teamName: string) =>
+  `Bank: Demo Bank (made-up details)\nAccount name: ${teamName}\nAccount number: 0000 0000 00\nBranch code: 000000\nReference: your name + FEES`;
+
 /*
  * Real starting content from the associations' own sites (checked Oct 2026):
  * capetownultimate.co.za (CTFDA, Western) and safda.org.za (SAFDA, national).

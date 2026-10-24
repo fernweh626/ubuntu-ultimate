@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { CONTENT_VERSION, pickupSeedKey, RETIRED_PICKUP_KEYS, SEED_CLUBS, STARTER_LINKS, STARTER_PICKUPS } from '@/content/hub';
+import { CONTENT_VERSION, demoBanking, pickupSeedKey, RETIRED_PICKUP_KEYS, SEED_CLUBS, STARTER_LINKS, STARTER_PICKUPS } from '@/content/hub';
 import { md5 } from './md5';
 import { adoptSharedIds } from './shared-ids';
 
@@ -306,6 +306,22 @@ export async function ensureDemoContent(db: SQLiteDatabase) {
       await db.runAsync(`UPDATE calendar_entry SET end_date = '2026-11-14', status = 'confirmed' WHERE id = ?`, await seedId('calendar', 'Cape Town Mixed League 2026'));
       await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('demo_version', ?)`, String(demo.version));
     });
+  } finally {
+    await db.runAsync(`DELETE FROM app_meta WHERE key = 'sync_pulling'`);
+  }
+}
+
+/**
+ * Made-up banking details on teams that have none, so the banking card can be seen and shared.
+ * Written as if pulled from the server (the server sets the same text), so nothing is queued to upload.
+ */
+export async function ensureDemoBanking(db: SQLiteDatabase) {
+  if (await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'demo_banking'`)) return;
+  await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sync_pulling', '1')`);
+  try {
+    const teams = await db.getAllAsync<{ id: string; name: string }>(`SELECT id, name FROM team WHERE banking_details IS NULL AND deleted_at IS NULL AND kind IN ('club','university','school','regional','national')`);
+    for (const t of teams) await db.runAsync(`UPDATE team SET banking_details = ? WHERE id = ?`, demoBanking(t.name), t.id);
+    await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('demo_banking', '1')`);
   } finally {
     await db.runAsync(`DELETE FROM app_meta WHERE key = 'sync_pulling'`);
   }

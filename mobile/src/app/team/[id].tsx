@@ -121,6 +121,7 @@ export default function TeamPage() {
           {agg && agg.games ? <Button label="Team report" icon="chart-box-outline" onPress={() => router.push({ pathname: '/team/report', params: { id } })} /> : null}
         </View>
         <JoinTeamBar teamId={id} teamName={team.name} onSquad={onSquad} />
+        <BankingCard name={team.name} details={team.banking_details} path={`/team/${id}`} />
         {team.about ? <T v="small">{team.about}</T> : null}
         {canManage ? <JoinRequests teamId={id} /> : null}
         {isStaffHere ? (
@@ -132,8 +133,6 @@ export default function TeamPage() {
         ) : null}
 
         <TeamFixtures teamId={id} games={games ?? []} meId={access?.meId ?? null} onSquad={onSquad} />
-
-        <BankingCard name={team.name} details={team.banking_details} />
 
         <Section title="Contact">
           {hasContact ? (

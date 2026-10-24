@@ -14,7 +14,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { migrate } from '@/db/schema';
-import { ensureDemoContent, ensureStarterContent, seedIfEmpty } from '@/db/seed';
+import { ensureDemoBanking, ensureDemoContent, ensureStarterContent, seedIfEmpty } from '@/db/seed';
 import { SyncManager } from '@/db/sync-manager';
 import { NotificationManager } from '@/notify/manager';
 import { installWebAlert } from '@/lib/web';
@@ -28,6 +28,7 @@ async function init(db: SQLiteDatabase) {
   await seedIfEmpty(db);
   await ensureStarterContent(db);
   await ensureDemoContent(db);
+  await ensureDemoBanking(db);
 }
 
 const theme = {

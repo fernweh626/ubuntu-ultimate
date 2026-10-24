@@ -9,8 +9,9 @@ import { getRegistration, saveRegistration, type Registration } from '@/db/devel
 import { useData } from '@/db/live';
 import { claimMemberNumber, claimPaid, ensureNumber, getDemographic, getMembership, issueMemberNumber, prefillFromRoster, saveDemographic, submitMembership, type Demographic, type Membership } from '@/db/membership';
 import { getAccess, getMe } from '@/db/repo';
+import { dmyToIso } from '@/domain/format';
 import type { Gender, Person } from '@/db/types';
-import { Button, Card, Chip, Choice, Field, Footer, Icon, Screen, Section, Segmented, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, DateField, Field, Footer, Icon, Screen, Section, Segmented, T } from '@/ui/components';
 import { PhoneField } from '@/ui/phone-field';
 import { colors, font, space } from '@/ui/theme';
 
@@ -59,7 +60,10 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
   const [gender, setGender] = useState<Gender | null>(me.gender);
   const [population, setPopulation] = useState<string | null>(demo?.population_group ?? null);
   const [origin, setOrigin] = useState<'local' | 'transplant' | null>(demo?.origin ?? null);
-  const [birthYear, setBirthYear] = useState(String(demo?.birth_year ?? (me.birth_date ? me.birth_date.slice(0, 4) : '')));
+  // These live on your profile and are asked once; the yearly form only asks for what's missing.
+  const have = { gender: me.gender === 'W' || me.gender === 'M', population: !!demo?.population_group, origin: !!demo?.origin, dob: !!me.birth_date, suburb: !!demo?.suburb };
+  const [dob, setDob] = useState('');
+  const birthYear = me.birth_date ? me.birth_date.slice(0, 4) : (dmyToIso(dob) ?? '').slice(0, 4);
   const [involvement, setInvolvement] = useState<string | null>(membership?.involvement ?? null);
   const [number, setNumber] = useState(membership?.number ?? (reg?.region_code === assoc.regionCode ? (reg?.region_number ?? '') : ''));
   const [option, setOption] = useState<string | null>(membership?.option ?? null);
@@ -89,7 +93,8 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
     if (!population) return Alert.alert('Pick a population group', 'Or “Prefer not to say”.');
     if (!origin) return Alert.alert('Born in SA, or a transplant?');
     const year = Number(birthYear);
-    if (!year || year < 1930 || year > assoc.season) return Alert.alert('Add your year of birth', 'e.g. 1995');
+    if (!have.dob && !dmyToIso(dob)) return Alert.alert('Add your date of birth', 'dd/mm/yyyy, e.g. 14/05/1995. Age groups depend on how old you turn this year.');
+    if (!year || year < 1930 || year > assoc.season) return Alert.alert('Check your date of birth', 'e.g. 14/05/1995');
     if (!involvement) return Alert.alert('How involved will you be this year?');
     if (competitive) {
       if (!opt) return Alert.alert('Pick your membership type');
@@ -100,7 +105,7 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
     setBusy(true);
     try {
       const ts = new Date().toISOString();
-      await db.runAsync(`UPDATE person SET email = ?, gender = ?, updated_at = ? WHERE id = ?`, e, gender, ts, me.id);
+      await db.runAsync(`UPDATE person SET email = ?, gender = ?, birth_date = COALESCE(birth_date, ?), updated_at = ? WHERE id = ?`, e, gender, have.dob ? null : dmyToIso(dob), ts, me.id);
       // A member number: claim the one I typed, or get mine from the server (on the list, or the next free one).
       let num: string | null = number.trim().toUpperCase() || null;
       let numberNote: string | null = null;
@@ -163,33 +168,56 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
           <PhoneField label="Cell number (WhatsApp)" value={phone} onChange={setPhone} />
           <Field label="Emergency contact name" value={emName} onChangeText={setEmName} placeholder="e.g. Thandi (mom)" />
           <PhoneField label="Emergency contact number" value={emPhone} onChange={setEmPhone} />
-          <Field label="Suburb where you live (optional)" value={suburb} onChangeText={setSuburb} hint="Helps find where a new pickup game could start." />
+          {!have.suburb ? <Field label="Suburb where you live (optional)" value={suburb} onChangeText={setSuburb} hint="Helps find where a new pickup game could start." /> : null}
         </Section>
 
-        <Section title="Demographics">
-          <T v="small">{assoc.short} uses this to track growth and diversity. Only you and the admins see it, and reports only ever show totals.</T>
-          <T v="smallStrong">Gender matching (the Ultimate rules category you play in)</T>
-          <Segmented
-            value={gender ?? ('' as Gender)}
-            onChange={setGender}
-            options={[
-              { value: 'W', label: 'Women matching' },
-              { value: 'M', label: 'Man matching' },
-            ]}
-          />
-          <T v="smallStrong">Population group (Census 2022 categories)</T>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            {POPULATION_GROUPS.map((p) => (
-              <Choice key={p} label={p} selected={population === p} onPress={() => setPopulation(p)} style={{ minHeight: 40, paddingHorizontal: 12 }} />
-            ))}
-          </View>
-          <T v="smallStrong">Local or transplant</T>
-          <View style={{ flexDirection: 'row', gap: space.sm }}>
-            {ORIGINS.map((o) => (
-              <Choice key={o.key} label={o.label} selected={origin === o.key} onPress={() => setOrigin(o.key)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 8 }} />
-            ))}
-          </View>
-          <Field label="Year of birth" value={birthYear} onChangeText={(v) => setBirthYear(v.replace(/\D/g, '').slice(0, 4))} keyboardType="number-pad" placeholder="e.g. 1995" hint="Age groups depend on how old you turn this year." />
+        <Section title="About you">
+          {have.gender || have.population || have.origin || have.dob ? (
+            <Card>
+              <T v="smallStrong">From your profile</T>
+              {have.gender ? <T v="small">Gender matching: {gender === 'W' ? 'Women matching' : 'Man matching'}</T> : null}
+              {have.dob ? <T v="small">Date of birth: on file (born {birthYear})</T> : null}
+              {have.population ? <T v="small">Population group: {population}</T> : null}
+              {have.origin ? <T v="small">{ORIGINS.find((o) => o.key === origin)?.label}</T> : null}
+              {have.suburb ? <T v="small">Suburb: {suburb}</T> : null}
+              <Button label="Change in your profile" icon="account-edit-outline" kind="ghost" onPress={() => router.push({ pathname: '/player/edit', params: { id: me.id } })} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
+            </Card>
+          ) : null}
+          <T v="small">{assoc.short} uses this to track growth and diversity. Only you and the admins see it, and reports only ever show totals. It’s saved on your profile, so you only answer once.</T>
+          {!have.gender ? (
+            <>
+              <T v="smallStrong">Gender matching (the Ultimate rules category you play in)</T>
+              <Segmented
+                value={gender ?? ('' as Gender)}
+                onChange={setGender}
+                options={[
+                  { value: 'W', label: 'Women matching' },
+                  { value: 'M', label: 'Man matching' },
+                ]}
+              />
+            </>
+          ) : null}
+          {!have.dob ? <DateField label="Date of birth" value={dob} onChangeText={setDob} hint="Saved privately on your profile. Age groups depend on how old you turn this year." /> : null}
+          {!have.population ? (
+            <>
+              <T v="smallStrong">Population group (Census 2022 categories)</T>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+                {POPULATION_GROUPS.map((p) => (
+                  <Choice key={p} label={p} selected={population === p} onPress={() => setPopulation(p)} style={{ minHeight: 40, paddingHorizontal: 12 }} />
+                ))}
+              </View>
+            </>
+          ) : null}
+          {!have.origin ? (
+            <>
+              <T v="smallStrong">Local or transplant</T>
+              <View style={{ flexDirection: 'row', gap: space.sm }}>
+                {ORIGINS.map((o) => (
+                  <Choice key={o.key} label={o.label} selected={origin === o.key} onPress={() => setOrigin(o.key)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 8 }} />
+                ))}
+              </View>
+            </>
+          ) : null}
         </Section>
 
         <Section title={`Your ${assoc.season} involvement (not ability)`}>
