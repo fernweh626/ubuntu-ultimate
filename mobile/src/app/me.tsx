@@ -1,7 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Alert, TextInput, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
@@ -240,6 +240,7 @@ function WhoAreYou() {
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [gender, setGender] = useState<Gender>('W');
+  const [email, setEmail] = useState('');
 
   const s = q.trim().toLowerCase();
   const matches = s
@@ -248,7 +249,8 @@ function WhoAreYou() {
 
   async function create() {
     if (!first.trim()) return;
-    const id = await savePerson(db, { first_name: first, last_name: last, gender });
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return Alert.alert('Add your email', 'It’s never shown to anyone.');
+    const id = await savePerson(db, { first_name: first, last_name: last, gender, email: email.trim().toLowerCase() });
     await setMeId(db, id);
   }
 
@@ -289,6 +291,7 @@ function WhoAreYou() {
             <Field label="Last name" value={last} onChangeText={setLast} />
           </View>
         </View>
+        <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" hint="Never shown to anyone." />
         <Segmented
           value={gender}
           onChange={setGender}

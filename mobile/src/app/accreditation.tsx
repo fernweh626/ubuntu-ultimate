@@ -5,7 +5,7 @@ import { router, Stack } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, View, Linking } from 'react-native';
 
 import { getAccreditation, saveAccreditation, type Accreditation } from '@/db/development';
 import { useData } from '@/db/live';
@@ -81,6 +81,7 @@ function Form({ meId, acc }: { meId: string; acc: Accreditation | null }) {
             <Button label="Save" kind="primary" big onPress={save} />
           </Footer>
         }>
+        <Button label="Do or renew your accreditation (WFDF, free)" icon="open-in-new" kind="secondary" onPress={() => Linking.openURL('https://rules.wfdf.org/accreditation')} />
         <T v="small">You need a valid rules accreditation to play leagues, regionals and nationals. Your team staff and coordinators can see the level and expiry; the certificate photo stays on this phone.</T>
 
         {iso ? (

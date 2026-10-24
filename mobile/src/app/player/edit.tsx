@@ -3,7 +3,8 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
-import { clearPrivateField, getPersonForEdit, savePerson, setPersonPhoto, type PersonForEdit, type PersonInput } from '@/db/repo';
+import { useData } from '@/db/live';
+import { clearPrivateField, getMeId, getPersonForEdit, savePerson, setPersonPhoto, type PersonForEdit, type PersonInput } from '@/db/repo';
 import type { Gender, Position } from '@/db/types';
 import { dmyToIso, isMinor } from '@/domain/format';
 import { Button, DateField, Field, Footer, Screen, Section, Segmented, T } from '@/ui/components';
@@ -49,8 +50,13 @@ export default function PlayerEdit() {
 
   const set = <K extends keyof PersonInput>(k: K, v: PersonInput[K]) => setF((x) => ({ ...x, [k]: v }));
 
+  const meId = useData(getMeId);
+  const isMe = !!id && id === meId;
+
   async function save(another: boolean) {
     if (!f.first_name.trim()) return Alert.alert('Add a first name');
+    // Your own profile needs an email (for your association membership and signing in). Optional for people staff add.
+    if (isMe && !onFile?.has_email && !/^\S+@\S+\.\S+$/.test((f.email ?? '').trim())) return Alert.alert('Add your email', 'It’s never shown to anyone. Your association needs it for your membership.');
     const birth = dob ? dmyToIso(dob) : null;
     if (dob && !birth) return Alert.alert('Check the birth date', 'Use dd/mm/yyyy, for example 30/06/2001.');
     const savedId = await savePerson(db, { ...f, birth_date: birth, id }, teamId && !id ? { teamId, kind, jersey: f.preferred_number ?? null } : undefined);
@@ -153,7 +159,7 @@ export default function PlayerEdit() {
         />
         {onFile?.is_minor != null ? <Button label="Remove birth date" kind="ghost" onPress={() => clear('birth_date')} style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }} /> : null}
         <Field
-          label={onFile?.has_email ? 'Email (on file — type to replace)' : 'Email (optional)'}
+          label={onFile?.has_email ? 'Email (on file — type to replace)' : isMe ? 'Email' : 'Email (optional)'}
           value={f.email ?? ''}
           onChangeText={(v) => set('email', v || null)}
           placeholder={onFile?.has_email ? 'Hidden' : undefined}

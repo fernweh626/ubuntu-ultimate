@@ -91,6 +91,7 @@ function Who({ onNext }: { onNext: () => void }) {
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [gender, setGender] = useState<Gender>('W');
+  const [email, setEmail] = useState('');
   const s = q.trim().toLowerCase();
   const matches = s.length >= 2 ? people.filter((p) => `${p.first_name} ${p.last_name} ${p.nickname ?? ''}`.toLowerCase().includes(s)).slice(0, 8) : [];
 
@@ -130,6 +131,7 @@ function Who({ onNext }: { onNext: () => void }) {
               <Field label="Surname" value={last} onChangeText={setLast} />
             </View>
           </View>
+          <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="you@example.com" hint="Never shown to anyone. Used for your association membership and to sign in later." />
           <T v="smallStrong">You play as</T>
           <Segmented
             value={gender}
@@ -145,8 +147,8 @@ function Who({ onNext }: { onNext: () => void }) {
             label="Continue"
             kind="primary"
             big
-            disabled={!first.trim()}
-            onPress={async () => pick(await savePerson(db, { first_name: first.trim(), last_name: last.trim(), gender }))}
+            disabled={!first.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())}
+            onPress={async () => pick(await savePerson(db, { first_name: first.trim(), last_name: last.trim(), gender, email: email.trim().toLowerCase() }))}
           />
           <Button label="Back to search" kind="ghost" onPress={() => setCreating(false)} />
         </>
