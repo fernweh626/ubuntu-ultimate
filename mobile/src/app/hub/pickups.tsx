@@ -1,4 +1,4 @@
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, View } from 'react-native';
@@ -23,7 +23,8 @@ export default function Pickups() {
   const pickups = useData(listPickups);
   const going = useData(async (d) => new Set((await listFollows(d)).filter((f) => f.kind === 'pickup').map((f) => f.target_id))) ?? new Set<string>();
   const access = useData(getAccess);
-  const [day, setDay] = useState(weekdayIndex());
+  const params = useLocalSearchParams<{ day?: string }>();
+  const [day, setDay] = useState(params.day != null && /^[0-6]$/.test(params.day) ? Number(params.day) : weekdayIndex());
   const [city, setCity] = useState<string>('all');
   const region = useRegionFilter();
 

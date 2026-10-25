@@ -6,9 +6,9 @@ import { Linking, Pressable, View } from 'react-native';
 
 import { COUNTRY } from '@/content/countries';
 import { regionName } from '@/content/hub';
-import { dayLabel, homeFeed, type TimelineItem } from '@/db/home';
+import { dayLabel, homeFeed, nextPickup, type TimelineItem } from '@/db/home';
 import { notifyChanged, useData } from '@/db/live';
-import { getAccess, getHomeRegion, isOnboarded, listAnnouncements, pendingForStaff } from '@/db/repo';
+import { getAccess, getHomeRegion, isOnboarded, listAnnouncements, listFollows, listPickups, pendingForStaff } from '@/db/repo';
 import { mySchedule } from '@/db/schedule';
 import { DAYS_LONG, weekdayIndex } from '@/domain/format';
 import { deadlineLabel, yearlyInfoMailto, yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
@@ -69,7 +69,10 @@ export default function Home() {
       <YearlyInfoCard />
       <News />
       <NeedsYou />
+      {/* Pickup is how most people play: first if you're not on a competitive team, after your week if you are. */}
+      {feed && !feed.hasScope ? <PickupNearYou /> : null}
       {feed ? <Upcoming data={feed} /> : null}
+      {feed?.hasScope ? <PickupNearYou /> : null}
     </Screen>
   );
 }
@@ -111,6 +114,57 @@ function NeedsYou() {
         </Pressable>
       ))}
     </View>
+  );
+}
+
+/* ------------------------------ Pickup ------------------------------ */
+
+/** The next few pickups: the ones you go to first, then the soonest in your region. */
+function PickupNearYou() {
+  const [now] = useState(() => new Date());
+  const data = useData(async (d) => {
+    const [spots, follows, home] = await Promise.all([listPickups(d), listFollows(d), getHomeRegion(d)]);
+    const mine = new Set(follows.filter((f) => f.kind === 'pickup').map((f) => f.target_id));
+    const near = spots.filter((p) => mine.has(p.id) || !home || home === 'all' || !p.region || p.region === home);
+    const next = near
+      .map((p) => ({ p, at: nextPickup(p, now), mine: mine.has(p.id) }))
+      .sort((a, b) => Number(b.mine) - Number(a.mine) || a.at.getTime() - b.at.getTime())
+      .slice(0, 3);
+    return { next, region: home && home !== 'all' ? regionName(home) : null };
+  });
+  if (!data) return null;
+  return (
+    <Section
+      title={data.region ? `Pickup in ${data.region}` : 'Pickup'}
+      action={<Button label="All pickups ›" kind="ghost" onPress={() => router.push('/hub/pickups')} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
+      {data.next.length ? (
+        <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+          {data.next.map(({ p, at, mine }, i) => (
+            <Pressable
+              key={p.id}
+              onPress={() => router.push({ pathname: '/hub/pickups', params: { day: String(p.day_of_week) } })}
+              accessibilityRole="button"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
+              <Icon name="map-marker-radius" color={colors.brand} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <T v="bodyStrong" numberOfLines={1}>
+                  {p.name}
+                  {mine ? <T v="small"> · you go here</T> : null}
+                </T>
+                <T v="small" numberOfLines={1}>
+                  {[dayLabel(at.toISOString()), p.start_time, p.venue_text ?? p.area, p.level === 'beginner' ? 'beginners welcome' : null].filter(Boolean).join(' · ')}
+                </T>
+              </View>
+              <Icon name="chevron-right" color={colors.faint} />
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <Card onPress={() => router.push('/hub/pickups')}>
+          <T v="small">No pickup listed near you yet. Know one? Add it so others can find it.</T>
+        </Card>
+      )}
+    </Section>
   );
 }
 
@@ -191,7 +245,7 @@ function Upcoming({ data }: { data: Awaited<ReturnType<typeof homeFeed>> }) {
     return (
       <Card>
         <T v="bodyStrong">Make this yours</T>
-        <T v="small">Join your team and its games and practices show up here. Follow any team, league or pickup to add it too.</T>
+        <T v="small">On a team? Join it and its games and practices show up here. Going to pickup? Tap “I go here” on one and it shows up too.</T>
         <Button label="Find your team" icon="account-group" kind="primary" onPress={() => router.push('/teams')} />
       </Card>
     );
