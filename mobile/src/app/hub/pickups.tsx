@@ -8,7 +8,7 @@ import { useData } from '@/db/live';
 import { getAccess, listFollows, listPickups, setFollowing } from '@/db/repo';
 import { canEditPickup } from '@/domain/permissions';
 import { DAYS, DAYS_LONG, weekdayIndex } from '@/domain/format';
-import { Button, Card, Chip, Choice, EmptyState, IconButton, Screen, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, EmptyState, IconButton, Screen, T, RichText } from '@/ui/components';
 import { RegionChips, useRegionFilter } from '@/ui/region-filter';
 import { colors, font, space } from '@/ui/theme';
 
@@ -128,7 +128,7 @@ export default function Pickups() {
                     {p.cost ? <Chip label={p.cost} tone="neutral" /> : null}
                     {p.is_sample ? <Chip label="Sample" tone="warn" /> : null}
                   </View>
-                  {p.notes ? <T v="small">{p.notes}</T> : null}
+                  {p.notes ? <RichText v="small">{p.notes}</RichText> : null}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.xs }}>
                     <Button
                       label={going.has(p.id) ? 'I go here ✓' : 'I go here'}

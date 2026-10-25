@@ -23,6 +23,7 @@ import {
   IconButton,
   Screen,
   Section,
+  RichText,
   Sheet,
   T,
 } from "@/ui/components";
@@ -197,7 +198,7 @@ export default function Practice() {
               .join(" · ")}
           </T>
           {s.notes ? (
-            <T
+            <RichText
               style={{
                 fontFamily: font.regular,
                 fontSize: 15,
@@ -205,7 +206,7 @@ export default function Practice() {
               }}
             >
               {s.notes}
-            </T>
+            </RichText>
           ) : null}
           {venue && !cancelled ? (
             <Button

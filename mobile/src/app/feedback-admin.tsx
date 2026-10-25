@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Linking, Pressable, View } from 'react-native
 
 import { allFeedback, feedbackImageUrls, setFeedbackStatus, type ServerFeedback } from '@/db/feedback-send';
 import { shortDate } from '@/domain/format';
-import { Button, Card, Chip, Choice, Field, Screen, Segmented, Sheet, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, Field, Screen, Segmented, Sheet, T, RichText } from '@/ui/components';
 import { colors, space } from '@/ui/theme';
 
 const STATUS: Record<ServerFeedback['status'], string> = { new: 'New', planned: 'Planned', in_progress: 'In progress', done: 'Done', wont_do: 'Won’t do' };
@@ -71,7 +71,7 @@ export default function FeedbackAdmin() {
       <Sheet visible={!!open} onClose={() => setOpen(null)} title={open?.title ?? ''}>
         {open ? (
           <>
-            {open.body ? <T>{open.body}</T> : null}
+            {open.body ? <RichText>{open.body}</RichText> : null}
             <Screenshots images={open.images} />
             <T v="small">{[open.app_version, open.device, open.person_id && open.contact_ok ? `player ${open.person_id.slice(0, 8)}` : null].filter(Boolean).join(' · ')}</T>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>

@@ -10,7 +10,7 @@ import { SKILL_FRESH_DAYS } from '@/domain/hat';
 import { displayName, shortDate } from '@/domain/format';
 import { whatsappLink } from '@/domain/standing';
 import { parseRules } from '@/domain/rules';
-import { Button, Card, Chip, Choice, Field, IconButton, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
+import { Button, Card, Chip, Choice, Field, IconButton, Screen, Section, Segmented, Sheet, T, TeamSwatch, RichText } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
 import { colors, font, space } from '@/ui/theme';
 
@@ -103,7 +103,7 @@ export default function HatPage() {
               }}
             />
           ) : null}
-          {hat.details ? <T style={{ color: '#fff' }}>{hat.details}</T> : null}
+          {hat.details ? <RichText style={{ color: '#fff' }}>{hat.details}</RichText> : null}
         </Card>
 
         {myTeamId ? <MyTeam teamId={myTeamId} rows={teams} meId={access.meId} /> : null}

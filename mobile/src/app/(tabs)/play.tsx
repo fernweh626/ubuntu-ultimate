@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 
 import { REGIONS } from '@/content/countries';
-import { regionName } from '@/content/hub';
 import { homeFeed } from '@/db/home';
 import { useData } from '@/db/live';
 import { getAccess, getHomeRegion, getMeId, listEvents, listGames, myRoles, type GameListItem } from '@/db/repo';
@@ -67,11 +66,12 @@ function Games() {
     const me = await getMeId(d);
     return me ? (await myRoles(d, me)).map((r) => r.team_id) : [];
   });
-  const [scopeChoice, setScope] = useState<'mine' | 'region' | 'all' | null>(null);
+  // 'mine', 'all' or a region code. Starts on your teams, else your home region.
+  const [scopeChoice, setScope] = useState<string | null>(null);
   const [more, setMore] = useState(false);
-  const scope = scopeChoice ?? (mine?.length ? 'mine' : home ? 'region' : 'all');
+  const scope = scopeChoice ?? (mine?.length ? 'mine' : (home ?? 'all'));
   const fits = (g: GameListItem) =>
-    scope === 'all' || (scope === 'mine' ? !!mine?.some((t) => t === g.team_a_id || t === g.team_b_id) : g.a_region === home || g.b_region === home || g.event_region === home);
+    scope === 'all' || (scope === 'mine' ? !!mine?.some((t) => t === g.team_a_id || t === g.team_b_id) : g.a_region === scope || g.b_region === scope || g.event_region === scope);
   const shown = games.filter((g) => g.status !== 'live' && fits(g));
   // Fixtures in the past with no result aren't "coming up": they wait for someone to enter the result.
   const cutoff = new Date(opened - 3 * 3600_000).toISOString();
@@ -82,15 +82,13 @@ function Games() {
 
   return (
     <>
-      <Segmented
-        value={scope}
-        onChange={setScope}
-        options={[
-          ...(mine?.length ? [{ value: 'mine' as const, label: '★ My teams' }] : []),
-          ...(home ? [{ value: 'region' as const, label: regionName(home) }] : []),
-          { value: 'all', label: 'All of SA' },
-        ]}
-      />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+        {mine?.length ? <Choice label="★ My teams" selected={scope === 'mine'} onPress={() => setScope('mine')} style={CHIP} /> : null}
+        <Choice label="All regions" selected={scope === 'all'} onPress={() => setScope('all')} style={CHIP} />
+        {REGIONS.map((r) => (
+          <Choice key={r.code} label={r.name} selected={scope === r.code} onPress={() => setScope(r.code)} style={CHIP} />
+        ))}
+      </View>
       {overdue.length ? (
         <Section title={`Needs a result · ${overdue.length}`}>
           <T v="small">Scheduled but nobody scored them. Open one to enter the result, or postpone it.</T>

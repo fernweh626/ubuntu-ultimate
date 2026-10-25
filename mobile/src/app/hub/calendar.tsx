@@ -10,7 +10,7 @@ import { isMeeting, KIND_LABEL } from '@/domain/calendar';
 import type { CalendarEntry } from '@/db/types';
 import { dateRange } from '@/domain/format';
 import { RegionChips, useRegionFilter } from '@/ui/region-filter';
-import { Button, Card, Chip, EmptyState, IconButton, Screen, Section, Segmented, T } from '@/ui/components';
+import { Button, Card, Chip, EmptyState, IconButton, Screen, Section, Segmented, T, RichText } from '@/ui/components';
 import { colors, font, space } from '@/ui/theme';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -113,7 +113,7 @@ export default function Calendar() {
                         {isMeeting(e.kind) && e.start_time ? <Chip label={`${e.start_time}${e.end_time ? `–${e.end_time}` : ''}`} icon="clock-outline" tone="neutral" /> : null}
                         {e.status === 'tbc' ? <Chip label="Dates TBC" tone="warn" /> : null}
                       </View>
-                      {e.notes ? <T v="small">{e.notes}</T> : null}
+                      {e.notes ? <RichText v="small">{e.notes}</RichText> : null}
                       {e.meeting_url && (e.end_date ?? e.start_date ?? '') >= today ? (
                         <Button label="Join meeting" icon="video-outline" kind="primary" onPress={() => Linking.openURL(e.meeting_url!)} style={{ alignSelf: 'flex-start', minHeight: 40 }} />
                       ) : null}

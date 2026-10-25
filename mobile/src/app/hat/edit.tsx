@@ -167,7 +167,7 @@ export default function HatEdit() {
         <Section title="Payment">
           <T v="small">Use a pay link, EFT details, or both. Players tick “I’ve paid”; you confirm payments on the hat page.</T>
           <Field label="Payment link (optional)" value={payment} onChangeText={setPayment} autoCapitalize="none" keyboardType="url" placeholder="SnapScan, Zapper, PayFast…" />
-          <Field label="EFT details (optional)" value={eft} onChangeText={setEft} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + HAT'} />
+          <Field plain label="EFT details (optional)" value={eft} onChangeText={setEft} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + HAT'} />
           <Field label="Send proof of payment to" value={pop} onChangeText={setPop} autoCapitalize="none" placeholder="Email or WhatsApp number" hint="Players get a button that opens WhatsApp or email to you, ready to attach their PoP." />
         </Section>
         <Section title="Games">

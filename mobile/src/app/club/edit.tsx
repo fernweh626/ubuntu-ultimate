@@ -67,7 +67,7 @@ export default function ClubEdit() {
         </Section>
         <Field label="Home town / campus" value={f.city ?? ''} onChangeText={opt('city')} />
         <Field label="About the club" value={f.about ?? ''} onChangeText={opt('about')} multiline placeholder="Who you are, when you train, how to join" />
-        <Field label="Banking details (optional)" value={f.banking_details ?? ''} onChangeText={opt('banking_details')} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …'} hint="Shown on the club page with Copy and Share." />
+        <Field plain label="Banking details (optional)" value={f.banking_details ?? ''} onChangeText={opt('banking_details')} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …'} hint="Shown on the club page with Copy and Share." />
         <Section title="Contact">
           <PhoneField label="Phone / WhatsApp" value={f.contact_phone ?? ''} onChange={opt('contact_phone')} />
           <Field label="Email" value={f.contact_email ?? ''} onChangeText={opt('contact_email')} keyboardType="email-address" autoCapitalize="none" />

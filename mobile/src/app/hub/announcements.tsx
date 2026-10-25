@@ -5,7 +5,7 @@ import { REGIONS } from '@/content/hub';
 import { useData } from '@/db/live';
 import { getAccess, listAnnouncements } from '@/db/repo';
 import { shortDate } from '@/domain/format';
-import { Button, Card, Chip, EmptyState, IconButton, Screen, T } from '@/ui/components';
+import { Button, Card, Chip, EmptyState, IconButton, Screen, T, RichText } from '@/ui/components';
 import { RegionChips, useRegionFilter } from '@/ui/region-filter';
 import { space } from '@/ui/theme';
 
@@ -39,7 +39,7 @@ export default function Announcements() {
                 <Chip label={shortDate(a.published_at)} tone="neutral" />
               </View>
               <T v="title">{a.title}</T>
-              {a.body ? <T>{a.body}</T> : null}
+              {a.body ? <RichText>{a.body}</RichText> : null}
               {a.link_url ? (
                 <Button label={a.link_label || 'Open link'} icon="open-in-new" onPress={() => (a.link_url!.startsWith('/') ? router.push(a.link_url as never) : Linking.openURL(a.link_url!))} style={{ alignSelf: 'flex-start' }} />
               ) : null}

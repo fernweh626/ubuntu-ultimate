@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { ComponentProps, ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -19,6 +20,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { maskDmy } from '@/domain/format';
+import { applyFormat, parseRich } from '@/domain/rich-text';
 import { ratioCode, ratioSlot } from '@/domain/rules';
 
 import { colors, DEFAULT_TEAM_COLOR, font, radius, space, TOUCH, WEB_WIDTH } from './theme';
@@ -420,20 +422,87 @@ export function TeamSwatch({ color, size = 'md' }: { color?: string | null; size
   return <View style={{ width: dims[0], height: dims[1], borderRadius: 3, backgroundColor: color || DEFAULT_TEAM_COLOR }} />;
 }
 
+/**
+ * Text box. Multi-line ones get a small formatting bar (bold, italic, bullets, link) unless `plain`
+ * (e.g. pasted CSV or bank details); show the result with <RichText>.
+ */
 export function Field({
   label,
   hint,
+  plain,
   ...input
-}: TextInputProps & { label: string; hint?: string }) {
+}: TextInputProps & { label: string; hint?: string; plain?: boolean }) {
+  const [sel, setSel] = useState({ start: 0, end: 0 });
+  const [force, setForce] = useState<{ start: number; end: number } | undefined>(undefined);
+  const rich = input.multiline && !plain && !!input.onChangeText;
+  function format(kind: 'bold' | 'italic' | 'bullet' | 'link') {
+    const e = applyFormat(String(input.value ?? ''), sel, kind);
+    input.onChangeText?.(e.value);
+    setSel({ start: e.start, end: e.end });
+    setForce({ start: e.start, end: e.end });
+  }
   return (
     <View style={{ gap: 6 }}>
       {label ? <T v="smallStrong">{label}</T> : null}
-      <TextInput
-        placeholderTextColor={colors.faint}
-        {...input}
-        style={[styles.input, input.multiline && { minHeight: 88, textAlignVertical: 'top', paddingTop: 12 }]}
-      />
+      <View>
+        <TextInput
+          placeholderTextColor={colors.faint}
+          {...input}
+          selection={rich ? force : input.selection}
+          onSelectionChange={(e) => {
+            setSel(e.nativeEvent.selection);
+            if (force) setForce(undefined);
+            input.onSelectionChange?.(e);
+          }}
+          style={[styles.input, input.multiline && { minHeight: 88, textAlignVertical: 'top', paddingTop: 12 }, rich && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
+        />
+        {rich ? (
+          <View style={styles.formatBar}>
+            {(
+              [
+                ['bold', 'format-bold', 'Bold'],
+                ['italic', 'format-italic', 'Italic'],
+                ['bullet', 'format-list-bulleted', 'Bullet list'],
+                ['link', 'link-variant', 'Add a link'],
+              ] as const
+            ).map(([k, icon, a11y]) => (
+              <Pressable key={k} onPress={() => format(k)} accessibilityRole="button" accessibilityLabel={a11y} hitSlop={6} style={({ pressed }) => [styles.formatBtn, pressed && { backgroundColor: colors.neutralTint }]}>
+                <Icon name={icon} size={20} color={colors.muted} />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </View>
       {hint ? <T v="small">{hint}</T> : null}
+    </View>
+  );
+}
+
+/** Text typed in a formatted box: bold, italic, bullets and tappable links. */
+export function RichText({ children, v = 'body', style }: { children: string | null | undefined; v?: Variant; style?: TextProps['style'] }) {
+  const blocks = parseRich(children);
+  if (!blocks.length) return null;
+  return (
+    <View style={{ gap: 2 }}>
+      {blocks.map((b, i) => (
+        <View key={i} style={b.bullet ? { flexDirection: 'row', gap: 6, paddingLeft: 4 } : undefined}>
+          {b.bullet ? <T v={v} style={style}>•</T> : null}
+          <T v={v} style={[style, b.bullet && { flex: 1 }]}>
+            {b.spans.length
+              ? b.spans.map((sp, j) => (
+                  <T
+                    key={j}
+                    v={v}
+                    style={[style, sp.bold && { fontFamily: font.bold }, sp.italic && { fontStyle: 'italic' }, sp.href ? { color: colors.brand, textDecorationLine: 'underline' } : null]}
+                    onPress={sp.href ? () => Linking.openURL(sp.href!) : undefined}
+                    accessibilityRole={sp.href ? 'link' : undefined}>
+                    {sp.text}
+                  </T>
+                ))
+              : ' '}
+          </T>
+        </View>
+      ))}
     </View>
   );
 }
@@ -503,6 +572,8 @@ export function Divider() {
 }
 
 const styles = StyleSheet.create({
+  formatBar: { flexDirection: 'row', gap: 4, paddingHorizontal: 6, paddingVertical: 4, borderWidth: 1, borderTopWidth: 0, borderColor: '#C9CDC5', borderBottomLeftRadius: 10, borderBottomRightRadius: 10, backgroundColor: colors.surface },
+  formatBtn: { width: 36, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 6 },
   screen: { flex: 1, backgroundColor: colors.bg },
   padded: { paddingHorizontal: space.lg, paddingTop: space.lg },
   footer: {

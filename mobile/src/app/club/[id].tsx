@@ -10,7 +10,7 @@ import { getAccess, listGames } from '@/db/repo';
 import { divisionName } from '@/domain/divisions';
 import { displayName } from '@/domain/format';
 import { whatsappLink } from '@/domain/standing';
-import { Button, Card, Chip, Choice, EmptyState, IconButton, Row, Screen, Section, Sheet, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, EmptyState, IconButton, Row, Screen, Section, Sheet, T, RichText } from '@/ui/components';
 import { GameCard } from '@/ui/game-bits';
 import { BankingCard } from '@/ui/banking';
 import { colors, font, space } from '@/ui/theme';
@@ -61,7 +61,7 @@ export default function ClubPage() {
           <T style={{ color: 'rgba(255,255,255,0.85)', fontFamily: font.semibold }}>
             {[club.city, club.region ? regionName(club.region) : null, `${teams.length} team${teams.length === 1 ? '' : 's'}`, `${squad.length} players`].filter(Boolean).join(' · ')}
           </T>
-          {club.about ? <T style={{ color: '#fff' }}>{club.about}</T> : null}
+          {club.about ? <RichText style={{ color: '#fff' }}>{club.about}</RichText> : null}
           <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
             {wa ? <Button label="WhatsApp" icon="whatsapp" kind="dark" onPress={() => Linking.openURL(wa)} /> : null}
             {club.website ? <Button label="Website" icon="web" kind="dark" onPress={() => Linking.openURL(club.website!)} /> : null}

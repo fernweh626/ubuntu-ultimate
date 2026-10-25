@@ -9,7 +9,7 @@ import { loadFinishedGames, peopleById, teamAggregate } from '@/db/reports';
 import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, sessionsForTeam, setMembershipKind, setMembershipRole, upcomingPractices, setTeamLogo, shoutoutsForTeam } from '@/db/repo';
 import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format';
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
-import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T } from '@/ui/components';
+import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T, RichText } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
 import { TeamFixtures } from '@/ui/team-fixtures';
 import { BankingCard } from '@/ui/banking';
@@ -123,7 +123,7 @@ export default function TeamPage() {
         </View>
         <JoinTeamBar teamId={id} teamName={team.name} onSquad={onSquad} />
         <BankingCard name={team.name} details={team.banking_details} path={`/team/${id}`} />
-        {team.about ? <T v="small">{team.about}</T> : null}
+        {team.about ? <RichText v="small">{team.about}</RichText> : null}
         {canManage ? <JoinRequests teamId={id} /> : null}
         {isStaffHere ? (
           <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>

@@ -127,7 +127,7 @@ export default function TeamEdit() {
           <Field label="Website" value={f.website ?? ''} onChangeText={opt('website')} autoCapitalize="none" />
           <Field label="Instagram or Facebook link" value={f.social ?? ''} onChangeText={opt('social')} autoCapitalize="none" />
         </Section>
-        <Field label="Banking details (optional)" value={f.banking_details ?? ''} onChangeText={opt('banking_details')} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + FEES'} hint="Shown on the team page with Copy and Share, for paying team fees." />
+        <Field plain label="Banking details (optional)" value={f.banking_details ?? ''} onChangeText={opt('banking_details')} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + FEES'} hint="Shown on the team page with Copy and Share, for paying team fees." />
         <Field label="About the team" value={f.about ?? ''} onChangeText={opt('about')} multiline placeholder="Training times, who can join, anything new players should know" />
       </Screen>
     </>

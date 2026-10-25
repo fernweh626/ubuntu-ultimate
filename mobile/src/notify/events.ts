@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { plainText } from '@/domain/rich-text';
 import { DAYS_LONG, shortDate, timeOfDay } from '@/domain/format';
 import { STATUS_REASONS, type StatusReason } from '@/domain/fixtures';
 
@@ -231,7 +232,7 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
       if (seen.announcements.includes(a.id)) continue;
       seen.announcements.push(a.id);
       if (!first && (!a.region_code || !home || home === 'all' || a.region_code === home)) {
-        out.push({ key: `ann:${a.id}`, title: `📣 ${a.title}`, body: a.body ? a.body.slice(0, 140) : 'Tap to read.', url: '/hub/announcements' });
+        out.push({ key: `ann:${a.id}`, title: `📣 ${a.title}`, body: a.body ? plainText(a.body).slice(0, 140) : 'Tap to read.', url: '/hub/announcements' });
       }
     }
   }

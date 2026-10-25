@@ -9,7 +9,7 @@ import { getAccess, getCalendarEntry, meetingRsvps, setMeetingRsvp } from '@/db/
 import { KIND_LABEL, meetingStart } from '@/domain/calendar';
 import { displayName, shortDate } from '@/domain/format';
 import { AnswerButtons, type Answer } from '@/ui/answer';
-import { Button, Card, Chip, IconButton, Screen, Section, T } from '@/ui/components';
+import { Button, Card, Chip, IconButton, Screen, Section, T, RichText } from '@/ui/components';
 import { colors, font, space } from '@/ui/theme';
 
 const TO: Record<Answer, 'going' | 'late' | 'not_going'> = { yes: 'going', late: 'late', no: 'not_going' };
@@ -69,7 +69,7 @@ export default function Meeting() {
         ) : null}
 
         <Section title="About & agenda">
-          {e.notes ? <T style={{ lineHeight: 22 }}>{e.notes}</T> : <T v="small">No agenda yet.</T>}
+          {e.notes ? <RichText style={{ lineHeight: 22 }}>{e.notes}</RichText> : <T v="small">No agenda yet.</T>}
         </Section>
 
         {runs ? (

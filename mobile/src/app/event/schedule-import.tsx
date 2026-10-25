@@ -98,7 +98,7 @@ export default function ScheduleImport() {
           </View>
         </Card>
         <Button label="Choose a CSV file" icon="file-upload-outline" kind="primary" onPress={pickFile} />
-        <Field label="…or paste the rows" value={text} onChangeText={setText} multiline placeholder="date,time,field,home,away" autoCapitalize="none" />
+        <Field plain label="…or paste the rows" value={text} onChangeText={setText} multiline placeholder="date,time,field,home,away" autoCapitalize="none" />
 
         {rows.length ? (
           <Section title={`Preview · ${good.length} ready${bad.length ? ` · ${bad.length} to fix` : ''}`}>
