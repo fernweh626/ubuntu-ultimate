@@ -43,7 +43,7 @@ export default function Guide() {
               ))}
             </View>
           ) : (
-            <EmptyState icon="text-search" title="Nothing found" body="Try another word, or ask us: Me → Report a bug or suggest an idea." />
+            <EmptyState icon="text-search" title="Nothing found" body="Try another word, or ask us: More → Report a bug or suggest an idea." />
           )
         ) : (
           <>

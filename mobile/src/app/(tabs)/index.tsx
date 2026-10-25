@@ -2,41 +2,36 @@ import { Image } from 'expo-image';
 import { Redirect, router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
-import { regionName } from '@/content/hub';
-import { dayLabel, homeFeed, type Competition, type TimelineItem } from '@/db/home';
-import { notifyChanged, useData } from '@/db/live';
-import { getAccess, getHomeRegion, isOnboarded, listAnnouncements, listCalendar, listGames, listPickups, type GameListItem } from '@/db/repo';
-import { DAYS_LONG, dateRange, timeOfDay, weekdayIndex } from '@/domain/format';
-import { Button, Card, Chip, EmptyState, Icon, Section, Screen, Segmented, T } from '@/ui/components';
-import { GameCard } from '@/ui/game-bits';
-import { MeButton } from '@/ui/me-button';
-import { PREVIEW } from '@/lib/preview';
 import { COUNTRY } from '@/content/countries';
+import { regionName } from '@/content/hub';
+import { dayLabel, homeFeed, type TimelineItem } from '@/db/home';
+import { notifyChanged, useData } from '@/db/live';
+import { getAccess, getHomeRegion, isOnboarded, listAnnouncements, pendingForStaff } from '@/db/repo';
+import { mySchedule } from '@/db/schedule';
+import { DAYS_LONG, weekdayIndex } from '@/domain/format';
 import { deadlineLabel, yearlyInfoMailto, yearlyInfoSeason, yearlyInfoText } from '@/domain/yearly';
+import { PREVIEW } from '@/lib/preview';
+import { Button, Card, Icon, Screen, Section, T } from '@/ui/components';
+import { TimelineRow } from '@/ui/feed';
+import { GameCard } from '@/ui/game-bits';
 import { JoinRequestPrompt } from '@/ui/join-team';
-import { KindIcon } from '@/ui/kind-icon';
+import { MeButton } from '@/ui/me-button';
 import { colors, font, space } from '@/ui/theme';
 
 const LOGO = require('../../../assets/images/logo-mark.png');
 
 /*
- * Home stays short however big things get:
- *  - For you: a strip of your competitions + one 7-day timeline sorted by time, each item tagged.
- *    Detail (standings, every fixture) lives on the competition's own page.
- *  - Your region / All of SA: a few of each thing, with "See all" — never everything.
+ * Home is only "what's next for me": things waiting for my answer, live games of mine, and my
+ * next week. Results, leagues and the rest of SA live in Play; everything else in More.
  */
 
-const MAX = 3;
-const MAX_TIMELINE = 8;
+const MAX_TIMELINE = 6;
 
 export default function Home() {
   const onboarded = useData(isOnboarded);
-  const feedData = useData((d) => homeFeed(d));
-  const home = useData(getHomeRegion);
-  const [feedChoice, setFeed] = useState<'you' | 'region' | 'all' | null>(null);
-  const feed = feedChoice === 'region' && !home ? 'all' : (feedChoice ?? (feedData?.hasScope ? 'you' : home ? 'region' : 'all'));
+  const feed = useData((d) => homeFeed(d));
 
   // First time on this phone: set up who you are, your team and region.
   if (onboarded === false) return <Redirect href="/welcome" />;
@@ -68,49 +63,52 @@ export default function Home() {
         <MeButton />
       </View>
 
-      <Segmented
-        value={feed}
-        onChange={setFeed}
-        options={[
-          { value: 'you', label: '★ For you' },
-          ...(home ? [{ value: 'region' as const, label: regionName(home) }] : []),
-          { value: 'all', label: 'All of SA' },
-        ]}
-      />
 
       <YearlyInfoCard />
-      <Button label="Score a game" icon="whistle" kind="primary" big onPress={() => router.push('/game/new')} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
-        {(
-          [
-            ['calendar-check-outline', 'My schedule', '/schedule'],
-            ['calendar', 'Calendar', '/hub/calendar'],
-            ['map-marker-radius', 'Pick ups', '/hub/pickups'],
-            ['book-open-variant', 'Rules', '/hub/rules'],
-            ['hat-fedora', 'Hats', '/hat'],
-          ] as const
-        ).map(([icon, label, href]) => (
-          <Pressable
-            key={label}
-            onPress={() => router.push(href)}
-            accessibilityRole="button"
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, minHeight: 40, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
-            <Icon name={icon} size={18} color={colors.brand} />
-            <T v="smallStrong">{label}</T>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      <News region={home ?? null} />
-
-      {feed === 'you' ? feedData ? <ForYou data={feedData} /> : null : <Area region={feed === 'region' ? home ?? null : null} />}
+      <News />
+      <NeedsYou />
+      {feed ? <Upcoming data={feed} /> : null}
     </Screen>
+  );
+}
+
+/* ------------------------------ Needs you ------------------------------ */
+
+/** One card with everything waiting on you: answers, check-ins, people asking to join your team. */
+function NeedsYou() {
+  const [opened] = useState(() => Date.now());
+  const todo = useData(async (d) => {
+    const [sched, access] = await Promise.all([mySchedule(d), getAccess(d)]);
+    const upcoming = sched.items.filter((i) => Date.parse(i.endAt) >= opened && !i.cancelled);
+    return {
+      answers: upcoming.filter((i) => !i.status && (i.kind === 'practice' || i.gameStatus === 'scheduled')).length,
+      checkins: sched.items.filter((i) => (i.kind === 'practice' || i.kind === 'game') && Date.parse(i.endAt) < opened && !i.cancelled && i.played && !i.checkedIn && i.gameStatus !== 'scheduled').length,
+      requests: (await pendingForStaff(d, access.staffTeamIds)).length,
+      teamId: access.staffTeamIds[0],
+    };
+  });
+  if (!todo || !(todo.answers || todo.checkins || todo.requests)) return null;
+  const rows: [string, string, () => void][] = [];
+  if (todo.answers) rows.push(['calendar-question', `${todo.answers} to answer: are you coming?`, () => router.push('/schedule')]);
+  if (todo.checkins) rows.push(['comment-check-outline', `${todo.checkins} check-in${todo.checkins > 1 ? 's' : ''}: how did it go?`, () => router.push('/schedule')]);
+  if (todo.requests) rows.push(['account-clock-outline', `${todo.requests} asking to join your team`, () => router.push(`/team/${todo.teamId}`)]);
+  return (
+    <View style={{ backgroundColor: colors.warnTint, borderRadius: 14, overflow: 'hidden' }}>
+      {rows.map(([icon, label, go], i) => (
+        <Pressable key={label} onPress={go} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: '#F3D9C6' }}>
+          <Icon name={icon as never} color={colors.warnInk} />
+          <T v="bodyStrong" style={{ flex: 1, color: colors.warnInk }}>
+            {label}
+          </T>
+          <Icon name="chevron-right" color={colors.warnInk} />
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
 /* ------------------------------ Announcements ------------------------------ */
 
-/** Pinned and recent (two weeks) announcements for your region and nationally: at most two, newest first. */
 /** Pinned for coordinators and admins from 1 December to 20 January, until they tap Done. */
 function YearlyInfoCard() {
   const db = useSQLiteContext();
@@ -154,8 +152,9 @@ function YearlyInfoCard() {
   );
 }
 
-function News({ region }: { region: string | null }) {
+function News() {
   const list = useData(listAnnouncements) ?? [];
+  const region = useData(getHomeRegion) ?? null;
   const [opened] = useState(() => Date.now());
   const fresh = list.filter((a) => (!a.region_code || !region || a.region_code === region) && (a.pinned || opened - Date.parse(a.published_at) < 14 * 86400_000));
   if (!fresh.length) return null;
@@ -177,16 +176,16 @@ function News({ region }: { region: string | null }) {
   );
 }
 
-/* ------------------------------ For you ------------------------------ */
+/* ------------------------------ Coming up ------------------------------ */
 
-function ForYou({ data }: { data: Awaited<ReturnType<typeof homeFeed>> }) {
+/** Live games of mine, then my next week: practices, fixtures, pickups and things I follow. */
+function Upcoming({ data }: { data: Awaited<ReturnType<typeof homeFeed>> }) {
   if (!data.hasScope) {
     return (
-      <Card onPress={() => router.push('/me')}>
+      <Card>
         <T v="bodyStrong">Make this yours</T>
-        <T v="small">
-          Pick yourself in Me (top right) and your teams, leagues and games appear here. Follow any team, tournament or pickup — in any region — to add it too.
-        </T>
+        <T v="small">Join your team and its games and practices show up here. Follow any team, league or pickup to add it too.</T>
+        <Button label="Find your team" icon="account-group" kind="primary" onPress={() => router.push('/teams')} />
       </Card>
     );
   }
@@ -207,28 +206,10 @@ function ForYou({ data }: { data: Awaited<ReturnType<typeof homeFeed>> }) {
           ))}
         </Section>
       ) : null}
-
-      <Section title="Your competitions">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingRight: space.lg }} style={{ marginHorizontal: -space.lg, paddingLeft: space.lg }}>
-          {data.competitions.map((c) => (
-            <CompetitionCard key={c.key} c={c} />
-          ))}
-          <Pressable
-            onPress={() => router.push('/hub/calendar')}
-            accessibilityRole="button"
-            style={{ width: 120, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, padding: space.md, justifyContent: 'center', alignItems: 'center', gap: 4 }}>
-            <Icon name="plus" color={colors.brand} />
-            <T v="small" style={{ textAlign: 'center' }}>
-              Find leagues, tournaments & pickups
-            </T>
-          </Pressable>
-        </ScrollView>
-      </Section>
-
-      <Section title="This week" action={<Button label="My schedule ›" kind="ghost" onPress={() => router.push('/schedule')} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
+      <Section title="Next up" action={<Button label="My schedule ›" kind="ghost" onPress={() => router.push('/schedule')} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
         {days.length === 0 ? (
           <Card>
-            <T v="small">Nothing on in the next 7 days. Fixtures, practices and pickups you follow show up here.</T>
+            <T v="small">Nothing on in the next 7 days.</T>
           </Card>
         ) : (
           days.map((d) => (
@@ -242,167 +223,7 @@ function ForYou({ data }: { data: Awaited<ReturnType<typeof homeFeed>> }) {
             </View>
           ))
         )}
-        {data.timeline.length > shown.length ? <T v="small">+{data.timeline.length - shown.length} more this week in All games.</T> : null}
-      </Section>
-
-      {data.recent.length ? (
-        <Section title="Recent results">
-          {data.recent.map((g) => (
-            <GameCard key={g.id} g={g} />
-          ))}
-        </Section>
-      ) : null}
-    </>
-  );
-}
-
-function CompetitionCard({ c }: { c: Competition }) {
-  return (
-    <Pressable
-      onPress={() => router.push(c.kind === 'event' ? `/event/${c.id}` : '/hub/pickups')}
-      accessibilityRole="button"
-      style={{ width: 200, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: 'hidden' }}>
-      <View style={{ height: 6, backgroundColor: c.color }} />
-      <View style={{ padding: space.md, gap: 2 }}>
-        <Text numberOfLines={2} style={{ fontFamily: font.bold, fontSize: 16, lineHeight: 20, color: colors.ink }}>
-          {c.name}
-        </Text>
-        <T v="small" numberOfLines={1} style={{ color: colors.ink }}>
-          {c.line1}
-        </T>
-        <T v="small" numberOfLines={1}>
-          {c.line2}
-        </T>
-      </View>
-    </Pressable>
-  );
-}
-
-function TimelineRow({ it, first }: { it: TimelineItem; first: boolean }) {
-  return (
-    <Pressable
-      onPress={() => router.push(it.url as never)}
-      accessibilityRole="button"
-      style={{ flexDirection: 'row', gap: space.md, padding: space.md, borderTopWidth: first ? 0 : 1, borderTopColor: colors.divider, alignItems: 'center' }}>
-      <KindIcon kind={it.kind} />
-      <Text style={{ width: 52, fontFamily: font.display, fontSize: 20, color: colors.ink }}>{timeOfDay(it.at)}</Text>
-      <View style={{ flex: 1, gap: 3 }}>
-        <T v="bodyStrong" numberOfLines={1}>
-          {it.title}
-        </T>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
-          {it.tag ? <TagChip name={it.tag.name} color={it.tag.color} /> : null}
-          {it.following ? <Chip label="Following" tone="neutral" /> : null}
-          {it.subtitle ? (
-            <T v="small" numberOfLines={1} style={{ flexShrink: 1 }}>
-              {it.subtitle}
-            </T>
-          ) : null}
-        </View>
-      </View>
-      <Icon name="chevron-right" color={colors.faint} />
-    </Pressable>
-  );
-}
-
-/** Competition tag: coloured dot + name, so two leagues on the same day are easy to tell apart. */
-function TagChip({ name, color }: { name: string; color: string }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: 190 }}>
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-      <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 12, color }}>
-        {name}
-      </Text>
-    </View>
-  );
-}
-
-/* ------------------------------ Region / All of SA ------------------------------ */
-
-function Area({ region }: { region: string | null }) {
-  const games = useData(listGames);
-  const pickups = useData(listPickups);
-  const calendar = useData(listCalendar);
-  const [opened] = useState(() => Date.now());
-  const here = (g: GameListItem) => !region || g.a_region === region || g.b_region === region || g.event_region === region;
-  const inRegion = (r: string | null | undefined) => !region || !r || r === region;
-
-  const live = games?.filter((g) => g.status === 'live' && here(g)) ?? [];
-  const recent = games?.filter((g) => g.status === 'final' && here(g)).slice(0, MAX) ?? [];
-  const nextUp = (games ?? [])
-    .filter((g) => g.status === 'scheduled' && g.scheduled_at && here(g) && Date.parse(g.scheduled_at) > opened - 3 * 3600_000)
-    .sort((a, b) => a.scheduled_at!.localeCompare(b.scheduled_at!))
-    .slice(0, MAX);
-  const today = weekdayIndex();
-  const todays = pickups?.filter((p) => p.day_of_week === today && (!region || p.region === region)) ?? [];
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const upcoming = (calendar ?? [])
-    .filter((c) => c.start_date && (c.end_date ?? c.start_date) >= todayIso)
-    .filter((c) => c.level === 'national' || c.level === 'international' || inRegion(c.region))
-    .slice(0, MAX);
-  const where = region ? regionName(region) : 'SA';
-
-  return (
-    <>
-      {live.length ? (
-        <Section title={`Live now · ${live.length}`} action={live.length > MAX ? <Button label="See all" kind="ghost" onPress={() => router.push('/play')} style={{ minHeight: 32, paddingHorizontal: 0 }} /> : undefined}>
-          {live.slice(0, MAX).map((g) => (
-            <GameCard key={g.id} g={g} />
-          ))}
-        </Section>
-      ) : null}
-
-      {nextUp.length ? (
-        <Section title={`Next games in ${where}`} action={<Button label="See all" kind="ghost" onPress={() => router.push('/play')} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
-          {nextUp.map((g) => (
-            <GameCard key={g.id} g={g} />
-          ))}
-        </Section>
-      ) : null}
-
-      <Section title={`Pickup today · ${DAYS_LONG[today]}`} action={<Button label="All days" kind="ghost" onPress={() => router.push('/hub/pickups')} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
-        {todays.length === 0 ? (
-          <Card>
-            <T v="small">No pickup listed for today{region ? ` in ${where}` : ''}. Know one? Add it in Pickups so others can find it.</T>
-          </Card>
-        ) : (
-          todays.slice(0, MAX).map((p) => (
-            <Card key={p.id} onPress={() => router.push('/hub/pickups')}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <T v="bodyStrong" style={{ flex: 1 }}>
-                  {p.name}
-                </T>
-                <T style={{ fontFamily: font.display, fontSize: 22 }}>{p.start_time}</T>
-              </View>
-              <T v="small">{[p.venue_text, p.area, p.city].filter(Boolean).join(' · ')}</T>
-              {p.is_sample ? <Chip label="Sample" tone="warn" /> : null}
-            </Card>
-          ))
-        )}
-        {todays.length > MAX ? <T v="small">+{todays.length - MAX} more in Pickups.</T> : null}
-      </Section>
-
-      <Section title="Recent results" action={recent.length ? <Button label="See all" kind="ghost" onPress={() => router.push('/play')} style={{ minHeight: 32, paddingHorizontal: 0 }} /> : undefined}>
-        {recent.length === 0 ? (
-          <EmptyState icon="flag-checkered" title="No finished games yet" body="Finished games and their reports show up here." />
-        ) : (
-          recent.map((g) => <GameCard key={g.id} g={g} />)
-        )}
-      </Section>
-
-      <Section title="Coming up" action={<Button label="Calendar" kind="ghost" onPress={() => router.push('/hub/calendar')} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
-        {upcoming.length === 0 ? (
-          <Card>
-            <T v="small">Nothing dated yet. Add events to the competitive calendar.</T>
-          </Card>
-        ) : (
-          upcoming.map((c) => (
-            <Card key={c.id} onPress={() => router.push('/hub/calendar')}>
-              <T v="bodyStrong">{c.name}</T>
-              <T v="small">{[dateRange(c.start_date, c.end_date), c.location].filter(Boolean).join(' · ')}</T>
-            </Card>
-          ))
-        )}
+        {data.timeline.length > shown.length ? <T v="small">+{data.timeline.length - shown.length} more this week in My schedule.</T> : null}
       </Section>
     </>
   );

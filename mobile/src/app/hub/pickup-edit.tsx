@@ -84,7 +84,7 @@ export default function PickupEdit() {
         <Stack.Screen options={{ title: 'Edit pickup' }} />
         <Screen edges={[]}>
           <T v="bodyStrong">Only the organisers can edit this pickup</T>
-          <T v="small">Whoever added it, the people they chose, and admins. Spotted something wrong? Message the contact on the pickup, or report it in Me → Report a bug.</T>
+          <T v="small">Whoever added it, the people they chose, and admins. Spotted something wrong? Message the contact on the pickup, or report it in More → Report a bug.</T>
         </Screen>
       </>
     );

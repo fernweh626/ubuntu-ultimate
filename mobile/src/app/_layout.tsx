@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider, type SQLiteDatabase } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { migrate } from '@/db/schema';
@@ -18,7 +19,7 @@ import { ensureDemoBanking, ensureDemoContent, ensureStarterContent, seedIfEmpty
 import { SyncManager } from '@/db/sync-manager';
 import { NotificationManager } from '@/notify/manager';
 import { installWebAlert } from '@/lib/web';
-import { colors, font } from '@/ui/theme';
+import { colors, font, WEB_WIDTH } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
 installWebAlert();
@@ -60,6 +61,7 @@ export default function RootLayout() {
       <SQLiteProvider databaseName="sa-ultimate.db" onInit={init}>
         <SyncManager />
         <NotificationManager />
+        <WebFrame>
         <Stack
           screenOptions={{
             headerTitleStyle: { fontFamily: font.bold, fontSize: 18 },
@@ -71,8 +73,19 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="game/[id]/index" options={{ headerShown: false, gestureEnabled: false }} />
         </Stack>
+        </WebFrame>
       </SQLiteProvider>
     </ThemeProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** On a computer the website is the app: one phone-width column in the middle of the screen. */
+function WebFrame({ children }: { children: React.ReactNode }) {
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.night }}>
+      <View style={{ flex: 1, width: '100%', maxWidth: WEB_WIDTH, alignSelf: 'center', backgroundColor: colors.bg, overflow: 'hidden' }}>{children}</View>
+    </View>
   );
 }

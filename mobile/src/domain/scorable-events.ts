@@ -14,7 +14,7 @@ export function eventPhase(e: ScorableEvent, today: string): EventPhase {
   return e.start_date <= today ? 'active' : 'upcoming';
 }
 
-export function scorableEvents(events: ScorableEvent[], today: string, opts: { region?: string | null; q?: string } = {}) {
+export function scorableEvents<E extends ScorableEvent>(events: E[], today: string, opts: { region?: string | null; q?: string } = {}) {
   const q = (opts.q ?? '').trim().toLowerCase();
   const rows = events
     .filter((e) => e.kind === 'league' || e.kind === 'tournament')

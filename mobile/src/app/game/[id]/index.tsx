@@ -168,7 +168,7 @@ export default function ScoreGame() {
     try {
       if (fresh) await endGame(db, fresh, reason);
     } catch (e) {
-      return Alert.alert('Couldn’t end the game', `${String((e as Error).message ?? e)}\n\nNothing was lost. Please report this: Me → Report a bug.`);
+      return Alert.alert('Couldn’t end the game', `${String((e as Error).message ?? e)}\n\nNothing was lost. Please report this: More → Report a bug.`);
     }
     setEndSheet(false);
     router.replace(`/game/${id}/report`);

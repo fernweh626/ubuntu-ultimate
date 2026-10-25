@@ -15,7 +15,7 @@ export async function shareLiveLink(gameId: string, title: string, signedIn: boo
     return Alert.alert('Live link coming soon', 'The spectator page is built but not online yet. Once it’s hosted, this button shares a link anyone can open.');
   }
   if (!signedIn) {
-    Alert.alert('Sign in so people can follow', 'Spectators see what this phone uploads. Go online in Me → Account & sync, then share again.');
+    Alert.alert('Sign in so people can follow', 'Spectators see what this phone uploads. Go online in More → Account & sync, then share again.');
     return;
   }
   await Share.share({ message: `Follow ${title} live 🥏 ${url}`, url });

@@ -57,7 +57,7 @@ export default function Links() {
         {region.value !== 'all' && !shown.some((l) => l.region_code === region.value) ? (
           <Card>
             <T v="bodyStrong">No {body ?? 'regional'} links yet</T>
-            <T v="small">Coordinators can add the region’s website, registration, merch and WhatsApp groups in Me → Admin → Forms & payment links.</T>
+            <T v="small">Coordinators can add the region’s website, registration, merch and WhatsApp groups in More → Admin → Forms & payment links.</T>
           </Card>
         ) : null}
       </Screen>

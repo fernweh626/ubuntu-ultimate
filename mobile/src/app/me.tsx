@@ -7,7 +7,6 @@ import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
 import {
   getAccess,
-  getHomeRegion,
   getMe,
   listEvents,
   listFollows,
@@ -24,10 +23,8 @@ import {
 } from '@/db/repo';
 import type { Gender } from '@/db/types';
 import { displayName, shortDate } from '@/domain/format';
-import { canSetTeamRole, LEVEL_LABEL } from '@/domain/permissions';
+import { canSetTeamRole } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, Field, Icon, IconButton, Row, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
-import { regionName } from '@/content/hub';
-import { PREVIEW } from '@/lib/preview';
 import { getAccreditation } from '@/db/development';
 import { ACCREDITATION_LEVELS, accreditationState } from '@/domain/development';
 import { Avatar } from '@/ui/photo';
@@ -50,7 +47,6 @@ export default function Me() {
   const me = useData(getMe);
   const roles = useData(async (d) => (me ? myRoles(d, me.id) : []), [me?.id]) ?? [];
   const access = useData(getAccess);
-  const homeRegion = useData(getHomeRegion);
   const acc = useData(async (d) => (me ? getAccreditation(d, me.id) : null), [me?.id]);
   const week = useData(async (d) => {
     if (!me) return null;
@@ -83,7 +79,6 @@ export default function Me() {
   if (me === undefined) return <Screen edges={[]}>{null}</Screen>;
   if (!me) return <WhoAreYou />;
 
-  const level = access?.level ?? 'player';
   const accOk = !!acc && accreditationState(acc.expires_on) === 'valid';
 
   return (
@@ -156,21 +151,6 @@ export default function Me() {
           </View>
         </Section>
 
-        <Section title="Settings">
-          <View style={GROUP}>
-            <Row title="Region" subtitle={homeRegion ? regionName(homeRegion) : 'All of SA'} left={<Icon name="map-outline" color={colors.brand} />} onPress={() => router.push('/region')} />
-            <Row title="Notifications" subtitle="Reminders, check-ins, news" left={<Icon name="bell-outline" color={colors.brand} />} onPress={() => router.push('/notifications')} />
-            <Row
-              title={PREVIEW ? 'Preview version' : access?.signedIn ? 'Account & sync' : 'Go online'}
-              subtitle={PREVIEW ? 'Nothing you do here is saved online' : access?.signedIn ? 'Backed up · syncs automatically' : 'Back up your data and share with your team'}
-              left={<Icon name={access?.signedIn ? 'cloud-check-outline' : 'cloud-upload-outline'} color={colors.brand} />}
-              onPress={() => router.push('/account')}
-            />
-            <Row title="Your data & privacy" subtitle="Where it’s kept, who sees it, download or delete" left={<Icon name="shield-lock-outline" color={colors.brand} />} onPress={() => router.push('/privacy')} />
-            <Row title="Access level" subtitle={LEVEL_LABEL[level]} left={<Icon name="shield-account-outline" color={colors.brand} />} onPress={() => router.push('/access')} />
-          </View>
-        </Section>
-
         {following.length ? (
           <Section title="Following">
             <View style={GROUP}>
@@ -188,23 +168,7 @@ export default function Me() {
           </Section>
         ) : null}
 
-        {level === 'admin' ? (
-          <Section title="Admin">
-            <View style={GROUP}>
-              <Row title="Membership register" subtitle="Who’s registered and paid, totals, exports, past forms" left={<Icon name="card-account-details-star-outline" color={colors.brand} />} onPress={() => router.push('/admin/members')} />
-              <Row title="Paid-up lists" subtitle="Upload SAFDA and regional member lists (CSV)" left={<Icon name="file-upload-outline" color={colors.brand} />} onPress={() => router.push('/admin/standing')} />
-              <Row title="Forms & payment links" subtitle="Where players register and pay" left={<Icon name="link-variant" color={colors.brand} />} onPress={() => router.push('/admin/links')} />
-              <Row title="Bugs & ideas inbox" subtitle="Reports, access and privacy requests" left={<Icon name="inbox-full-outline" color={colors.brand} />} onPress={() => router.push('/feedback-admin')} />
-            </View>
-          </Section>
-        ) : null}
-
-        <Section title="Help">
-          <View style={GROUP}>
-            <Row title="Help & how-to guide" subtitle="Every feature, step by step, with pictures" left={<Icon name="help-circle-outline" color={colors.brand} />} onPress={() => router.push('/guide')} />
-            <Row title="Report a bug or suggest an idea" subtitle="Goes straight to the people building the app" left={<Icon name="lightbulb-on-outline" color={colors.brand} />} onPress={() => router.push('/feedback')} />
-          </View>
-        </Section>
+        <Row title="Settings, help & admin" subtitle="Region, notifications, account, privacy, help guide" left={<Icon name="cog-outline" color={colors.brand} />} onPress={() => router.push('/more')} />
 
         <Button label="Not you? Switch player" kind="ghost" onPress={() => setMeId(db, null)} />
       </Screen>

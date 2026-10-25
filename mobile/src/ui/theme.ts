@@ -47,3 +47,6 @@ export const TOUCH = 48;
 
 // Fallback colour when a team hasn't picked one.
 export const DEFAULT_TEAM_COLOR = '#5A615C';
+
+/** The website is the app in a phone-width column (sheets and pages use the same width). */
+export const WEB_WIDTH = 520;

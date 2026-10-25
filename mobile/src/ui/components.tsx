@@ -21,7 +21,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { maskDmy } from '@/domain/format';
 import { ratioCode, ratioSlot } from '@/domain/rules';
 
-import { colors, DEFAULT_TEAM_COLOR, font, radius, space, TOUCH } from './theme';
+import { colors, DEFAULT_TEAM_COLOR, font, radius, space, TOUCH, WEB_WIDTH } from './theme';
 
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -71,27 +71,21 @@ export function Screen({
 }) {
   const body = scroll ? (
     <ScrollView
-      contentContainerStyle={[padded && styles.padded, { gap: space.lg, paddingBottom: space.xxl * 2 }, WIDE]}
+      contentContainerStyle={[padded && styles.padded, { gap: space.lg, paddingBottom: space.xxl * 2 }]}
       keyboardShouldPersistTaps="handled">
       {children}
     </ScrollView>
   ) : (
-    <View style={[{ flex: 1 }, padded && styles.padded, WIDE]}>{children}</View>
+    <View style={[{ flex: 1 }, padded && styles.padded]}>{children}</View>
   );
   return (
-    <SafeAreaView style={[styles.screen, Platform.OS === 'web' && edges.includes('top') && { paddingTop: WEB_TAB_BAR }]} edges={edges}>
+    <SafeAreaView style={styles.screen} edges={edges}>
       {header}
       <View style={{ flex: 1 }}>{body}</View>
-      {footer ? <View style={WIDE}>{footer}</View> : null}
+      {footer}
     </SafeAreaView>
   );
 }
-
-/** On web the tab bar floats over the top of tab pages (screens with a top edge); leave it room. */
-const WEB_TAB_BAR = 72;
-
-/** On a computer screen, keep pages at a readable width in the middle instead of edge to edge. */
-const WIDE = Platform.OS === 'web' ? ({ width: '100%', maxWidth: 820, alignSelf: 'center' } as const) : undefined;
 
 export function Footer({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
@@ -488,7 +482,7 @@ export function Sheet({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) }, Platform.OS === 'web' && { width: '100%', maxWidth: WEB_WIDTH, alignSelf: 'center' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.md }}>
             <T v="title" style={{ flex: 1 }}>
               {title}

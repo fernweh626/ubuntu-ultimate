@@ -30,7 +30,7 @@ export default function Links() {
     <>
       <Stack.Screen options={{ title: 'Forms & payment links', headerRight: () => <IconButton icon="plus" label="Add link" onPress={() => setEdit({ region_code: null, label: '', url: '' })} /> }} />
       <Screen edges={[]}>
-        <T v="small">Everyone sees these in Hub → Merch & links (their region first), and registration links under Me → Membership numbers.</T>
+        <T v="small">Everyone sees these in More → Merch & links (their region first), and registration links under Me → Membership numbers.</T>
         {groups.map((g) => {
           const mine = links.filter((l) => l.region_code === g.code);
           return (

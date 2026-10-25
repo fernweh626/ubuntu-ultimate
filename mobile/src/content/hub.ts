@@ -81,7 +81,7 @@ export const WHAT_IS_ULTIMATE: { title: string; body: string }[] = [
     title: 'How to start',
     body:
       'You don’t need a team or experience. Most clubs run weekly pickup that is free or cheap and beginner-friendly — just show up. ' +
-      'Use the Pickups tab in the Hub to find one by day of the week. Ultimate uses a 175 g disc.',
+      'Use the Pickups tab in More to find one by day of the week. Ultimate uses a 175 g disc.',
   },
   {
     title: 'Competing',
@@ -188,7 +188,7 @@ export const demoBanking = (teamName: string) =>
 /*
  * Real starting content from the associations' own sites (checked Oct 2026):
  * capetownultimate.co.za (CTFDA, Western) and safda.org.za (SAFDA, national).
- * Other regions' links get added by coordinators in the app (Me → Admin → Forms & payment links).
+ * Other regions' links get added by coordinators in the app (More → Admin → Forms & payment links).
  * Bump CONTENT_VERSION when this changes so existing phones pick it up.
  */
 export const CONTENT_VERSION = 3;

@@ -224,7 +224,7 @@ function Region({ onNext }: { onNext: () => void }) {
   return (
     <View style={{ gap: space.md }}>
       <T v="heading">Where do you play?</T>
-      <T v="small">Calendar, pickups, teams and news open on your region. Change it any time in Me.</T>
+      <T v="small">Calendar, pickups, teams and news open on your region. Change it any time in More → Region.</T>
       <RegionMap value={home ?? null} onChange={(v) => setHomeRegion(db, v)} />
       <Button label="Continue" kind="primary" big onPress={onNext} />
     </View>
@@ -247,13 +247,13 @@ function Done({ onFinish }: { onFinish: () => void }) {
           <Icon name={asked ? 'bell-check' : 'bell-ring-outline'} color={colors.brand} size={28} />
           <View style={{ flex: 1, gap: 2 }}>
             <T v="bodyStrong">{asked ? 'Reminders are on' : 'Get reminders?'}</T>
-            <T v="small">{asked === false ? 'No problem: turn them on any time in Me → Notifications.' : 'Practices, games and hats you’re in. You choose which in Me → Notifications.'}</T>
+            <T v="small">{asked === false ? 'No problem: turn them on any time in More → Notifications.' : 'Practices, games and hats you’re in. You choose which in More → Notifications.'}</T>
           </View>
           {asked ? null : <Button label="Turn on" kind="secondary" onPress={async () => setAsked(await ensurePermission(true))} style={{ minHeight: 40, paddingHorizontal: 14 }} />}
         </Card>
       ) : null}
       <Button label="Go to Home" kind="primary" big onPress={onFinish} />
-      <T v="small" style={{ textAlign: 'center' }}>Stuck any time? Me → Help & how-to guide.</T>
+      <T v="small" style={{ textAlign: 'center' }}>Stuck any time? More → Help & how-to guide.</T>
     </View>
   );
 }
