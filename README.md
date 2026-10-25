@@ -41,14 +41,18 @@ On the phone: open **Expo Go** → **Scan QR code** (or **Enter URL manually**: 
 The app ships with the real SA clubs and fields, real (anonymised) results from Western Regionals 2026 and the Stellenbosch Residence League, and a made-up Cape Town Mixed League with practices, a hat and an AGM. **Every player name in the demo is invented.**
 
 1. **First run:** the welcome flow asks who you are, your team and your region. Pick **Chilli Legends** to see a busy week.
-2. **Home:** your week (games, practices, pickups, hats, meetings) with a type icon on the left, news, and recent results.
-3. **Score a game:** Home → **Score a game**. Try **Lite** tracking: disc flip, pick a line, PULL, tap the scorer. Undo works all the way back. End it to see the report.
-4. **My schedule:** Me → **My schedule**. Going / Late / Can't on practices and fixtures.
-5. **Hats:** Hub → **Hat tournaments** → the Clifton Beach Hat. Sign up, then look at the drawn Winter Hat for the result.
-6. **Teams → Players:** search someone and tap the star to follow them.
-7. **Try other roles:** Me → Settings → **Access level** → *Try a level on this phone* (Player, Scorekeeper, Team staff, Coordinator, Admin). This switch only exists while signed out. Signed in, the server decides your level.
-   - As **Team staff** on a team page: practices, the register, readiness, exports.
-   - As **Coordinator**: Games → **Tournaments & leagues** (round robin, Swiss, playoffs), **Set up a hat** (payments, the draw), calendar and announcements.
+Four tabs (**Home, Play, Teams, More**) and **Me** behind your picture at the top right. The website is the same app in a phone-width column.
+
+1. **First run:** the welcome flow asks who you are, your team and your region. Pick **Chilli Legends** to see a busy week.
+2. **Home:** only what's next for you: one card with what's waiting for your answer, your live games, and your next week.
+3. **Score a game:** Play → **Score a game**. Pick a league (searchable, by region) to see its fixtures in the next 36 hours, or two teams. Try **Lite** tracking: disc flip, pick a line, PULL, tap the scorer. Undo works all the way back. End it to see the report. **Full** tracking (every pass) adds possessions, pass chains, pass pairs and the best seven.
+4. **My schedule:** Me → **My schedule**. Going / Late / Can't, and a **Past** tab with what you went to.
+5. **My stats:** Me → **My stats**. Filter by season, league or tournament and team, and share it as an image or text.
+6. **Hats:** More → **Hat tournaments** → the Clifton Beach Hat. Sign up, then look at the drawn Winter Hat for the result.
+7. **Teams → Players:** search someone and tap the star to follow them. Tap any team or player name anywhere to open their page.
+8. **Try other roles:** More → Settings → **Access level** → *Try a level on this phone* (Player, Scorekeeper, Team staff, Coordinator, Admin). This switch only exists while signed out. Signed in, the server decides your level.
+   - As **Team staff** on a team page: join requests (label and approve many at once), practices, the register, readiness and accreditation checks, exports.
+   - As **Coordinator**: Play → **Leagues & tournaments** (round robin, Swiss, playoffs), **Set up a hat** (payments, the draw), calendar and announcements.
 
 ## What's in it
 
@@ -80,10 +84,14 @@ Phone (Expo / React Native)                Supabase (London)
 
 | Path | What |
 | --- | --- |
-| `mobile/src/app/` | Screens (Expo Router: every file is a screen) |
-| `mobile/src/db/` | SQLite schema, queries, sync, seed and demo content |
-| `mobile/src/domain/` | Game engine, stats, rules, formats, hats, notifications planning |
-| `mobile/src/content/` | Static content: clubs, links, the in-app guide, spirit examples |
+| `mobile/src/app/` | Screens (Expo Router: every file is a screen; `(tabs)/` are the four tabs) |
+| `mobile/src/ui/` | Shared components (`components.tsx`: Screen, Card, Field with the formatting bar, RichText, Sheet…) |
+| `mobile/src/db/repo/` | Local database queries, one file per area: `core`, `me`, `people`, `games`, `community`, `sessions` (import from `@/db/repo`) |
+| `mobile/src/db/` | Schema and migrations, sync, seed and demo content, plus development, membership, schedule and reports queries |
+| `mobile/src/domain/` | Pure logic, no React: game engine, stats and full-mode stats, rules, formats, hats, accreditation, rich text, schedules |
+| `mobile/src/notify/` | Notifications: what to remind about, and delivery on phone and web |
+| `mobile/src/lib/` | Platform glue: Supabase client, web helpers (alerts, sharing, printing), preview mode |
+| `mobile/src/content/` | Static content: clubs, countries and regions, associations, the in-app guide, spirit examples |
 | `supabase/migrations/` | Server tables, row-level security, functions |
 | `tools/demo/` | Builds the anonymised demo content from Stall Count exports (exports never committed) |
 | `mobile/tests/` | Tests (`npm test`), with Expo modules shimmed in `tests/shims/` |
@@ -92,13 +100,15 @@ Phone (Expo / React Native)                Supabase (London)
 **Checks** (from `mobile/`):
 
 ```bash
-npm run typecheck   # TypeScript
+npm run typecheck      # TypeScript
 npx eslint src tests
-npm test            # 37 test files against a real in-memory SQLite; npm test -- hat sync runs a subset
+npm run format:check   # Prettier (house style in .prettierrc.json; npm run format fixes it)
+npm test               # 48 test files against a real in-memory SQLite; npm test -- hat sync runs a subset
 ```
 
-The tests cover the game engine and stats, formats and brackets, hats and the draw, schedules and
-notifications planning, permissions, privacy, migrations from old phones, and what sync uploads.
+The tests cover the game engine and stats (including full-mode possessions and pass chains), formats
+and brackets, hats and the draw, schedules and notifications planning, permissions, accreditation
+rules, rich text, privacy, migrations from old phones, and what sync uploads. CI runs all four checks.
 
 ## Known gaps
 
@@ -109,7 +119,7 @@ notifications planning, permissions, privacy, migrations from old phones, and wh
 
 ## Feedback
 
-In the app: Me → **Report a bug or suggest an idea**. It goes straight to the admins' inbox. GitHub issues work too.
+In the app: More → **Report a bug or suggest an idea**. It goes straight to the admins' inbox. GitHub issues work too.
 
 ---
 
@@ -118,7 +128,7 @@ In the app: Me → **Report a bug or suggest an idea**. It goes straight to the 
 
 - **Supabase project** `sa-ultimate` (ref `fcsdtbvcvlmspjcfnfto`, London). The app only holds the **publishable** key, which is safe because row-level security decides access. New database changes go in a new file in `supabase/migrations/`, applied with `npx supabase db push -p "$SUPABASE_DB_PASSWORD"`.
 - **The database password** lives only in the git-ignored `.env.local` at the repo root. Never commit it or put any secret key in the app.
-- **Backups:** a nightly encrypted copy to the private repo `ubuntu-ultimate-backups`, kept separate so code collaborators can't reach the backup login. The workflow is ready and needs a one-off GitHub permission to be switched on. Opening a backup needs the private key, kept outside git.
+- **Backups:** a nightly encrypted copy to the private repo `ubuntu-ultimate-backups`, kept separate so code collaborators can't reach the backup login. Opening a backup needs the private key, kept outside git.
 - **Personal data (POPIA):** Stall Count exports and CSVs are git-ignored. Never commit real names. Demo content uses invented names only.
 - **First sign-in becomes admin** (`claim_first_admin`). After that, admins hand out levels.
 
