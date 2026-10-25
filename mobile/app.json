@@ -63,6 +63,15 @@
           "photosPermission": "Choose a profile photo or team logo.",
           "cameraPermission": "Take a profile photo or team logo."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
       ]
     ],
     "experiments": {
