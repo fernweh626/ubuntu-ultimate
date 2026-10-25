@@ -8,7 +8,7 @@ import { homeFeed } from '@/db/home';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 400));
 (async () => {
   const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
-  ok('v19', (await db.getFirstAsync('PRAGMA user_version')).user_version === 26);
+  ok('v19', (await db.getFirstAsync('PRAGMA user_version')).user_version === 27);
   ok('AGM announcement loaded', (await repo.listAnnouncements(db)).some((a: any) => a.title.startsWith('SAFDA AGM') && a.link_url?.startsWith('/hub/meeting/')));
   const me = await repo.savePerson(db, { first_name: 'Sched', last_name: 'Tester', gender: 'M' });
   await repo.setMeId(db, me);

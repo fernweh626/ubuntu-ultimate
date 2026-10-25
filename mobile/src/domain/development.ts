@@ -20,6 +20,46 @@ export function accreditationState(expiresOn: string | null | undefined, now = n
   return 'valid';
 }
 
+/**
+ * Does Advanced apply? SAFDA's Road to Nationals: captains and spirit captains need Advanced, and so
+ * does everyone on an international (national) team.
+ */
+export function needsAdvanced(role: string | null | undefined, teamKind: string | null | undefined) {
+  return role === 'captain' || role === 'spirit_captain' || teamKind === 'national';
+}
+
+export type AccreditationCheck = { check: 'ok' | 'warn' | 'missing' | 'unknown'; text: string };
+
+/**
+ * One line for the squad's "ready to play" list. Ready means: a level, not expired, Advanced where
+ * it's needed, and checked by team staff against the certificate.
+ */
+export function accreditationCheck(
+  a: { level: AccreditationLevel | null; expires_on: string | null; status?: string | null; file?: string | null },
+  who: { role?: string | null; teamKind?: string | null } = {},
+  now = new Date(),
+): AccreditationCheck {
+  if (!a.level) return { check: 'missing', text: 'No accreditation' };
+  const st = accreditationState(a.expires_on, now);
+  const label = ACCREDITATION_LEVELS[a.level];
+  const dates = (d: string) => new Date(`${d.slice(0, 10)}T12:00:00`).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (st === 'expired') return { check: 'warn', text: `${label} · expired ${dates(a.expires_on!)}` };
+  const parts = [label, a.expires_on ? `${st === 'expiring' ? 'expires' : 'until'} ${dates(a.expires_on)}` : 'no expiry date'];
+  let check: AccreditationCheck['check'] = st === 'valid' ? 'ok' : 'warn';
+  if (needsAdvanced(who.role, who.teamKind) && a.level !== 'advanced') {
+    check = 'warn';
+    parts.push(who.teamKind === 'national' ? 'international teams need Advanced' : `${who.role === 'captain' ? 'captains' : 'spirit captains'} need Advanced`);
+  }
+  if (a.status === 'rejected') {
+    check = 'warn';
+    parts.push('certificate problem');
+  } else if (a.status !== 'verified') {
+    if (check === 'ok') check = 'unknown';
+    parts.push(a.file ? 'not checked yet' : 'no certificate uploaded');
+  } else parts.push('checked ✓');
+  return { check, text: parts.join(' · ') };
+}
+
 /* ---------------- Self-rating ---------------- */
 
 export type RatingArea = 'experience' | 'throwing' | 'receiving' | 'defence' | 'athleticism';

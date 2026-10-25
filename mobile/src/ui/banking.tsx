@@ -1,5 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
-import { Alert, Linking, Platform, Share, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Linking, Platform, Pressable, Share, View } from 'react-native';
 
 import { WEB_URL } from '@/content/hub';
 
@@ -7,10 +8,11 @@ import { Button, Card, Icon, T } from './components';
 import { colors, space } from './theme';
 
 /**
- * Banking details for paying club or team fees, with a WhatsApp button, Share and Copy. The message
+ * Banking details for paying club or team fees: one slim row until tapped, then WhatsApp, Share and Copy. The message
  * includes a link to the team's page in the web app, so it can be posted in WhatsApp groups.
  */
 export function BankingCard({ name, details, path }: { name: string; details: string | null | undefined; path: string }) {
+  const [open, setOpen] = useState(false);
   if (!details?.trim()) return null;
   const link = `${WEB_URL}${path}`;
   const text = `${name}: banking details for fees\n\n${details.trim()}\n\nAlso on Ubuntu Ultimate: ${link}`;
@@ -22,14 +24,25 @@ export function BankingCard({ name, details, path }: { name: string; details: st
     }
     await Share.share({ message: text });
   }
+  if (!open)
+    return (
+      <Pressable onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel="Show fees and banking details" style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: 6 }}>
+        <Icon name="bank-outline" color={colors.brand} size={18} />
+        <T v="smallStrong" style={{ flex: 1, color: colors.brand }}>
+          Fees & banking details
+        </T>
+        <Icon name="chevron-down" color={colors.brand} size={18} />
+      </Pressable>
+    );
   return (
     <Card>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+      <Pressable onPress={() => setOpen(false)} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <Icon name="bank-outline" color={colors.brand} />
         <T v="bodyStrong" style={{ flex: 1 }}>
           Fees & banking details
         </T>
-      </View>
+        <Icon name="chevron-up" color={colors.muted} />
+      </Pressable>
       <T selectable style={{ lineHeight: 22 }}>
         {details.trim()}
       </T>

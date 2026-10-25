@@ -1227,6 +1227,14 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE feedback ADD COLUMN images_json TEXT;
   `,
+  // v27: accreditation certificates (PDF in storage) checked by team staff: not checked / verified / something's wrong.
+  `
+  ALTER TABLE accreditation ADD COLUMN file_path TEXT;
+  ALTER TABLE accreditation ADD COLUMN status TEXT NOT NULL DEFAULT 'unverified';
+  ALTER TABLE accreditation ADD COLUMN checked_by TEXT;
+  ALTER TABLE accreditation ADD COLUMN checked_at TEXT;
+  ALTER TABLE accreditation ADD COLUMN check_note TEXT;
+  `,
 ];
 
 export async function migrate(db: SQLiteDatabase) {

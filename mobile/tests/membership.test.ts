@@ -23,7 +23,7 @@ More clinics please!"
   ok('fees shown in rand', formatRand(40000) === 'R400' && formatRand(0) === 'Free');
 
   const db: any = open(); await migrate(db); await seedIfEmpty(db);
-  ok('v24', (await db.getFirstAsync('PRAGMA user_version')).user_version === 26);
+  ok('v24', (await db.getFirstAsync('PRAGMA user_version')).user_version === 27);
   const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'Example', gender: 'W' });
   await saveDemographic(db, me, { population_group: 'Coloured', origin: 'local', birth_year: 1995, suburb: null });
   let st = await submitMembership(db, { personId: me, assoc: CTFDA, number: 'CT123', involvement: 'competitive', option: 'general', feeCents: 40000, payReference: 'CT123', consents: { waiver: true, code_of_conduct: true, anti_harassment: true }, note: null });

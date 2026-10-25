@@ -1,15 +1,17 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { Alert, Linking, Pressable, View } from 'react-native';
 
 import { REGIONS } from '@/content/hub';
+import { certificateUrl, verifyAccreditation } from '@/db/accreditation-send';
 import { readiness } from '@/db/development';
 import { useData } from '@/db/live';
-import { getTeam } from '@/db/repo';
-import { ACCREDITATION_LEVELS, accreditationState, best, FITNESS_TESTS, formatFitness, RATING_AREAS, type FitnessKind } from '@/domain/development';
+import { getAccess, getTeam } from '@/db/repo';
+import { ACCREDITATION_LEVELS, accreditationCheck, accreditationState, best, FITNESS_TESTS, formatFitness, RATING_AREAS, type FitnessKind } from '@/domain/development';
 import { displayName, shortDate } from '@/domain/format';
 import { standingCheck, whatsappLink, type Check } from '@/domain/standing';
-import { Button, Card, Icon, IconButton, Screen, Segmented, T } from '@/ui/components';
+import { Button, Card, Field, Icon, IconButton, Screen, Segmented, Sheet, T } from '@/ui/components';
 import { colors, font, space } from '@/ui/theme';
 
 /** Staff: who's ready to play (accreditation, SAFDA, region), fitness benchmarks and self-ratings across the squad. */
@@ -17,21 +19,13 @@ export default function SquadDevelopment() {
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const bundle = useData(async (d) => ({ team: await getTeam(d, teamId), squad: await readiness(d, teamId) }), [teamId]);
   const [view, setView] = useState<'ready' | FitnessKind | 'rating'>('ready');
+  const [checking, setChecking] = useState<string | null>(null);
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
   const { team, squad } = bundle;
+  const international = team?.kind === 'national';
 
   const checks = (p: (typeof squad)[number]) => {
-    const st = accreditationState(p.expires_on);
-    const acc: { check: Check; text: string } = !p.level
-      ? { check: 'missing', text: 'No accreditation' }
-      : st === 'expired'
-        ? { check: 'warn', text: `${ACCREDITATION_LEVELS[p.level]} · expired ${shortDate(p.expires_on)}` }
-        : st === 'expiring'
-          ? { check: 'warn', text: `${ACCREDITATION_LEVELS[p.level]} · expires ${shortDate(p.expires_on)}` }
-          : { check: st === 'valid' ? 'ok' : 'warn', text: `${ACCREDITATION_LEVELS[p.level]}${p.expires_on ? ` · until ${shortDate(p.expires_on)}` : ' · no expiry date'}` };
-    // SAFDA Road to Nationals: captains and spirit captains need Advanced.
-    const leads = p.role === 'captain' || p.role === 'spirit_captain';
-    if (leads && acc.check === 'ok' && p.level !== 'advanced') Object.assign(acc, { check: 'warn', text: `${acc.text} · ${p.role === 'captain' ? 'captains' : 'spirit captains'} need Advanced` });
+    const acc = accreditationCheck({ level: p.level, expires_on: p.expires_on, status: p.acc_status, file: p.acc_file }, { role: p.role, teamKind: team?.kind });
     const safda = standingCheck(p.reg?.safda_number, p.safda, p.safdaListed);
     const body = REGIONS.find((r) => r.code === p.reg?.region_code)?.body ?? 'Region';
     const region = standingCheck(p.reg?.region_number, p.region, p.regionListed);
@@ -40,7 +34,8 @@ export default function SquadDevelopment() {
   const readyCount = squad.filter((p) => checks(p).ready).length;
   // SAFDA Road to Nationals: at Nationals at least half of each team needs valid Advanced accreditation.
   const advanced = squad.filter((p) => p.level === 'advanced' && accreditationState(p.expires_on) !== 'expired').length;
-  const advancedNeeded = Math.ceil(squad.length / 2);
+  const advancedNeeded = international ? squad.length : Math.ceil(squad.length / 2);
+  const unchecked = squad.filter((p) => p.level && p.acc_file && p.acc_status !== 'verified').length;
   const rows = [...squad].map((p) => {
     if (view === 'ready') {
       const c = checks(p);
@@ -76,7 +71,17 @@ export default function SquadDevelopment() {
             <T v="bodyStrong">
               Nationals: {advanced} of {squad.length} have Advanced accreditation (need {advancedNeeded})
             </T>
-            <T v="small">SAFDA’s Road to Nationals: everyone needs Standard by Regionals, captains and spirit captains need Advanced, and at Nationals half of each team needs Advanced.</T>
+            <T v="small">
+              {international
+                ? 'International team: everyone needs Advanced accreditation.'
+                : 'SAFDA’s Road to Nationals: everyone needs Standard by Regionals, captains and spirit captains need Advanced, and at Nationals half of each team needs Advanced.'}
+            </T>
+          </Card>
+        ) : null}
+        {view === 'ready' && unchecked ? (
+          <Card style={{ backgroundColor: colors.warnTint, borderColor: 'transparent' }}>
+            <T v="bodyStrong">{unchecked} certificate{unchecked > 1 ? 's' : ''} to check</T>
+            <T v="small">Before a CTFDA, regional or SAFDA event, open each certificate and confirm the type and expiry date match. Tap “Check certificate” on a player.</T>
           </Card>
         ) : null}
         <Segmented
@@ -119,6 +124,13 @@ export default function SquadDevelopment() {
                       {displayName(p)}
                     </T>
                     {line('Accreditation', c.acc)}
+                    {p.acc_file ? (
+                      <Pressable onPress={() => setChecking(p.id)} accessibilityRole="button">
+                        <T v="smallStrong" style={{ color: colors.brand }}>
+                          {p.acc_status === 'verified' ? 'Certificate checked · look again' : 'Check certificate ›'}
+                        </T>
+                      </Pressable>
+                    ) : null}
                     {line('SAFDA', c.safda)}
                     {line(c.body, c.region)}
                     {p.reg?.emergency_phone ? (
@@ -154,6 +166,56 @@ export default function SquadDevelopment() {
           })}
         </View>
       </Screen>
+      <CheckSheet player={squad.find((p) => p.id === checking) ?? null} onClose={() => setChecking(null)} />
     </>
+  );
+}
+
+/** Staff open the certificate and confirm the level and expiry the player entered, or say what's wrong. */
+function CheckSheet({ player, onClose }: { player: { id: string; first_name: string; last_name: string; birth_date: string | null; level: keyof typeof ACCREDITATION_LEVELS | null; expires_on: string | null; acc_file: string | null; acc_note: string | null } | null; onClose: () => void }) {
+  const db = useSQLiteContext();
+  const access = useData(getAccess);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function decide(ok: boolean) {
+    if (!player) return;
+    if (!ok && !note.trim()) return Alert.alert('Say what’s wrong', 'e.g. “Certificate says Standard” or “Expired in March”. The player sees this.');
+    setBusy(true);
+    try {
+      await verifyAccreditation(db, player.id, ok, note);
+      setNote('');
+      onClose();
+    } catch (e) {
+      Alert.alert('Couldn’t save that', `${String((e as Error).message ?? e)}\n\nYou need signal.`);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Sheet visible={!!player} onClose={onClose} title={player ? `${displayName(player)}’s accreditation` : ''}>
+      {player ? (
+        <>
+          <T>
+            They entered: <T v="bodyStrong">{player.level ? ACCREDITATION_LEVELS[player.level] : '—'}</T>, expires <T v="bodyStrong">{player.expires_on ? shortDate(player.expires_on) : '—'}</T>
+          </T>
+          {!access?.signedIn ? <T v="small">Go online (More → Account & sync) to open and check certificates.</T> : null}
+          <Button
+            label="Open certificate (PDF)"
+            icon="file-pdf-box"
+            disabled={!access?.signedIn}
+            onPress={async () => {
+              try {
+                await Linking.openURL(await certificateUrl(player.acc_file!));
+              } catch (e) {
+                Alert.alert('Couldn’t open it', String((e as Error).message ?? e));
+              }
+            }}
+          />
+          <Button label="Type and expiry are correct" icon="shield-check" kind="primary" disabled={busy || !access?.signedIn} onPress={() => decide(true)} />
+          <Field label="Something’s wrong? Say what" value={note} onChangeText={setNote} placeholder="e.g. Certificate says Standard, not Advanced" />
+          <Button label="Send back to the player" icon="shield-alert-outline" disabled={busy || !access?.signedIn} onPress={() => decide(false)} />
+        </>
+      ) : null}
+    </Sheet>
   );
 }

@@ -8,23 +8,44 @@ import type { Gender } from './types';
 
 /* ---------------- Accreditation ---------------- */
 
-export type Accreditation = { id: string; person_id: string; level: AccreditationLevel; expires_on: string | null; photo_uri: string | null };
+export type CheckStatus = 'unverified' | 'verified' | 'rejected';
+export type Accreditation = {
+  id: string;
+  person_id: string;
+  level: AccreditationLevel;
+  expires_on: string | null;
+  /** The certificate PDF on this phone (or a data: URL on the web) until it's uploaded. */
+  photo_uri: string | null;
+  /** Where the PDF is in storage, once uploaded: what team staff open to check it. */
+  file_path: string | null;
+  status: CheckStatus;
+  checked_by: string | null;
+  checked_at: string | null;
+  check_note: string | null;
+};
 
 export function getAccreditation(db: SQLiteDatabase, personId: string) {
   return db.getFirstAsync<Accreditation>(`SELECT * FROM accreditation WHERE person_id = ?`, personId);
 }
 
-export function saveAccreditation(db: SQLiteDatabase, personId: string, a: { level: AccreditationLevel; expiresOn: string | null; photoUri: string | null }) {
+/** Changing the level, expiry or certificate sends it back to "not checked" (the server does the same). */
+export function saveAccreditation(db: SQLiteDatabase, personId: string, a: { level: AccreditationLevel; expiresOn: string | null; photoUri: string | null; filePath: string | null }) {
   return write(db, async () => {
     const ts = now();
     await db.runAsync(
-      `INSERT INTO accreditation (id, person_id, level, expires_on, photo_uri, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(person_id) DO UPDATE SET level = excluded.level, expires_on = excluded.expires_on, photo_uri = excluded.photo_uri, updated_at = excluded.updated_at`,
+      `INSERT INTO accreditation (id, person_id, level, expires_on, photo_uri, file_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'unverified', ?, ?)
+       ON CONFLICT(person_id) DO UPDATE SET
+         status = CASE WHEN level IS excluded.level AND expires_on IS excluded.expires_on AND file_path IS excluded.file_path THEN status ELSE 'unverified' END,
+         checked_by = CASE WHEN level IS excluded.level AND expires_on IS excluded.expires_on AND file_path IS excluded.file_path THEN checked_by END,
+         checked_at = CASE WHEN level IS excluded.level AND expires_on IS excluded.expires_on AND file_path IS excluded.file_path THEN checked_at END,
+         check_note = CASE WHEN level IS excluded.level AND expires_on IS excluded.expires_on AND file_path IS excluded.file_path THEN check_note END,
+         level = excluded.level, expires_on = excluded.expires_on, photo_uri = excluded.photo_uri, file_path = excluded.file_path, updated_at = excluded.updated_at`,
       personId,
       personId,
       a.level,
       a.expiresOn,
       a.photoUri,
+      a.filePath,
       ts,
       ts,
     );
@@ -94,8 +115,8 @@ export function deleteFitnessResult(db: SQLiteDatabase, id: string) {
 
 /** Staff view: everyone on the squad with accreditation, latest self-rating and test results. */
 export async function squadDevelopment(db: SQLiteDatabase, teamId: string) {
-  const people = await db.getAllAsync<{ id: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; photo_uri: string | null; level: AccreditationLevel | null; expires_on: string | null; role: string | null }>(
-    `SELECT p.id, p.first_name, p.last_name, p.birth_date, p.gender, p.photo_uri, a.level, a.expires_on, MAX(m.role) AS role
+  const people = await db.getAllAsync<{ id: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; photo_uri: string | null; level: AccreditationLevel | null; expires_on: string | null; acc_status: CheckStatus | null; acc_file: string | null; acc_note: string | null; role: string | null }>(
+    `SELECT p.id, p.first_name, p.last_name, p.birth_date, p.gender, p.photo_uri, a.level, a.expires_on, a.status AS acc_status, a.file_path AS acc_file, a.check_note AS acc_note, MAX(m.role) AS role
        FROM membership m JOIN person p ON p.id = m.person_id LEFT JOIN accreditation a ON a.person_id = p.id
       WHERE m.team_id = ? AND m.end_date IS NULL AND m.deleted_at IS NULL AND p.deleted_at IS NULL
       GROUP BY p.id ORDER BY p.first_name COLLATE NOCASE`,

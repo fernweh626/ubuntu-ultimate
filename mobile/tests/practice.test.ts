@@ -9,7 +9,7 @@ import { dmyTimeToIso } from '@/domain/format';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x));
 (async () => {
   const db: any = open(); await migrate(db); await seedIfEmpty(db);
-  ok('v10', (await db.getFirstAsync('PRAGMA user_version')).user_version === 26);
+  ok('v10', (await db.getFirstAsync('PRAGMA user_version')).user_version === 27);
   ok('date+time parse', dmyTimeToIso('28/10/2026', '18:00') === new Date('2026-10-28T18:00:00').toISOString() && dmyTimeToIso('28/10/2026', '25:00') === null);
   const chilli = (await repo.listTeams(db)).find((t) => t.name === 'Chilli Legends')!;
   const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'B', gender: 'W' }, { teamId: chilli.id });
