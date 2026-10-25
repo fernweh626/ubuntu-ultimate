@@ -33,7 +33,7 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
       AND NOT (o.tbl IN ('game', 'point', 'game_event') AND 1 = 0)`);
   ok(
     `old queue ${before} → ${left.length} after clean-up`,
-    before > 5000 && left.length <= 4,
+    before > 3000 && left.length <= 4,
     left.map((l: any) => l.tbl),
   );
   ok(

@@ -1,18 +1,20 @@
 /*
  * Builds the shared demo content for Ubuntu Ultimate.
  *
- *   cd mobile && npx tsx ../tools/demo/build.ts <westernregionals dir> <resleague dir>
+ *   cd mobile && npx tsx ../tools/demo/build.ts
  *
- * Inputs: the two Stall Count exports (unzipped). They contain real people's names and are NEVER
- * committed. Every player gets an invented name (same person → same invented name across both
- * exports); team names, results and point-by-point logs stay real. Everything else (the Cape Town
- * Mixed League 2026, Chilli practices, the AGM, announcements) is made up for the demo.
+ * Everything is made up: every player, squad, game, score and practice. Only the clubs, teams and
+ * fields are real, from the clubs' own public pages (mobile/src/content/clubs.ts). No spreadsheet
+ * or Stall Count export goes in.
  *
- * Outputs (both committed, both anonymised):
- *   mobile/src/content/demo/demo-2026.json            loaded on phones by ensureDemoContent()
- *   supabase/migrations/20261024150000_demo_content.sql  the same rows for the server
+ * Outputs (both committed):
+ *   mobile/src/content/demo/demo-2026.json                  loaded on phones by ensureDemoContent()
+ *   supabase/migrations/<version>_demo_content_v<N>.sql      the same rows for the server
+ *
+ * v4 replaced an earlier demo built from Stall Count exports. `purge` lists that demo's row ids
+ * (hashes only) so phones and the server delete them; see ensureDemoContent() and the v4 migration.
  */
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { CLUB_DIRECTORY } from '../../mobile/src/content/clubs';
@@ -20,8 +22,6 @@ import { md5 } from '../../mobile/src/db/md5';
 import { drawTeams, recommendCaptains } from '../../mobile/src/domain/hat';
 import { ratioForPoint, rulesFor } from '../../mobile/src/domain/rules';
 
-const [WR_DIR, RES_DIR] = process.argv.slice(2);
-if (!WR_DIR || !RES_DIR) throw new Error('usage: build.ts <westernregionals dir> <resleague dir>');
 const ROOT = join(__dirname, '..', '..');
 const TODAY = '2026-10-24'; // the demo's "now": games before this are played
 const CREATED = '2026-10-24T00:00:00.000Z';
@@ -31,31 +31,8 @@ const CREATED = '2026-10-24T00:00:00.000Z';
 const uuidOf = (h: string) => `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 /** Same formula as the app's seedId() and the server's seed_id(). */
 const seedId = (kind: string, name: string) => uuidOf(md5(`${kind}:${name}`));
-const demoId = (key: string) => seedId('demo', key);
-
-function csv(dir: string, suffix: string): Record<string, string>[] {
-  const file = readdirSync(dir).find((f) => f.endsWith(`_${suffix}.csv`));
-  if (!file) return [];
-  const text = readFileSync(join(dir, file), 'utf8').replace(/^﻿/, '');
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cur = '';
-  let q = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (q) {
-      if (c === '"' && text[i + 1] === '"') (cur += '"'), i++;
-      else if (c === '"') q = false;
-      else cur += c;
-    } else if (c === '"') q = true;
-    else if (c === ',') row.push(cur), (cur = '');
-    else if (c === '\n') row.push(cur.replace(/\r$/, '')), rows.push(row), (row = []), (cur = '');
-    else cur += c;
-  }
-  if (cur || row.length) row.push(cur), rows.push(row);
-  const [head, ...body] = rows;
-  return body.filter((r) => r.length > 1).map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ''])));
-}
+// v4 uses its own namespace so none of its ids collide with the earlier demo's (which get deleted).
+const demoId = (key: string) => seedId('demo4', key);
 
 /** Small deterministic random generator, so the demo is the same every time it's built. */
 function rng(seed: string) {
@@ -97,7 +74,7 @@ const T: Record<string, Row[]> = {};
 const add = (table: string, row: Row) => (T[table] ??= []).push(row);
 // game_player isn't stored: everyone on the two teams' rosters played (the loader and the SQL fill it in).
 const ORDER = ['club', 'venue', 'team', 'person', 'membership', 'event', 'event_team', 'game', 'point', 'point_player', 'game_event', 'game_status_log', 'spirit_score', 'session', 'practice_rsvp', 'practice_attendance', 'game_availability', 'calendar_entry', 'announcement', 'hat_signup'];
-const VERSION = 3;
+const VERSION = 4;
 
 /* ---------------- clubs, teams and venues from the public directory ---------------- */
 
@@ -120,27 +97,18 @@ const VENUES: { name: string; city: string; lat: number; lng: number }[] = [
   { name: 'Woolsack Oval, UCT', city: 'Cape Town', lat: -33.95776, lng: 18.46228 },
   { name: 'Scoville Oval, Pinelands', city: 'Cape Town', lat: -33.93806, lng: 18.50577 },
   { name: 'Cape Town Cricket Club, Plumstead', city: 'Cape Town', lat: -34.02638, lng: 18.47411 },
-  { name: 'Coetzenburg B fields', city: 'Stellenbosch', lat: -33.94136, lng: 18.86998 },
 ];
 for (const v of VENUES) add('venue', { id: seedId('venue', v.name), name: v.name, city: v.city, latitude: v.lat, longitude: v.lng, created_at: CREATED, updated_at: CREATED });
-const venueFor = (name: string, city: string, lat?: string, lng?: string) => {
-  if (name === 'Plumstead 1' || name === 'Plumstead 2') return seedId('venue', name);
-  if (!name) return null;
-  const id = seedId('venue', `${city}:${name}`);
-  if (!T.venue.some((v) => v.id === id)) add('venue', { id, name: `${name}, ${city === 'Stellenbosch' ? 'Coetzenburg' : city}`, city, latitude: lat ? Number(lat) : null, longitude: lng ? Number(lng) : null, created_at: CREATED, updated_at: CREATED });
-  return id;
-};
+/* ---------------- invented people and squads for every team ---------------- */
 
-/* ---------------- people from the exports, with invented names ---------------- */
-
-const personIdOf = (realId: string) => demoId(`person:${realId}`);
+const personIdOf = (key: string) => demoId(`person:${key}`);
 const people = new Map<string, { id: string; gender: 'W' | 'M' | null }>();
-function addPerson(realId: string, gender: string, jersey: string | null) {
-  if (people.has(realId)) return people.get(realId)!;
+function addPerson(key: string, gender: string, jersey: string | null) {
+  if (people.has(key)) return people.get(key)!;
   const g = gender === 'W' ? 'W' : gender === 'M' ? 'M' : null;
-  const { first, last } = inventName(realId, g);
-  const p = { id: personIdOf(realId), gender: g };
-  people.set(realId, p);
+  const { first, last } = inventName(key, g);
+  const p = { id: personIdOf(key), gender: g };
+  people.set(key, p);
   add('person', { id: p.id, first_name: first, last_name: last, gender: g, preferred_number: jersey || null, is_placeholder: 1, is_minor: 0, created_at: CREATED, updated_at: CREATED });
   return p;
 }
@@ -152,158 +120,33 @@ function addMember(personId: string, team: string, role = 'player', jersey: stri
   add('membership', { id: demoId(`member:${key}`), person_id: personId, team_id: team, kind: 'core', scope: 'permanent', role, jersey_number: jersey || null, start_date: '2026-01-01', created_at: CREATED, updated_at: CREATED });
 }
 
-/* ---------------- real events: Western Regionals 2026, Stellenbosch Residence League 2026 ---------------- */
-
-type LoadedRoster = Map<string, { personId: string; gender: 'W' | 'M' | null; jersey: string | null }[]>; // team → players
-
-function importExport(dir: string, opts: { key: string; level: string; kind: 'tournament' | 'league'; teamOf: (name: string, divisionName: string) => string; divisionOf: (divisionName: string) => string; region: string; eventName: (divisionName: string) => string }) {
-  const matches = csv(dir, 'matches');
-  const logs = csv(dir, 'match_logs');
-  const roster = csv(dir, 'team_roster');
-  const players = new Map(csv(dir, 'player').map((p) => [p.id, p]));
-  const venues = new Map(csv(dir, 'venues').map((v) => [v.id, v]));
-  const spirits = csv(dir, 'spirit_scores');
-  const brackets = new Set(csv(dir, 'bracket_nodes').map((b) => b.match_id).filter(Boolean));
-  const poolTeams = csv(dir, 'pool_teams');
-  const divTeams = csv(dir, 'division_teams');
-  const event = csv(dir, 'event')[0];
-  const divisions = [...new Set(divTeams.map((d) => d.division_name))];
-
-  const eventIdOf = (div: string) => demoId(`event:${opts.key}:${div}`);
-  const teamDiv = new Map(divTeams.map((d) => [d.team_id, d.division_name]));
-  const realTeam = new Map<string, string>(); // export team id → app team id
-  for (const d of divTeams) realTeam.set(d.team_id, opts.teamOf(d.team_name, d.division_name));
-
-  for (const div of divisions) {
-    add('event', { id: eventIdOf(div), name: opts.eventName(div), kind: opts.kind, level: opts.level, division: opts.divisionOf(div), region: opts.region, location: event.location, start_date: event.start_date, end_date: event.end_date, rules_json: JSON.stringify(rulesFor(opts.kind === 'league' ? 'league' : 'wfdf', opts.divisionOf(div) as 'mixed')), notes: 'Real results and point-by-point logs from the Stall Count export. Player names are invented for the demo.', created_at: CREATED, updated_at: CREATED });
-    for (const d of divTeams.filter((x) => x.division_name === div)) {
-      const pool = poolTeams.find((p) => p.team_id === d.team_id)?.pool_name?.replace(/^MX /, '').replace(/^Pool /, '') ?? null;
-      add('event_team', { id: demoId(`et:${opts.key}:${d.team_id}`), event_id: eventIdOf(div), team_id: realTeam.get(d.team_id)!, pool, seed: null, created_at: CREATED });
+type Squad = { personId: string; gender: 'W' | 'M' | null; jersey: string }[];
+const squads = new Map<string, Squad>();
+for (const c of CLUB_DIRECTORY) {
+  for (const t of c.teams) {
+    const r = rng(`squad:${t.name}`);
+    const size = 14 + Math.floor(r() * 7);
+    const squad: Squad = [];
+    const numbers = new Set<string>();
+    for (let i = 0; i < size; i++) {
+      const g = t.division === 'women' ? 'W' : t.division === 'open' ? 'M' : i % 2 ? 'M' : 'W';
+      let jersey = String(1 + Math.floor(r() * 98));
+      while (numbers.has(jersey)) jersey = String(1 + Math.floor(r() * 98));
+      numbers.add(jersey);
+      const p = addPerson(`${t.name}:${i}`, g, jersey);
+      addMember(p.id, teamId(t.name), i === 0 ? 'captain' : i === 1 ? 'spirit_captain' : 'player', jersey);
+      squad.push({ personId: p.id, gender: p.gender, jersey });
     }
+    squads.set(teamId(t.name), squad);
   }
-
-  // Rosters → people + memberships.
-  const rosterByTeam: LoadedRoster = new Map();
-  for (const r of roster) {
-    const real = players.get(r.player_id);
-    const p = addPerson(r.player_id, r.player_gender_code || real?.gender_code || '', r.jersey_number || real?.jersey_number || null);
-    const team = realTeam.get(r.team_id);
-    if (!team) continue;
-    addMember(p.id, team, r.is_captain === 'true' ? 'captain' : r.is_spirit_captain === 'true' ? 'spirit_captain' : 'player', r.jersey_number || null);
-    (rosterByTeam.get(team) ?? rosterByTeam.set(team, []).get(team)!).push({ personId: p.id, gender: p.gender, jersey: r.jersey_number || null });
-  }
-
-  let imported = 0;
-  for (const m of matches) {
-    if (m.status === 'canceled') continue;
-    const gameId = demoId(`game:${opts.key}:${m.id}`);
-    const A = realTeam.get(m.team_a)!;
-    const B = realTeam.get(m.team_b)!;
-    const div = teamDiv.get(m.team_a) ?? divisions[0];
-    const v = venues.get(m.venue_id);
-    const venueId = venueFor(m.venue_name, v?.city || m.venue_city || '', v?.latitude, v?.longitude);
-    const forfeitB = m.status === 'forfeit_teamB';
-    const scheduled = m.status === 'scheduled';
-    const evs = logs.filter((l) => l.match_id === m.id).sort((a, b) => a.created_at.localeCompare(b.created_at));
-    const startedAt = evs.find((e) => e.event_code === 'match_start')?.created_at ?? m.start_time;
-    const endedAt = evs.filter((e) => e.event_code === 'match_end').pop()?.created_at ?? evs[evs.length - 1]?.created_at ?? m.start_time;
-    const puller = m.starting_team_id ? realTeam.get(m.starting_team_id) ?? A : A;
-    const rules = rulesFor(opts.kind === 'league' ? 'league' : 'wfdf', opts.divisionOf(div) as 'mixed');
-    add('game', {
-      id: gameId, event_id: eventIdOf(div), venue_id: venueId, team_a_id: A, team_b_id: B, scheduled_at: m.start_time, status: scheduled ? 'scheduled' : 'final',
-      tracking_mode: 'lite', rules_json: JSON.stringify(rules), first_pull_team_id: puller, ratio_point1: m.abba_pattern === 'female' ? 'W' : m.abba_pattern === 'male' ? 'M' : null,
-      started_at: scheduled || forfeitB ? null : startedAt, ended_at: scheduled ? null : endedAt, home_team_id: A, postponements: 0, forfeit_team_id: forfeitB ? B : null,
-      stage: brackets.has(m.id) ? 'playoff' : m.pool_name ? 'pool' : null, round: null, created_at: CREATED, updated_at: CREATED,
-    });
-    if (forfeitB) add('game_status_log', { id: demoId(`log:${opts.key}:${m.id}`), game_id: gameId, action: 'forfeit', team_id: B, reason: 'other', note: 'Forfeit (from the season export)', previous_scheduled_at: null, created_at: m.start_time });
-    if (scheduled || forfeitB) continue;
-
-    // Points from the score events; offence flips to the team that was scored on.
-    let seq = 0;
-    let n = 0;
-    let half = 1;
-    let offense = puller === A ? B : A;
-    let pointId = demoId(`pt:${gameId}:1`);
-    let pulledAt = startedAt;
-    const halftimeAt = evs.find((e) => e.event_code === 'halftime_start')?.created_at ?? null;
-    const actor = (id: string) => (id ? personIdOf(id) : null);
-    const ensurePoint = () => {
-      if (T.point?.length && T.point[T.point.length - 1].id === pointId) return;
-      n += 1;
-      add('point', { id: pointId, game_id: gameId, number: n, half, offense_team_id: offense, ratio: null, puller_id: null, pull_outcome: 'in', pulled_at: pulledAt, scored_at: null, scoring_team_id: null, created_at: pulledAt });
-    };
-    for (const e of evs) {
-      const team = e.team_id ? realTeam.get(e.team_id) ?? null : null;
-      if (e.event_code === 'score' || e.event_code === 'callahan') {
-        ensurePoint();
-        const pt = T.point[T.point.length - 1];
-        pt.scored_at = e.created_at;
-        pt.scoring_team_id = team;
-        pt.ratio = /^F/.test(e.abba_line) ? 'W' : /^M/.test(e.abba_line) ? 'M' : null;
-        add('game_event', { id: demoId(`ev:${e.id}`), game_id: gameId, point_id: pointId, seq: ++seq, type: e.event_code, team_id: team, actor_id: actor(e.actor_id), secondary_id: e.event_code === 'score' ? actor(e.secondary_actor_id) : null, recorded_at: e.created_at, device_id: 'import' });
-        if (halftimeAt && half === 1 && e.created_at <= halftimeAt && !evs.some((x) => (x.event_code === 'score' || x.event_code === 'callahan') && x.created_at > e.created_at && x.created_at <= halftimeAt)) {
-          add('game_event', { id: demoId(`ht:${gameId}`), game_id: gameId, point_id: pointId, seq: ++seq, type: 'halftime', recorded_at: halftimeAt, device_id: 'import' });
-          half = 2;
-        }
-        offense = team === A ? B : A;
-        pointId = demoId(`pt:${gameId}:${n + 1}`);
-        pulledAt = new Date(Date.parse(e.created_at) + 60_000).toISOString();
-      } else if (e.event_code === 'turnover' || e.event_code === 'block' || e.event_code === 'timeout_start') {
-        ensurePoint();
-        const type = e.event_code === 'turnover' ? 'throwaway' : e.event_code === 'block' ? 'intercept' : 'timeout';
-        add('game_event', { id: demoId(`ev:${e.id}`), game_id: gameId, point_id: pointId, seq: ++seq, type, team_id: team, actor_id: type === 'timeout' ? null : actor(e.actor_id), recorded_at: e.created_at, device_id: 'import' });
-      }
-    }
-    // Drop a trailing point that never finished.
-    if (T.point.length && T.point[T.point.length - 1].game_id === gameId && !T.point[T.point.length - 1].scored_at) {
-      const orphan = T.point.pop()!;
-      T.game_event = T.game_event.filter((x) => x.point_id !== orphan.id);
-    }
-    imported += 1;
-  }
-
-  // Spirit scores (5 WFDF categories, 0–4 each). One per game per scoring team: the last one counts.
-  const lastSpirit = new Map<string, Record<string, string>>();
-  for (const s of spirits) lastSpirit.set(`${s.match_id}:${s.rated_team_id}`, s);
-  for (const s of lastSpirit.values()) {
-    const m = matches.find((x) => x.id === s.match_id);
-    if (!m || m.status === 'canceled') continue;
-    const to = realTeam.get(s.rated_team_id);
-    const from = to === realTeam.get(m.team_a) ? realTeam.get(m.team_b) : realTeam.get(m.team_a);
-    if (!to || !from) continue;
-    add('spirit_score', { id: demoId(`spirit:${s.id}`), game_id: demoId(`game:${opts.key}:${m.id}`), from_team_id: from, to_team_id: to, rules: Number(s.rules_knowledge), fouls: Number(s.fouls_contact), fairness: Number(s.self_control), attitude: Number(s.positive_attitude), communication: Number(s.communication), comments_json: '{}', overall_comment: s.comments || null, submitted_at: s.submitted_at || m.start_time });
-  }
-  return { rosterByTeam, imported };
 }
-
-const wr = importExport(WR_DIR, {
-  key: 'wr2026', level: 'regional', kind: 'tournament', region: 'western', teamOf: (name) => teamId(name), divisionOf: () => 'mixed', eventName: () => 'Mixed Western Regionals 2026',
-});
-const res = importExport(RES_DIR, {
-  key: 'res2026', level: 'league', kind: 'league', region: 'western',
-  teamOf: (name, div) => {
-    const id = teamId(`Res: ${name}`);
-    if (!T.team.some((t) => t.id === id)) add('team', { id, name, short_name: null, kind: 'university', region: 'western', city: 'Stellenbosch', division: /women/i.test(div) ? 'women' : 'open', about: 'Stellenbosch University residence team.', is_sample: 0, created_at: CREATED, updated_at: CREATED });
-    return id;
-  },
-  divisionOf: (div) => (/women/i.test(div) ? 'women' : 'open'),
-  eventName: (div) => `Stellenbosch Residence League 2026 · ${/women/i.test(div) ? 'Women’s' : 'Men’s'}`,
-});
-
-/* ---------------- Chilli Heat: invented roster ---------------- */
-
+const rosterOf = (team: string) => squads.get(team) ?? [];
 const HEAT = teamId('Chilli Heat');
-const heatRoster: { personId: string; gender: 'W' | 'M'; jersey: string }[] = [];
-for (let i = 0; i < 16; i++) {
-  const g = i % 2 ? 'M' : 'W';
-  const p = addPerson(`heat:${i}`, g, String(10 + i * 3));
-  addMember(p.id, HEAT, i === 0 ? 'captain' : 'player', String(10 + i * 3));
-  heatRoster.push({ personId: p.id, gender: g, jersey: String(10 + i * 3) });
-}
 
 /* ---------------- Cape Town Mixed League 2026 (invented double round robin) ---------------- */
 
 const LEAGUE = demoId('event:ctml2026');
+const WOOLSACK_CUP = seedId('venue', 'Woolsack Oval, UCT');
 const LEGENDS = teamId('Chilli Legends');
 const GHOST = teamId('Ghost');
 const MATIES = teamId('Maties Meerkats');
@@ -334,7 +177,6 @@ const SLOTS = ['13:00', '14:45', '16:30'];
 const PLUMSTEAD = [seedId('venue', 'Plumstead 1'), seedId('venue', 'Plumstead 2')];
 const sast = (date: string, time: string) => new Date(`${date}T${time}:00+02:00`).toISOString();
 
-const rosterOf = (team: string) => (team === HEAT ? heatRoster : (wr.rosterByTeam.get(team) ?? []));
 // Postponements: the first proper fixture (not Heat, not Legends v Maties) in rounds 3, 5 and 7.
 const POSTPONE_PLAN: Record<number, { to: string; reason: string; played: boolean }> = {
   2: { to: sast('2026-10-21', '18:30'), reason: 'weather', played: true }, // washed out, replayed midweek
@@ -376,7 +218,7 @@ allRounds.forEach((games, r) => {
 });
 
 /** Plays a believable game: lines on ABBA ratio, a few turnovers, scorers from the line, a halftime. */
-function simulateGame(gameId: string, a: string, b: string, start: string) {
+function simulateGame(gameId: string, a: string, b: string, start: string, full = false) {
   const r = rng(`sim:${gameId}`);
   const squads = { [a]: rosterOf(a), [b]: rosterOf(b) };
   const pA = STRENGTH[a] / (STRENGTH[a] + STRENGTH[b]);
@@ -411,16 +253,31 @@ function simulateGame(gameId: string, a: string, b: string, start: string) {
     add('point', { id: pointId, game_id: gameId, number: n, half, offense_team_id: offense, ratio, puller_id: lines[offense === a ? b : a][0]?.personId ?? null, pull_outcome: 'in', pulled_at: pulled, scored_at: new Date(t + dur * 1000).toISOString(), scoring_team_id: scorer, created_at: pulled });
     for (const team of [a, b]) for (const p of lines[team]) add('point_player', { point_id: pointId, team_id: team, person_id: p.personId });
     let holder = offense;
+    // Full mode: every pass, so possessions, chains and pass pairs show up in the reports.
+    let disc: string | null = null;
+    const passes = (team: string, at: number) => {
+      if (!full) return;
+      const line = lines[team];
+      disc ??= pickOf(r, line).personId;
+      for (let k = 0, n = 1 + Math.floor(r() * 6); k < n; k++) {
+        const to = pickOf(r, line.filter((x) => x.personId !== disc)).personId;
+        add('game_event', { id: demoId(`pass:${gameId}:${pointId}:${seq}`), game_id: gameId, point_id: pointId, seq: ++seq, type: 'pass', team_id: team, actor_id: disc, secondary_id: to, recorded_at: new Date(at - (n - k) * 4000).toISOString(), device_id: 'demo' });
+        disc = to;
+      }
+    };
     for (let k = 0; k < turns; k++) {
       const defending = holder === a ? b : a;
       const at = new Date(t + ((k + 1) * dur * 1000) / (turns + 2)).toISOString();
+      passes(holder, Date.parse(at));
       if (r() < 0.35) add('game_event', { id: demoId(`ev:${gameId}:${n}:${k}`), game_id: gameId, point_id: pointId, seq: ++seq, type: 'intercept', team_id: defending, actor_id: pickOf(r, lines[defending]).personId, recorded_at: at, device_id: 'demo' });
       else add('game_event', { id: demoId(`ev:${gameId}:${n}:${k}`), game_id: gameId, point_id: pointId, seq: ++seq, type: r() < 0.6 ? 'throwaway' : 'drop', team_id: holder, actor_id: pickOf(r, lines[holder]).personId, recorded_at: at, device_id: 'demo' });
       holder = defending;
+      disc = null;
     }
     const line = lines[scorer];
-    const goal = pickOf(r, line);
-    const assist = pickOf(r, line.filter((p) => p !== goal));
+    passes(scorer, t + dur * 1000);
+    const assist = full && disc ? line.find((p) => p.personId === disc)! : pickOf(r, line);
+    const goal = pickOf(r, line.filter((p) => p !== assist));
     add('game_event', { id: demoId(`ev:${gameId}:${n}:g`), game_id: gameId, point_id: pointId, seq: ++seq, type: 'score', team_id: scorer, actor_id: goal.personId, secondary_id: assist?.personId ?? null, recorded_at: new Date(t + dur * 1000).toISOString(), device_id: 'demo' });
     if (scorer === a) sa++;
     else sb++;
@@ -438,6 +295,31 @@ function simulateGame(gameId: string, a: string, b: string, start: string) {
     add('spirit_score', { id: demoId(`spirit:${gameId}:${from}`), game_id: gameId, from_team_id: from, to_team_id: to, rules: s(), fouls: s(), fairness: s(), attitude: s(), communication: s(), comments_json: '{}', overall_comment: null, submitted_at: new Date(t + 30 * 60_000).toISOString() });
   }
 }
+
+/* ---------------- Demo Cup 2026 (invented one-day tournament) ---------------- */
+
+// Six teams in one pool, then a final scored in full mode (every pass) to show the full stats.
+const CUP = demoId('event:cup2026');
+const CUP_TEAMS = [LEGENDS, GHOST, UCT, NOMAD, HEAT, MATIES];
+const cupRules = rulesFor('wfdf', 'mixed');
+add('event', { id: CUP, name: 'Demo Cup 2026', kind: 'tournament', level: 'social', division: 'mixed', region: 'western', location: 'Woolsack Oval, UCT', start_date: '2026-09-26', end_date: '2026-09-27', rules_json: JSON.stringify(cupRules), notes: 'Demo tournament: teams are real clubs, but every player, game and score is made up.', created_at: CREATED, updated_at: CREATED });
+CUP_TEAMS.forEach((t, i) => add('event_team', { id: demoId(`et:cup:${t}`), event_id: CUP, team_id: t, pool: 'A', seed: i + 1, created_at: CREATED }));
+let cupGames = 0;
+const cupPairs: [string, string][] = [];
+for (let i = 0; i < CUP_TEAMS.length; i++) for (let j = i + 1; j < CUP_TEAMS.length; j++) cupPairs.push([CUP_TEAMS[i], CUP_TEAMS[j]]);
+cupPairs.forEach(([a, b], k) => {
+  const id = demoId(`game:cup:${k}`);
+  const day = k < 9 ? '2026-09-26' : '2026-09-27';
+  const when = sast(day, ['08:30', '10:00', '11:30'][Math.floor((k % 9) / 3)]);
+  add('game', { id, event_id: CUP, venue_id: WOOLSACK_CUP, team_a_id: a, team_b_id: b, scheduled_at: when, status: 'final', tracking_mode: 'standard', rules_json: JSON.stringify(cupRules), first_pull_team_id: a, ratio_point1: 'W', started_at: when, ended_at: new Date(Date.parse(when) + 85 * 60_000).toISOString(), home_team_id: a, postponements: 0, stage: 'pool', round: Math.floor(k / 3) + 1, created_at: CREATED, updated_at: CREATED });
+  simulateGame(id, a, b, when);
+  cupGames += 1;
+});
+const FINAL = demoId('game:cup:final');
+const finalAt = sast('2026-09-27', '15:00');
+add('game', { id: FINAL, event_id: CUP, venue_id: WOOLSACK_CUP, team_a_id: LEGENDS, team_b_id: GHOST, scheduled_at: finalAt, status: 'final', tracking_mode: 'full', rules_json: JSON.stringify(cupRules), first_pull_team_id: GHOST, ratio_point1: 'W', started_at: finalAt, ended_at: new Date(Date.parse(finalAt) + 95 * 60_000).toISOString(), home_team_id: LEGENDS, postponements: 0, stage: 'playoff', round: null, created_at: CREATED, updated_at: CREATED });
+simulateGame(FINAL, LEGENDS, GHOST, finalAt, true);
+cupGames += 1;
 
 /* ---------------- Chilli Legends practices at Woolsack ---------------- */
 
@@ -531,7 +413,9 @@ add('announcement', {
 /* ---------------- Hats (demo) ---------------- */
 
 const hatRules = (perSide: number, minutes: number, target: number) => ({ pointTarget: target, halftimeTarget: Math.ceil(target / 2), softCapMinutes: null, hardCapMinutes: minutes, timeoutsPerTeam: 0, timeoutSeconds: 60, pullWithinSeconds: 60, mixedRatio: perSide % 2 === 1, halftimeMinutes: 2, playersPerSide: perSide });
-const cityPeople = T.person.filter((p) => !String(p.id).startsWith('x')).slice(0, 140); // WR + Res players and Heat
+// Hat players: invented players from Cape Town teams.
+const capeTown = new Set(CLUB_DIRECTORY.filter((c) => c.city === 'Cape Town').flatMap((c) => c.teams.map((t) => teamId(t.name))));
+const cityPeople = T.person.filter((p) => T.membership.some((m) => m.person_id === p.id && capeTown.has(m.team_id as string))).slice(0, 140);
 function hatSignups(eventId: string, seed: string, count: number) {
   const r = rng(seed);
   const pool = [...cityPeople].sort(() => r() - 0.5).slice(0, count);
@@ -579,23 +463,77 @@ for (const e of T.event) e.is_hat ??= 0;
 const tables = ORDER.filter((t) => T[t]?.length).map((t) => [t, T[t]] as const);
 const counts = Object.fromEntries(tables.map(([t, rows]) => [t, rows.length]));
 // Columnar (column names once, then value lists) keeps the file small enough to ship in the app.
+// The earlier demo (v3) was built from Stall Count exports: list its rows so phones and the server
+// delete them. Kept in every later version so a phone that skipped versions still cleans up.
+const DEMO_JSON = join(ROOT, 'mobile/src/content/demo/demo-2026.json');
+type Purge = Record<'person' | 'game' | 'event' | 'team' | 'session' | 'venue' | 'announcement' | 'membership', string[]>;
+let purge: Purge | null = null;
+if (existsSync(DEMO_JSON)) {
+  const old = JSON.parse(readFileSync(DEMO_JSON, 'utf8'));
+  if (old.purge) purge = old.purge;
+  else if (old.version === 3) {
+    const ids = (t: string, where: (r: Record<string, unknown>) => boolean = () => true) => {
+      const tab = old.tables[t];
+      if (!tab) return [];
+      return tab.rows.map((r: unknown[]) => Object.fromEntries(tab.cols.map((c: string, i: number) => [c, r[i]]))).filter(where).map((r: Record<string, unknown>) => String(r.id));
+    };
+    const keepVenues = new Set(T.venue.map((v) => v.id));
+    purge = {
+      person: ids('person'),
+      game: ids('game'),
+      event: ids('event'),
+      // Residence-league teams and the old hat teams; the clubs' own teams stay.
+      team: ids('team', (r) => r.city === 'Stellenbosch' || r.kind === 'hat').filter((id) => !T.team.some((t) => t.id === id) && !teamUpdates.some((u) => u.id === id)),
+      session: ids('session'),
+      venue: ids('venue', (r) => !keepVenues.has(r.id as string)),
+      announcement: ids('announcement'),
+      membership: ids('membership'),
+    };
+  }
+}
 const columnar = Object.fromEntries(
   tables.map(([t, rows]) => {
     const cols = Object.keys(Object.assign({}, ...rows));
     return [t, { cols, rows: rows.map((r) => cols.map((c) => r[c] ?? null)) }];
   }),
 );
-writeFileSync(join(ROOT, 'mobile/src/content/demo/demo-2026.json'), JSON.stringify({ version: VERSION, builtFor: TODAY, teamUpdates, tables: columnar }));
+writeFileSync(DEMO_JSON, JSON.stringify({ version: VERSION, builtFor: TODAY, purge, teamUpdates, tables: columnar }));
 
 const serverCols: Record<string, string[]> = JSON.parse(readFileSync(join(__dirname, 'server-columns.json'), 'utf8'));
 const lit = (v: string | number | null | undefined) => (v == null ? 'null' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
 const sql: string[] = [
-  '-- Demo content for sharing the app: clubs and teams from the public SAFDA/CTFDA directories, real results',
-  '-- and point-by-point logs from Western Regionals 2026 and the Stellenbosch Residence League 2026 with',
-  '-- invented player names (is_placeholder = 1), and a made-up Cape Town Mixed League 2026, Chilli Legends',
-  '-- practices, an AGM and announcements. Generated by tools/demo/build.ts; do not edit by hand.',
+  '-- Demo content for sharing the app. Clubs, teams and fields are from the clubs\' public pages; every',
+  '-- player, game, score and practice is made up. Generated by tools/demo/build.ts; do not edit by hand.',
   '',
 ];
+const list = (xs: string[]) => xs.map(lit).join(', ');
+if (purge) {
+  // First remove everything the earlier demo created (and anything users added that hangs off it).
+  const P = list(purge.person), G = list(purge.game), E = list(purge.event), TM = list(purge.team), S = list(purge.session);
+  sql.push('-- Remove the earlier demo (built from Stall Count exports).');
+  const del = (t: string, where: string) => serverCols[t] && sql.push(`delete from ${t} where ${where};`);
+  del('point_player', `point_id in (select id from point where game_id in (${G}))`);
+  del('game_event', `game_id in (${G})`);
+  del('point', `game_id in (${G})`);
+  for (const t of ['game_player', 'spirit_score', 'game_status_log', 'game_availability', 'reflection', 'shoutout', 'bracket_slot']) del(t, `game_id in (${G})`);
+  for (const t of ['practice_rsvp', 'practice_attendance', 'reflection', 'shoutout']) del(t, `session_id in (${S})`);
+  del('session', `id in (${S})`);
+  for (const t of ['accreditation', 'association_membership', 'club_staff', 'fitness_test', 'game_availability', 'game_player', 'hat_signup', 'meeting_rsvp', 'person_demographic', 'pickup_rsvp', 'practice_attendance', 'practice_rsvp', 'reflection', 'registration', 'saved_line_member', 'self_rating', 'membership'])
+    del(t, `person_id in (${P})`);
+  del('shoutout', `from_person_id in (${P}) or to_person_id in (${P})`);
+  del('game', `id in (${G})`);
+  del('hat_signup', `event_id in (${E})`);
+  del('event_team', `event_id in (${E}) or team_id in (${TM || "''"})`);
+  del('event', `id in (${E})`);
+  if (purge.team.length) {
+    del('membership', `team_id in (${TM})`);
+    del('team', `id in (${TM})`);
+  }
+  del('person', `id in (${P})`);
+  if (purge.venue.length) del('venue', `id in (${list(purge.venue)})`);
+  del('announcement', `id in (${list(purge.announcement)})`);
+  sql.push('');
+}
 for (const [t, rows] of tables) {
   const cols = Object.keys(Object.assign({}, ...rows)).filter((c) => serverCols[t]?.includes(c));
   for (let i = 0; i < rows.length; i += 500) {
@@ -617,8 +555,8 @@ sql.push(`insert into game_player (id, game_id, team_id, person_id, jersey_numbe
 on conflict do nothing;`);
 sql.push(`update calendar_entry set end_date = '2026-11-14', status = 'confirmed' where id = ${lit(seedId('calendar', 'Cape Town Mixed League 2026'))};`);
 // Each demo version is its own (idempotent) migration, so already-applied versions are never edited.
-const MIGRATION: Record<number, string> = { 1: '20261024150000_demo_content.sql', 2: '20261024210000_demo_content_v2.sql', 3: '20261025000000_demo_content_v3.sql' };
+const MIGRATION: Record<number, string> = { 1: '20261024150000_demo_content.sql', 2: '20261024210000_demo_content_v2.sql', 3: '20261025000000_demo_content_v3.sql', 4: '20261026120000_demo_content_v4.sql' };
 writeFileSync(join(ROOT, 'supabase/migrations', MIGRATION[VERSION]), sql.join('\n') + '\n');
 
-console.log(`clubs ${counts.club} · new teams ${counts.team} (+${teamUpdates.length} updated) · people ${counts.person} · games ${counts.game} (WR ${wr.imported}, Res ${res.imported}, league ${leagueGames}) · points ${counts.point} · events ${counts.game_event} · practices ${practices}`);
+console.log(`clubs ${counts.club} · new teams ${counts.team} (+${teamUpdates.length} updated) · people ${counts.person} · games ${counts.game} (cup ${cupGames}, league ${leagueGames}) · points ${counts.point} · events ${counts.game_event} · practices ${practices}`);
 console.log(counts);

@@ -345,18 +345,22 @@ export async function ensureStarterContent(db: SQLiteDatabase) {
 }
 
 /** Bump with tools/demo/build.ts's `version` when the demo content changes. */
-const DEMO_VERSION = 3;
+const DEMO_VERSION = 4;
 
+type Purge = Record<'person' | 'game' | 'event' | 'team' | 'session' | 'venue' | 'announcement' | 'membership', string[]>;
 type DemoFile = {
   version: number;
+  /** Rows of an earlier demo to delete first (it was built from real exports; see tools/demo/build.ts). */
+  purge: Purge | null;
   teamUpdates: Record<string, string | number | null>[];
   tables: Record<string, { cols: string[]; rows: (string | number | null)[][] }>;
 };
 
 /**
  * Demo content for sharing the app (tools/demo/build.ts): clubs and teams from the public directories,
- * real Western Regionals and Residence League results with invented player names, a made-up Cape Town
- * Mixed League, Chilli Legends practices, an AGM and two announcements. Same ids as the server's copy.
+ * and a made-up season around them (invented squads, the Cape Town Mixed League, the Demo Cup, Chilli
+ * Legends practices, hats, an AGM and announcements). Same ids as the server's copy. Version 4 first
+ * deletes the earlier demo, which was built from real exports.
  */
 export async function ensureDemoContent(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'demo_version'`);
@@ -368,6 +372,7 @@ export async function ensureDemoContent(db: SQLiteDatabase) {
   await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sync_pulling', '1')`);
   try {
     await db.withTransactionAsync(async () => {
+      if (demo.purge) await purgeDemo(db, demo.purge);
       for (const [table, { cols, rows }] of Object.entries(demo.tables)) {
         // Several rows per statement, under SQLite's variable limit.
         const per = Math.max(1, Math.floor(900 / cols.length));
@@ -406,6 +411,74 @@ export async function ensureDemoContent(db: SQLiteDatabase) {
   } finally {
     await db.runAsync(`DELETE FROM app_meta WHERE key = 'sync_pulling'`);
   }
+}
+
+/**
+ * Delete an earlier demo's rows, children first (foreign keys are on), including anything added on
+ * this phone that hangs off them (squads, check-ins, follows). Runs as if pulled: nothing is uploaded.
+ */
+async function purgeDemo(db: SQLiteDatabase, p: Purge) {
+  const has = new Set((await db.getAllAsync<{ name: string }>(`SELECT name FROM sqlite_master WHERE type = 'table'`)).map((t) => t.name));
+  const del = async (table: string, col: string, ids: string[]) => {
+    if (!has.has(table) || !ids.length) return;
+    for (let i = 0; i < ids.length; i += 500) {
+      const chunk = ids.slice(i, i + 500);
+      await db.runAsync(`DELETE FROM ${table} WHERE ${col} IN (${chunk.map(() => '?').join(',')})`, ...chunk);
+    }
+  };
+  const points = (
+    await Promise.all(
+      Array.from({ length: Math.ceil(p.game.length / 500) }, (_, i) => p.game.slice(i * 500, i * 500 + 500)).map((chunk) =>
+        db.getAllAsync<{ id: string }>(`SELECT id FROM point WHERE game_id IN (${chunk.map(() => '?').join(',')})`, ...chunk),
+      ),
+    )
+  )
+    .flat()
+    .map((r) => r.id);
+  await del('point_player', 'point_id', points);
+  await del('game_event', 'game_id', p.game);
+  await del('point', 'game_id', p.game);
+  for (const t of ['game_player', 'spirit_score', 'game_status_log', 'game_availability', 'reflection', 'shoutout', 'bracket_slot']) await del(t, 'game_id', p.game);
+  for (const t of ['practice_rsvp', 'practice_attendance', 'reflection', 'shoutout']) await del(t, 'session_id', p.session);
+  await del('session', 'id', p.session);
+  for (const t of [
+    'accreditation',
+    'association_membership',
+    'club_staff',
+    'fitness_test',
+    'game_availability',
+    'game_player',
+    'hat_signup',
+    'meeting_rsvp',
+    'person_demographic',
+    'pickup_rsvp',
+    'practice_attendance',
+    'practice_rsvp',
+    'reflection',
+    'registration',
+    'saved_line_member',
+    'self_rating',
+    'membership',
+  ])
+    await del(t, 'person_id', p.person);
+  await del('shoutout', 'from_person_id', p.person);
+  await del('shoutout', 'to_person_id', p.person);
+  await del('follow', 'target_id', [...p.person, ...p.event, ...p.team]);
+  await del('game', 'id', p.game);
+  await del('hat_signup', 'event_id', p.event);
+  await del('event_team', 'event_id', p.event);
+  await del('event_team', 'team_id', p.team);
+  await del('event', 'id', p.event);
+  await del('membership', 'team_id', p.team);
+  if (p.team.length) await db.runAsync(`DELETE FROM saved_line_member WHERE line_id IN (SELECT id FROM saved_line WHERE team_id IN (${p.team.map(() => '?').join(',')}))`, ...p.team);
+  await del('saved_line', 'team_id', p.team);
+  await del('team', 'id', p.team);
+  // If this phone's "me" was one of the old demo players, forget it (they pick themselves again).
+  const me = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_person_id'`);
+  if (me && p.person.includes(me.value)) await db.runAsync(`DELETE FROM app_meta WHERE key = 'me_person_id'`);
+  await del('person', 'id', p.person);
+  await del('venue', 'id', p.venue);
+  await del('announcement', 'id', p.announcement);
 }
 
 /**

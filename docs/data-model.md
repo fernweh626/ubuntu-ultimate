@@ -131,7 +131,7 @@ fitness, +/− and connections are all derived from these events plus the `point
 
 - **Multiple trackers:** each event already records `device_id`. Each tracker's log can be kept separately
   and merged per point by majority vote, with disagreements flagged. No table changes needed.
-- **Stall Count import:** this season's games from Stall Count exports (`tools/demo/` already reads them).
+- **Stall Count link:** bring a team's own Stall Count games in, with their permission (planned).
 - **Spectator live link:** `web/live/` follows a game in realtime (`game`, `point`, `game_event` are published).
 
 ## Access levels and who can grant what

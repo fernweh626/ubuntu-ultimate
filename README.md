@@ -38,7 +38,7 @@ On the phone: open **Expo Go** → **Scan QR code** (or **Enter URL manually**: 
 
 ## A 10-minute tour
 
-The app ships with the real SA clubs and fields, real (anonymised) results from Western Regionals 2026 and the Stellenbosch Residence League, and a made-up Cape Town Mixed League with practices, a hat and an AGM. **Every player name in the demo is invented.**
+The app ships with the real SA clubs and fields (from the clubs' own public pages) and a made-up season around them: invented squads for every team, the Cape Town Mixed League, the Demo Cup (its final is scored in full mode, every pass), Chilli Legends practices, two hats and an AGM. **Every player, game and score in the demo is invented.**
 
 1. **First run:** the welcome flow asks who you are, your team and your region. Pick **Chilli Legends** to see a busy week.
 Four tabs (**Home, Play, Teams, More**) and **Me** behind your picture at the top right. The website is the same app in a phone-width column.
@@ -93,7 +93,7 @@ Phone (Expo / React Native)                Supabase (London)
 | `mobile/src/lib/` | Platform glue: Supabase client, web helpers (alerts, sharing, printing), preview mode |
 | `mobile/src/content/` | Static content: clubs, countries and regions, associations, the in-app guide, spirit examples |
 | `supabase/migrations/` | Server tables, row-level security, functions |
-| `tools/demo/` | Builds the anonymised demo content from Stall Count exports (exports never committed) |
+| `tools/demo/` | Builds the made-up demo content (no real player data goes in) |
 | `mobile/tests/` | Tests (`npm test`), with Expo modules shimmed in `tests/shims/` |
 | `docs/data-model.md` | Every table, sync, privacy on the server, permissions, fixtures and formats |
 

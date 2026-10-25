@@ -10,12 +10,53 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
   await seedIfEmpty(db);
   await ensureStarterContent(db);
   await ensureDemoContent(db);
-  ok('demo v3 loads, FKs hold', (await db.getFirstAsync(`SELECT value FROM app_meta WHERE key = 'demo_version'`)).value === '3' && (await db.getAllAsync('PRAGMA foreign_key_check')).length === 0);
+  ok('demo v4 loads, FKs hold', (await db.getFirstAsync(`SELECT value FROM app_meta WHERE key = 'demo_version'`)).value === '4' && (await db.getAllAsync('PRAGMA foreign_key_check')).length === 0);
   // a v1 phone upgrading: pretend version 1, run again → only adds
   await db.runAsync(`UPDATE app_meta SET value = '1' WHERE key = 'demo_version'`);
   const before = (await db.getFirstAsync('SELECT COUNT(*) n FROM game')).n;
   await ensureDemoContent(db);
   ok('v1 → v2 adds, no duplicates', (await db.getFirstAsync('SELECT COUNT(*) n FROM game')).n === before);
+  // A phone that had the old (export-based) demo: its rows are deleted when v4 loads, with anything hanging off them.
+  const demo = require('@/content/demo/demo-2026.json');
+  const [oldPerson] = demo.purge.person,
+    [oldGame] = demo.purge.game,
+    [oldTeam] = demo.purge.team;
+  const legends = (await repo.listTeams(db)).find((t: any) => t.name === 'Chilli Legends')!;
+  await db.runAsync(`INSERT INTO person (id, first_name, last_name, created_at, updated_at) VALUES (?, 'Old', 'Demo', 'x', 'x')`, oldPerson);
+  await db.runAsync(`INSERT INTO team (id, name, kind, created_at, updated_at) VALUES (?, 'Old res team', 'university', 'x', 'x')`, oldTeam);
+  await db.runAsync(`INSERT INTO membership (id, person_id, team_id, kind, role, created_at, updated_at) VALUES ('m-old', ?, ?, 'core', 'player', 'x', 'x')`, oldPerson, oldTeam);
+  await db.runAsync(
+    `INSERT INTO game (id, team_a_id, team_b_id, status, tracking_mode, rules_json, first_pull_team_id, created_at, updated_at) VALUES (?, ?, ?, 'final', 'lite', '{}', ?, 'x', 'x')`,
+    oldGame,
+    oldTeam,
+    legends.id,
+    oldTeam,
+  );
+  await db.runAsync(`INSERT INTO game_player (id, game_id, team_id, person_id) VALUES ('gp-old', ?, ?, ?)`, oldGame, oldTeam, oldPerson);
+  await db.runAsync('DELETE FROM sync_outbox');
+  await db.runAsync(`UPDATE app_meta SET value = '3' WHERE key = 'demo_version'`);
+  await ensureDemoContent(db);
+  const gone = await Promise.all(
+    [
+      ['person', oldPerson],
+      ['team', oldTeam],
+      ['game', oldGame],
+      ['membership', 'm-old'],
+      ['game_player', 'gp-old'],
+    ].map(([t, id]) => db.getFirstAsync(`SELECT 1 FROM ${t} WHERE id = ?`, id)),
+  );
+  ok(
+    'old demo rows (and what hangs off them) are deleted',
+    gone.every((x) => !x),
+    gone,
+  );
+  ok('nothing queued to upload by the clean-up', !(await db.getFirstAsync(`SELECT 1 FROM sync_outbox WHERE pk LIKE ?`, `%${oldPerson}%`)));
+  ok('FKs still hold after the clean-up', (await db.getAllAsync('PRAGMA foreign_key_check')).length === 0);
+  ok('no spreadsheet events left', !(await repo.listEvents(db)).some((e: any) => /Regionals|Residence/.test(e.name)));
+  ok(
+    'the made-up Demo Cup final is scored in full mode',
+    (await db.getFirstAsync(`SELECT COUNT(*) n FROM game g JOIN event e ON e.id = g.event_id WHERE e.name = 'Demo Cup 2026' AND g.tracking_mode = 'full'`)).n === 1,
+  );
   const list = await hats.listHats(db);
   const beach = list.find((h) => h.name.startsWith('Clifton'))!,
     winter = list.find((h) => h.name.startsWith('Winter'))!;
