@@ -187,7 +187,7 @@ export function JoinRequestPrompt() {
         'Approve them (and label them core, guest or pick-up) on the team page.',
         [
           { text: 'Later', style: 'cancel' },
-          { text: 'Review', onPress: () => router.push(`/team/${first.team_id}`) },
+          { text: 'Review', onPress: () => router.push(`/team/${first.team_id}?tab=staff`) },
         ],
       );
     })();

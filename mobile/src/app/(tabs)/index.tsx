@@ -94,7 +94,7 @@ function NeedsYou() {
   const rows: [string, string, () => void][] = [];
   if (todo.answers) rows.push(['calendar-question', `${todo.answers} to answer: are you coming?`, () => router.push('/schedule')]);
   if (todo.checkins) rows.push(['comment-check-outline', `${todo.checkins} check-in${todo.checkins > 1 ? 's' : ''}: how did it go?`, () => router.push('/schedule')]);
-  if (todo.requests) rows.push(['account-clock-outline', `${todo.requests} asking to join your team`, () => router.push(`/team/${todo.teamId}`)]);
+  if (todo.requests) rows.push(['account-clock-outline', `${todo.requests} asking to join your team`, () => router.push(`/team/${todo.teamId}?tab=staff`)]);
   return (
     <View style={{ backgroundColor: colors.warnTint, borderRadius: 14, overflow: 'hidden' }}>
       {rows.map(([icon, label, go], i) => (

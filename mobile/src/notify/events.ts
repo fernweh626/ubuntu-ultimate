@@ -98,7 +98,7 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
       if (seen.requests.includes(r.id)) continue;
       seen.requests.push(r.id);
       if (!first && prefs.joinRequests) {
-        out.push({ key: `req:${r.id}`, title: `${name(r)} wants to join ${r.team}`, body: `As ${r.kind}. Approve or decline on the team page.`, url: `/team/${r.team_id}` });
+        out.push({ key: `req:${r.id}`, title: `${name(r)} wants to join ${r.team}`, body: `As ${r.kind}. Approve or decline on the team page.`, url: `/team/${r.team_id}?tab=staff` });
       }
     }
   }

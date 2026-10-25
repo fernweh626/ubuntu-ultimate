@@ -22,7 +22,7 @@ import {
 } from '@/db/repo';
 import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format';
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
-import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T, RichText } from '@/ui/components';
+import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T, RichText, Segmented } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
 import { TeamFixtures } from '@/ui/team-fixtures';
 import { BankingCard } from '@/ui/banking';
@@ -45,7 +45,7 @@ function whatsappUrl(phone: string) {
 }
 
 export default function TeamPage() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: string }>();
   const db = useSQLiteContext();
   const team = useData((d) => getTeam(d, id), [id]);
   const club = useData(async (d) => (team?.club_id ? getClub(d, team.club_id) : null), [team?.club_id]);
@@ -53,6 +53,7 @@ export default function TeamPage() {
   const access = useData(getAccess);
   const [rolesSheet, setRolesSheet] = useState(false);
   const [labelFor, setLabelFor] = useState<string | null>(null);
+  const [tab, setTab] = useState<'overview' | 'squad' | 'games' | 'staff'>(tabParam === 'staff' || tabParam === 'squad' || tabParam === 'games' ? tabParam : 'overview');
   const [rolePerson, setRolePerson] = useState<string | null>(null);
   const lines = useData((d) => savedLines(d, id), [id]);
   const games = useData((d) => listGamesForTeam(d, id), [id]);
@@ -144,238 +145,271 @@ export default function TeamPage() {
           <FollowButton kind="team" id={id} />
           {agg && agg.games ? <Button label="Team report" icon="chart-box-outline" onPress={() => router.push({ pathname: '/team/report', params: { id } })} /> : null}
         </View>
-        <JoinTeamBar teamId={id} teamName={team.name} onSquad={onSquad} />
-        <BankingCard name={team.name} details={team.banking_details} path={`/team/${id}`} />
-        {team.about ? <RichText v="small">{team.about}</RichText> : null}
-        {canManage ? <JoinRequests teamId={id} /> : null}
-        {isStaffHere ? (
-          <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-            <Row
-              title="Attendance"
-              subtitle="Who comes to practice, no-shows, games played"
-              left={<Icon name="account-check-outline" color={colors.brand} />}
-              onPress={() => router.push({ pathname: '/team/attendance', params: { teamId: id } })}
-            />
-            <Row
-              title="Ready to play & development"
-              subtitle="Accreditation, SAFDA & region standing, fitness, self-ratings"
-              left={<Icon name="chart-line" color={colors.brand} />}
-              onPress={() => router.push({ pathname: '/team/development', params: { teamId: id } })}
-            />
-            <Row
-              title="Export data"
-              subtitle="Games, stats, attendance, ratings, fitness, readiness (CSV)"
-              left={<Icon name="file-delimited-outline" color={colors.brand} />}
-              onPress={() => router.push({ pathname: '/export', params: { teamId: id } })}
-            />
-          </View>
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'overview', label: 'Overview' },
+            { value: 'squad', label: 'Squad' },
+            { value: 'games', label: 'Games' },
+            ...(isStaffHere || canManage ? [{ value: 'staff' as const, label: 'Staff' }] : []),
+          ]}
+        />
+
+        {tab === 'overview' ? (
+          <>
+            <JoinTeamBar teamId={id} teamName={team.name} onSquad={onSquad} />
+            <BankingCard name={team.name} details={team.banking_details} path={`/team/${id}`} />
+            {team.about ? <RichText v="small">{team.about}</RichText> : null}
+            <TeamFixtures teamId={id} games={games ?? []} meId={access?.meId ?? null} onSquad={onSquad} />
+
+            <Section title="Contact">
+              {hasContact ? (
+                <Card>
+                  {team.contact_name ? <T v="bodyStrong">{team.contact_name}</T> : null}
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+                    {team.contact_phone ? (
+                      <>
+                        <Button label="WhatsApp" icon="whatsapp" kind="primary" onPress={() => Linking.openURL(whatsappUrl(team.contact_phone!))} />
+                        <Button label="Call" icon="phone" onPress={() => Linking.openURL(`tel:${team.contact_phone}`)} />
+                      </>
+                    ) : null}
+                    {team.contact_email ? <Button label="Email" icon="email-outline" onPress={() => Linking.openURL(`mailto:${team.contact_email}`)} /> : null}
+                    {team.website ? <Button label="Website" icon="web" onPress={() => Linking.openURL(team.website!)} /> : null}
+                    {team.social ? <Button label="Social" icon="instagram" onPress={() => Linking.openURL(team.social!)} /> : null}
+                  </View>
+                </Card>
+              ) : (
+                <Card onPress={canManage ? () => router.push({ pathname: '/team/edit', params: { id } }) : undefined}>
+                  <T v="small">{canManage ? 'No contact details yet. Tap to add who to contact and how.' : 'No contact details yet.'}</T>
+                </Card>
+              )}
+            </Section>
+
+            <Section
+              title="Season so far"
+              action={
+                agg && agg.games ? (
+                  <Button label="Full report" kind="ghost" onPress={() => router.push({ pathname: '/team/report', params: { id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+                ) : undefined
+              }>
+              {agg && agg.games ? (
+                <Card>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <T v="title">
+                      {agg.wins}–{agg.losses}
+                      {agg.draws ? `–${agg.draws}` : ''}
+                    </T>
+                    <FormDots form={agg.form} />
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: space.sm }}>
+                    <StatTile value={pct(agg.holds, agg.oPoints)} label="Hold rate" />
+                    <StatTile value={pct(agg.breaks, agg.dPoints)} label="Break rate" />
+                    <StatTile value={agg.pointsPlayed ? round1(agg.turnovers / agg.pointsPlayed) : '–'} label="Turns / point" />
+                  </View>
+                </Card>
+              ) : (
+                <Card>
+                  <T v="small">Stats appear once this team finishes a scored game.</T>
+                </Card>
+              )}
+            </Section>
+          </>
         ) : null}
 
-        <TeamFixtures teamId={id} games={games ?? []} meId={access?.meId ?? null} onSquad={onSquad} />
-
-        <Section title="Contact">
-          {hasContact ? (
-            <Card>
-              {team.contact_name ? <T v="bodyStrong">{team.contact_name}</T> : null}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-                {team.contact_phone ? (
-                  <>
-                    <Button label="WhatsApp" icon="whatsapp" kind="primary" onPress={() => Linking.openURL(whatsappUrl(team.contact_phone!))} />
-                    <Button label="Call" icon="phone" onPress={() => Linking.openURL(`tel:${team.contact_phone}`)} />
-                  </>
-                ) : null}
-                {team.contact_email ? <Button label="Email" icon="email-outline" onPress={() => Linking.openURL(`mailto:${team.contact_email}`)} /> : null}
-                {team.website ? <Button label="Website" icon="web" onPress={() => Linking.openURL(team.website!)} /> : null}
-                {team.social ? <Button label="Social" icon="instagram" onPress={() => Linking.openURL(team.social!)} /> : null}
-              </View>
-            </Card>
-          ) : (
-            <Card onPress={canManage ? () => router.push({ pathname: '/team/edit', params: { id } }) : undefined}>
-              <T v="small">{canManage ? 'No contact details yet. Tap to add who to contact and how.' : 'No contact details yet.'}</T>
-            </Card>
-          )}
-        </Section>
-
-        <Section
-          title="Season so far"
-          action={
-            agg && agg.games ? (
-              <Button label="Full report" kind="ghost" onPress={() => router.push({ pathname: '/team/report', params: { id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
-            ) : undefined
-          }>
-          {agg && agg.games ? (
-            <Card>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <T v="title">
-                  {agg.wins}–{agg.losses}
-                  {agg.draws ? `–${agg.draws}` : ''}
-                </T>
-                <FormDots form={agg.form} />
-              </View>
-              <View style={{ flexDirection: 'row', gap: space.sm }}>
-                <StatTile value={pct(agg.holds, agg.oPoints)} label="Hold rate" />
-                <StatTile value={pct(agg.breaks, agg.dPoints)} label="Break rate" />
-                <StatTile value={agg.pointsPlayed ? round1(agg.turnovers / agg.pointsPlayed) : '–'} label="Turns / point" />
-              </View>
-            </Card>
-          ) : (
-            <Card>
-              <T v="small">Stats appear once this team finishes a scored game.</T>
-            </Card>
-          )}
-        </Section>
-
-        <Section
-          title={`Roster · ${players?.length ?? 0}`}
-          action={
-            canManage ? (
-              <View style={{ flexDirection: 'row', gap: space.md }}>
-                <Button label="Roles" icon="shield-account-outline" kind="ghost" onPress={() => setRolesSheet(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} />
-                <Button
-                  label="Add"
-                  icon="account-plus"
-                  kind="ghost"
-                  onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })}
-                  style={{ minHeight: 32, paddingHorizontal: 0 }}
-                />
-              </View>
-            ) : undefined
-          }>
-          {canManage && players?.length ? <T v="small">Tap a player to label them core, guest or pick-up, or to open their page.</T> : null}
-          {players && players.length ? (
-            <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-              <MatchingGroups
-                list={players}
-                render={(p) => (
-                  <Row
-                    key={p.id}
-                    title={`${displayName(p)}${p.jersey_number ? `  #${p.jersey_number}` : ''}`}
-                    subtitle={p.position ? POS[p.position] : undefined}
-                    right={
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        {p.role !== 'player' ? <Chip label={TEAM_ROLE_LABEL[p.role]} /> : p.membership_kind !== 'core' ? <Chip label={KIND_LABEL[p.membership_kind]} tone="warn" /> : null}
-                        <PosTag position={p.position} />
-                      </View>
-                    }
-                    left={<Avatar uri={p.photo_uri} name={displayName(p)} size={36} tone="tint" />}
-                    onPress={() => (canManage ? setLabelFor(p.id) : router.push(`/player/${p.id}`))}
+        {tab === 'squad' ? (
+          <>
+            <Section
+              title={`Roster · ${players?.length ?? 0}`}
+              action={
+                canManage ? (
+                  <View style={{ flexDirection: 'row', gap: space.md }}>
+                    <Button label="Roles" icon="shield-account-outline" kind="ghost" onPress={() => setRolesSheet(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+                    <Button
+                      label="Add"
+                      icon="account-plus"
+                      kind="ghost"
+                      onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })}
+                      style={{ minHeight: 32, paddingHorizontal: 0 }}
+                    />
+                  </View>
+                ) : undefined
+              }>
+              {canManage && players?.length ? <T v="small">Tap a player to label them core, guest or pick-up, or to open their page.</T> : null}
+              {players && players.length ? (
+                <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+                  <MatchingGroups
+                    list={players}
+                    render={(p) => (
+                      <Row
+                        key={p.id}
+                        title={`${displayName(p)}${p.jersey_number ? `  #${p.jersey_number}` : ''}`}
+                        subtitle={p.position ? POS[p.position] : undefined}
+                        right={
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            {p.role !== 'player' ? <Chip label={TEAM_ROLE_LABEL[p.role]} /> : p.membership_kind !== 'core' ? <Chip label={KIND_LABEL[p.membership_kind]} tone="warn" /> : null}
+                            <PosTag position={p.position} />
+                          </View>
+                        }
+                        left={<Avatar uri={p.photo_uri} name={displayName(p)} size={36} tone="tint" />}
+                        onPress={() => (canManage ? setLabelFor(p.id) : router.push(`/player/${p.id}`))}
+                      />
+                    )}
                   />
-                )}
-              />
-            </View>
-          ) : (
-            <EmptyState
-              icon="account-multiple-plus-outline"
-              title="No players yet"
-              action={canManage ? <Button label="Add player" icon="account-plus" kind="primary" onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })} /> : undefined}
-            />
-          )}
-        </Section>
-
-        <Section
-          title="Saved lines"
-          action={
-            canManage ? (
-              <Button label="New line" icon="plus" kind="ghost" onPress={() => router.push({ pathname: '/team/line-edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
-            ) : undefined
-          }>
-          {lines && lines.length ? (
-            <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-              {lines.map((l) => (
-                <Row
-                  key={l.id}
-                  title={l.name}
-                  subtitle={`${l.member_ids.length} players${l.side !== 'any' ? ` · ${l.side === 'O' ? 'Offence' : 'Defence'}` : ''}`}
-                  onPress={() => router.push({ pathname: '/team/line-edit', params: { teamId: id, id: l.id } })}
-                />
-              ))}
-            </View>
-          ) : (
-            <Card>
-              <T v="small">Save lines like “Super O” or “Zone D” to load them with one tap during games.</T>
-            </Card>
-          )}
-        </Section>
-
-        {onSquad || isStaffHere ? (
-          <Section
-            title="Practices"
-            action={
-              isStaffHere ? (
-                <Button
-                  label="Schedule"
-                  icon="calendar-plus"
-                  kind="ghost"
-                  onPress={() => router.push({ pathname: '/practice/edit', params: { teamId: id } })}
-                  style={{ minHeight: 32, paddingHorizontal: 0 }}
-                />
-              ) : undefined
-            }>
-            {upcoming.slice(0, 4).map((pr) => (
-              <Card key={pr.id} onPress={() => router.push(`/practice/${pr.id}`)}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
-                  <T v="bodyStrong" style={{ flex: 1, textDecorationLine: pr.cancelled_at ? 'line-through' : 'none' }}>
-                    {shortDate(pr.started_at)} · {timeOfDay(pr.started_at)}
-                  </T>
-                  {pr.cancelled_at ? (
-                    <Chip label="Cancelled" tone="danger" />
-                  ) : pr.my_status === 'late' ? (
-                    <Chip label="You’ll be late" icon="clock-outline" tone="neutral" />
-                  ) : pr.my_status === 'going' ? (
-                    <Chip label="You’re going" icon="check" />
-                  ) : pr.my_status === 'not_going' ? (
-                    <Chip label="Not going" tone="neutral" />
-                  ) : onSquad ? (
-                    <Chip label="Are you coming?" tone="warn" />
-                  ) : null}
                 </View>
-                <T v="small">
-                  {[pr.title, pr.venue_name, pr.cancelled_at ? null : `${pr.going} going${pr.late ? ` (${pr.late} late)` : ''}${pr.going_f + pr.going_m ? ` · ${pr.going_f}F ${pr.going_m}M` : ''}`]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </T>
-              </Card>
-            ))}
-            {upcoming.length === 0 ? (
-              <Card>
-                <T v="small">{isStaffHere ? 'Schedule a practice and the squad can say if they’re coming, then tell you how it went.' : 'No practices scheduled.'}</T>
-              </Card>
+              ) : (
+                <EmptyState
+                  icon="account-multiple-plus-outline"
+                  title="No players yet"
+                  action={canManage ? <Button label="Add player" icon="account-plus" kind="primary" onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })} /> : undefined}
+                />
+              )}
+            </Section>
+
+            <Section
+              title="Saved lines"
+              action={
+                canManage ? (
+                  <Button
+                    label="New line"
+                    icon="plus"
+                    kind="ghost"
+                    onPress={() => router.push({ pathname: '/team/line-edit', params: { teamId: id } })}
+                    style={{ minHeight: 32, paddingHorizontal: 0 }}
+                  />
+                ) : undefined
+              }>
+              {lines && lines.length ? (
+                <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+                  {lines.map((l) => (
+                    <Row
+                      key={l.id}
+                      title={l.name}
+                      subtitle={`${l.member_ids.length} players${l.side !== 'any' ? ` · ${l.side === 'O' ? 'Offence' : 'Defence'}` : ''}`}
+                      onPress={() => router.push({ pathname: '/team/line-edit', params: { teamId: id, id: l.id } })}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <Card>
+                  <T v="small">Save lines like “Super O” or “Zone D” to load them with one tap during games.</T>
+                </Card>
+              )}
+            </Section>
+
+            {(onSquad || isStaffHere) && shouts?.rows.length ? (
+              <Section title="Shout-outs">
+                {shouts.rows.map((so) => (
+                  <Card key={so.id}>
+                    <T v="bodyStrong">🙌 {shouts.people.get(so.to_person_id) ? displayName(shouts.people.get(so.to_person_id)!) : 'Someone'}</T>
+                    {so.reason ? <T>“{so.reason}”</T> : null}
+                    <T v="small">
+                      from {shouts.people.get(so.from_person_id) ? displayName(shouts.people.get(so.from_person_id)!) : 'a teammate'} · {shortDate(so.created_at)}
+                    </T>
+                  </Card>
+                ))}
+                <T v="small">Only this squad sees shout-outs.</T>
+              </Section>
             ) : null}
-            {past.length ? <T v="label">Recent</T> : null}
-            {past.slice(0, 3).map((pr) => (
-              <Row key={pr.id} title={pr.title || 'Practice'} subtitle={`${shortDate(pr.started_at)} · ${pr.duration_min} min`} onPress={() => router.push(`/practice/${pr.id}`)} />
-            ))}
-            {isStaffHere && access?.meId ? (
-              <Button label="Log a practice that wasn’t scheduled" icon="plus" kind="ghost" onPress={() => setLogging(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} />
-            ) : null}
-          </Section>
+          </>
         ) : null}
 
-        {(onSquad || isStaffHere) && shouts?.rows.length ? (
-          <Section title="Shout-outs">
-            {shouts.rows.map((so) => (
-              <Card key={so.id}>
-                <T v="bodyStrong">🙌 {shouts.people.get(so.to_person_id) ? displayName(shouts.people.get(so.to_person_id)!) : 'Someone'}</T>
-                {so.reason ? <T>“{so.reason}”</T> : null}
-                <T v="small">
-                  from {shouts.people.get(so.from_person_id) ? displayName(shouts.people.get(so.from_person_id)!) : 'a teammate'} · {shortDate(so.created_at)}
-                </T>
-              </Card>
-            ))}
-            <T v="small">Only this squad sees shout-outs.</T>
-          </Section>
+        {tab === 'games' ? (
+          <>
+            {onSquad || isStaffHere ? (
+              <Section
+                title="Practices"
+                action={
+                  isStaffHere ? (
+                    <Button
+                      label="Schedule"
+                      icon="calendar-plus"
+                      kind="ghost"
+                      onPress={() => router.push({ pathname: '/practice/edit', params: { teamId: id } })}
+                      style={{ minHeight: 32, paddingHorizontal: 0 }}
+                    />
+                  ) : undefined
+                }>
+                {upcoming.slice(0, 4).map((pr) => (
+                  <Card key={pr.id} onPress={() => router.push(`/practice/${pr.id}`)}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
+                      <T v="bodyStrong" style={{ flex: 1, textDecorationLine: pr.cancelled_at ? 'line-through' : 'none' }}>
+                        {shortDate(pr.started_at)} · {timeOfDay(pr.started_at)}
+                      </T>
+                      {pr.cancelled_at ? (
+                        <Chip label="Cancelled" tone="danger" />
+                      ) : pr.my_status === 'late' ? (
+                        <Chip label="You’ll be late" icon="clock-outline" tone="neutral" />
+                      ) : pr.my_status === 'going' ? (
+                        <Chip label="You’re going" icon="check" />
+                      ) : pr.my_status === 'not_going' ? (
+                        <Chip label="Not going" tone="neutral" />
+                      ) : onSquad ? (
+                        <Chip label="Are you coming?" tone="warn" />
+                      ) : null}
+                    </View>
+                    <T v="small">
+                      {[pr.title, pr.venue_name, pr.cancelled_at ? null : `${pr.going} going${pr.late ? ` (${pr.late} late)` : ''}${pr.going_f + pr.going_m ? ` · ${pr.going_f}F ${pr.going_m}M` : ''}`]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </T>
+                  </Card>
+                ))}
+                {upcoming.length === 0 ? (
+                  <Card>
+                    <T v="small">{isStaffHere ? 'Schedule a practice and the squad can say if they’re coming, then tell you how it went.' : 'No practices scheduled.'}</T>
+                  </Card>
+                ) : null}
+                {past.length ? <T v="label">Recent</T> : null}
+                {past.slice(0, 3).map((pr) => (
+                  <Row key={pr.id} title={pr.title || 'Practice'} subtitle={`${shortDate(pr.started_at)} · ${pr.duration_min} min`} onPress={() => router.push(`/practice/${pr.id}`)} />
+                ))}
+                {isStaffHere && access?.meId ? (
+                  <Button label="Log a practice that wasn’t scheduled" icon="plus" kind="ghost" onPress={() => setLogging(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+                ) : null}
+              </Section>
+            ) : null}
+
+            <Section title="Results">
+              {games && games.some((g) => g.status !== 'scheduled') ? (
+                games
+                  .filter((g) => g.status !== 'scheduled')
+                  .slice(0, 10)
+                  .map((g) => <GameCard key={g.id} g={g} />)
+              ) : (
+                <T v="small">No games played yet.</T>
+              )}
+            </Section>
+          </>
         ) : null}
 
-        <Section title="Results">
-          {games && games.some((g) => g.status !== 'scheduled') ? (
-            games
-              .filter((g) => g.status !== 'scheduled')
-              .slice(0, 10)
-              .map((g) => <GameCard key={g.id} g={g} />)
-          ) : (
-            <T v="small">No games played yet.</T>
-          )}
-        </Section>
+        {tab === 'staff' ? (
+          <>
+            {canManage ? <JoinRequests teamId={id} /> : null}
+            {isStaffHere ? (
+              <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+                <Row
+                  title="Attendance"
+                  subtitle="Who comes to practice, no-shows, games played"
+                  left={<Icon name="account-check-outline" color={colors.brand} />}
+                  onPress={() => router.push({ pathname: '/team/attendance', params: { teamId: id } })}
+                />
+                <Row
+                  title="Ready to play & development"
+                  subtitle="Accreditation, SAFDA & region standing, fitness, self-ratings"
+                  left={<Icon name="chart-line" color={colors.brand} />}
+                  onPress={() => router.push({ pathname: '/team/development', params: { teamId: id } })}
+                />
+                <Row
+                  title="Export data"
+                  subtitle="Games, stats, attendance, ratings, fitness, readiness (CSV)"
+                  left={<Icon name="file-delimited-outline" color={colors.brand} />}
+                  onPress={() => router.push({ pathname: '/export', params: { teamId: id } })}
+                />
+              </View>
+            ) : null}
+          </>
+        ) : null}
       </Screen>
       <LabelSheet
         player={players?.find((x) => x.id === labelFor) ?? null}
