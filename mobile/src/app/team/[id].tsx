@@ -19,6 +19,9 @@ import {
   upcomingPractices,
   setTeamLogo,
   shoutoutsForTeam,
+  pastPlayers,
+  leaveTeam,
+  joinTeam,
 } from '@/db/repo';
 import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format';
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
@@ -50,6 +53,8 @@ export default function TeamPage() {
   const team = useData((d) => getTeam(d, id), [id]);
   const club = useData(async (d) => (team?.club_id ? getClub(d, team.club_id) : null), [team?.club_id]);
   const players = useData((d) => roster(d, id), [id]);
+  const alumni = useData((d) => pastPlayers(d, id), [id]) ?? [];
+  const [allPast, setAllPast] = useState(false);
   const access = useData(getAccess);
   const [rolesSheet, setRolesSheet] = useState(false);
   const [labelFor, setLabelFor] = useState<string | null>(null);
@@ -220,7 +225,7 @@ export default function TeamPage() {
         {tab === 'squad' ? (
           <>
             <Section
-              title={`Roster · ${players?.length ?? 0}`}
+              title={`This season · ${players?.length ?? 0}`}
               action={
                 canManage ? (
                   <View style={{ flexDirection: 'row', gap: space.md }}>
@@ -265,6 +270,40 @@ export default function TeamPage() {
                 />
               )}
             </Section>
+
+            {alumni.length ? (
+              <Section title={`Past players · ${alumni.length}`}>
+                <T v="small">Everyone who has played for {team.name}. They stay part of the team’s history and stats.</T>
+                <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
+                  {alumni.slice(0, allPast ? alumni.length : 8).map((p) => (
+                    <Row
+                      key={p.id}
+                      title={displayName(p)}
+                      subtitle={[p.first_year === p.last_year ? p.first_year : `${p.first_year}–${p.last_year}`, p.games ? `${p.games} game${p.games === 1 ? '' : 's'}` : null]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      left={<Avatar uri={p.photo_uri} name={displayName(p)} size={36} tone="tint" />}
+                      right={
+                        canManage ? (
+                          <IconButton
+                            icon="account-arrow-left-outline"
+                            label={`${p.first_name} is back this season`}
+                            onPress={() =>
+                              Alert.alert(`${p.first_name} back this season?`, `Adds them to this season’s ${team.name} roster.`, [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Add back', onPress: () => joinTeam(db, p.id, id, 'core', null) },
+                              ])
+                            }
+                          />
+                        ) : undefined
+                      }
+                      onPress={() => router.push(`/player/${p.id}`)}
+                    />
+                  ))}
+                </View>
+                {alumni.length > 8 && !allPast ? <Button label={`Show all ${alumni.length}`} kind="ghost" onPress={() => setAllPast(true)} /> : null}
+              </Section>
+            ) : null}
 
             <Section
               title="Saved lines"
@@ -512,6 +551,23 @@ function LabelSheet({
             />
           ))}
           <Button label="Role (captain, coach…)" icon="shield-account-outline" kind="ghost" onPress={() => onRole(player.id)} />
+          <Button
+            label="Not playing this season"
+            icon="account-clock-outline"
+            kind="ghost"
+            onPress={() =>
+              Alert.alert(`Move ${player.first_name} to past players?`, 'They stay part of the team’s history and keep their stats. You can add them back any time.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Move',
+                  onPress: async () => {
+                    await leaveTeam(db, player.membership_id);
+                    onClose();
+                  },
+                },
+              ])
+            }
+          />
         </>
       ) : null}
     </Sheet>

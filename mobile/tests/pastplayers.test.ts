@@ -1,0 +1,24 @@
+import { open } from 'expo-sqlite';
+import { migrate } from '@/db/schema';
+import { seedIfEmpty } from '@/db/seed';
+import * as repo from '@/db/repo';
+const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
+(async () => {
+  const db: any = open();
+  await migrate(db);
+  await seedIfEmpty(db);
+  const team = (await repo.listTeams(db)).find((t: any) => !t.is_sample)!;
+  const a = await repo.savePerson(db, { first_name: 'Old', last_name: 'Timer', gender: 'W' }, { teamId: team.id, kind: 'core', jersey: null });
+  const b = await repo.savePerson(db, { first_name: 'Still', last_name: 'Here', gender: 'M' }, { teamId: team.id, kind: 'core', jersey: null });
+  await db.runAsync(`UPDATE membership SET start_date = '2017-02-01' WHERE person_id = ?`, a);
+  const m = await db.getFirstAsync(`SELECT id FROM membership WHERE person_id = ?`, a);
+  await repo.leaveTeam(db, m.id);
+  await db.runAsync(`UPDATE membership SET end_date = '2021-11-30' WHERE person_id = ?`, a);
+  const past = await repo.pastPlayers(db, team.id);
+  const old = past.find((p: any) => p.id === a);
+  ok('left player is a past player with their years', !!old && old.first_year === '2017' && old.last_year === '2021', past);
+  ok('current player is not a past player', !past.some((p: any) => p.id === b));
+  ok('no email column', old && !('email' in old));
+  await repo.joinTeam(db, a, team.id, 'core', null);
+  ok('back on the team: no longer listed as past', !(await repo.pastPlayers(db, team.id)).some((p: any) => p.id === a));
+})();

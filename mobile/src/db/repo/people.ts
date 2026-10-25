@@ -306,6 +306,40 @@ export function leaveTeam(db: SQLiteDatabase, membershipId: string) {
   return write(db, () => db.runAsync(`UPDATE membership SET end_date = ?, updated_at = ? WHERE id = ?`, now().slice(0, 10), now(), membershipId));
 }
 
+export type PastPlayer = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  nickname: string | null;
+  birth_date: string | null;
+  photo_uri: string | null;
+  first_year: string | null;
+  last_year: string | null;
+  games: number;
+};
+
+/**
+ * Everyone who used to be part of the team and isn't on this season's roster: their membership ended,
+ * or they played finished games for the team. Years come from both, newest first.
+ */
+export function pastPlayers(db: SQLiteDatabase, teamId: string) {
+  return db.getAllAsync<PastPlayer>(
+    `WITH cur AS (SELECT person_id FROM membership WHERE team_id = ? AND end_date IS NULL AND deleted_at IS NULL),
+          m AS (SELECT person_id, start_date, end_date FROM membership WHERE team_id = ? AND end_date IS NOT NULL AND deleted_at IS NULL),
+          g AS (SELECT gp.person_id, COALESCE(gm.started_at, gm.scheduled_at) AS at FROM game_player gp JOIN game gm ON gm.id = gp.game_id
+                 WHERE gp.team_id = ? AND gm.status = 'final' AND gm.deleted_at IS NULL AND gp.confirmation != 'removed'),
+          yrs AS (SELECT person_id, substr(start_date, 1, 4) AS y FROM m UNION ALL SELECT person_id, substr(end_date, 1, 4) FROM m UNION ALL SELECT person_id, substr(at, 1, 4) FROM g)
+     SELECT p.id, p.first_name, p.last_name, p.nickname, p.birth_date, p.photo_uri, MIN(yrs.y) AS first_year, MAX(yrs.y) AS last_year,
+            (SELECT COUNT(*) FROM g WHERE g.person_id = p.id) AS games
+       FROM yrs JOIN person p ON p.id = yrs.person_id
+      WHERE yrs.person_id NOT IN (SELECT person_id FROM cur) AND p.deleted_at IS NULL AND yrs.y IS NOT NULL
+      GROUP BY p.id ORDER BY last_year DESC, p.first_name COLLATE NOCASE`,
+    teamId,
+    teamId,
+    teamId,
+  );
+}
+
 export type MembershipHistory = {
   id: string;
   team_id: string;
