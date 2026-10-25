@@ -1,13 +1,36 @@
 import { applyFormat, parseRich, plainText } from '@/domain/rich-text';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 400));
 const b = parseRich('Bring **light and dark** shirts and _water_.\n- cones\n- discs: [buy here](https://shop.example/discs)\nSee https://ctfda.example');
-ok('bold span', b[0].spans.some((s) => s.bold && s.text === 'light and dark'), b[0]);
-ok('italic span', b[0].spans.some((s) => s.italic && s.text === 'water'), b[0]);
+ok(
+  'bold span',
+  b[0].spans.some((s) => s.bold && s.text === 'light and dark'),
+  b[0],
+);
+ok(
+  'italic span',
+  b[0].spans.some((s) => s.italic && s.text === 'water'),
+  b[0],
+);
 ok('bullets', b[1].bullet && b[1].spans[0].text === 'cones' && b[2].bullet, b);
-ok('named link', b[2].spans.some((s) => s.href === 'https://shop.example/discs' && s.text === 'buy here'), b[2]);
-ok('bare link', b[3].spans.some((s) => s.href === 'https://ctfda.example'), b[3]);
-ok('snake_case and file_names not italic', parseRich('my_file_name.pdf').every((x) => x.spans.every((s) => !s.italic)), parseRich('my_file_name.pdf'));
-ok('javascript: links ignored', parseRich('[x](javascript:alert(1))')[0].spans.every((s) => !s.href));
+ok(
+  'named link',
+  b[2].spans.some((s) => s.href === 'https://shop.example/discs' && s.text === 'buy here'),
+  b[2],
+);
+ok(
+  'bare link',
+  b[3].spans.some((s) => s.href === 'https://ctfda.example'),
+  b[3],
+);
+ok(
+  'snake_case and file_names not italic',
+  parseRich('my_file_name.pdf').every((x) => x.spans.every((s) => !s.italic)),
+  parseRich('my_file_name.pdf'),
+);
+ok(
+  'javascript: links ignored',
+  parseRich('[x](javascript:alert(1))')[0].spans.every((s) => !s.href),
+);
 ok('plain text drops marks', plainText('**Hi** _there_\n- one') === 'Hi there\n• one', plainText('**Hi** _there_\n- one'));
 const e1 = applyFormat('hello world', { start: 6, end: 11 }, 'bold');
 ok('bold wraps selection', e1.value === 'hello **world**' && e1.start === 8 && e1.end === 13, e1);

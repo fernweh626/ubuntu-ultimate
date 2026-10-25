@@ -70,7 +70,10 @@ export default function ScoreGame() {
       const data = await loadGameData(d, id);
       if (!data) return null;
       const [ta, tb] = await Promise.all([getTeam(d, data.game.team_a_id), getTeam(d, data.game.team_b_id)]);
-      const people = await peopleById(d, data.players.map((p) => p.person_id));
+      const people = await peopleById(
+        d,
+        data.players.map((p) => p.person_id),
+      );
       return { data, ta: ta!, tb: tb!, people };
     },
     [id],
@@ -130,14 +133,10 @@ export default function ScoreGame() {
       maybeFetchWeather();
     };
     if (missing.length) {
-      Alert.alert(
-        `No line set for ${missing.map((t) => t.name).join(' and ')}`,
-        'Player stats need to know who was on. Set the line, or pull anyway.',
-        [
-          { text: 'Set line', onPress: () => router.push({ pathname: '/game/[id]/line', params: { id, team: missing[0].id } }) },
-          { text: 'Pull anyway', onPress: go },
-        ],
-      );
+      Alert.alert(`No line set for ${missing.map((t) => t.name).join(' and ')}`, 'Player stats need to know who was on. Set the line, or pull anyway.', [
+        { text: 'Set line', onPress: () => router.push({ pathname: '/game/[id]/line', params: { id, team: missing[0].id } }) },
+        { text: 'Pull anyway', onPress: go },
+      ]);
       return;
     }
     await go();
@@ -150,7 +149,7 @@ export default function ScoreGame() {
       const passes = data!.events.filter((e) => e.point_id === point.id && e.type === 'pass' && !e.voided_at).sort((a, b) => a.seq - b.seq);
       const last = passes[passes.length - 1];
       const before = passes[passes.length - 2];
-      names = { scorerId: state!.holder, assistId: last?.actor_id ?? null, hockeyId: before?.secondary_id === last?.actor_id ? before?.actor_id ?? null : null };
+      names = { scorerId: state!.holder, assistId: last?.actor_id ?? null, hockeyId: before?.secondary_id === last?.actor_id ? (before?.actor_id ?? null) : null };
     }
     const { gameOver } = await scorePoint(db, data!, scoringTeamId, names);
     if (gameOver) promptEnd();
@@ -315,15 +314,15 @@ export default function ScoreGame() {
                         {t.name} · {onO ? 'Offence' : 'Defence (pulls)'}
                       </T>
                       <T v="small">
-                        {!tracksPlayers(t.id)
-                          ? 'Not tracking players for this team'
-                          : line.length
-                            ? `${line.length} on · ${w}F ${m}M${tired ? ` · ${tired} tiring` : ''}`
-                            : 'No line yet'}
+                        {!tracksPlayers(t.id) ? 'Not tracking players for this team' : line.length ? `${line.length} on · ${w}F ${m}M${tired ? ` · ${tired} tiring` : ''}` : 'No line yet'}
                       </T>
                     </View>
                     {tracksPlayers(t.id) ? (
-                      <Button label={line.length ? 'Edit' : 'Set line'} kind={line.length ? 'secondary' : 'primary'} onPress={() => router.push({ pathname: '/game/[id]/line', params: { id, team: t.id } })} />
+                      <Button
+                        label={line.length ? 'Edit' : 'Set line'}
+                        kind={line.length ? 'secondary' : 'primary'}
+                        onPress={() => router.push({ pathname: '/game/[id]/line', params: { id, team: t.id } })}
+                      />
                     ) : null}
                   </View>
                   {tracksPlayers(t.id) && !line.length && prevLine.length ? (
@@ -352,7 +351,15 @@ export default function ScoreGame() {
 
   const inPoint = (
     <View style={{ flex: 1 }}>
-      <View style={{ backgroundColor: offenseTeam.primary_color || DEFAULT_TEAM_COLOR, paddingHorizontal: space.lg, paddingVertical: space.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <View
+        style={{
+          backgroundColor: offenseTeam.primary_color || DEFAULT_TEAM_COLOR,
+          paddingHorizontal: space.lg,
+          paddingVertical: space.sm,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
         <T style={{ fontFamily: font.bold, fontSize: 17, color: '#fff' }}>{offenseTeam.name} on offence</T>
         <T style={{ fontFamily: font.medium, fontSize: 14, color: '#fff' }}>
           Point {point.number} · {clock(pointSeconds)}
@@ -368,7 +375,14 @@ export default function ScoreGame() {
                 key={t.id}
                 accessibilityRole="button"
                 onPress={() => doScore(t.id)}
-                style={({ pressed }) => ({ minHeight: 88, borderRadius: 14, backgroundColor: t.primary_color || DEFAULT_TEAM_COLOR, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.8 : 1 })}>
+                style={({ pressed }) => ({
+                  minHeight: 88,
+                  borderRadius: 14,
+                  backgroundColor: t.primary_color || DEFAULT_TEAM_COLOR,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.8 : 1,
+                })}>
                 <T style={{ fontFamily: font.display, fontSize: 28, color: '#fff' }}>{t.name.toUpperCase()} SCORED</T>
               </Pressable>
             ))}
@@ -401,14 +415,27 @@ export default function ScoreGame() {
               accessibilityRole="button"
               accessibilityLabel={`${offenseTeam.name} scored`}
               onPress={() => doScore(offense)}
-              style={({ pressed }) => ({ minHeight: 84, borderRadius: 14, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1, marginTop: space.xs })}>
+              style={({ pressed }) => ({
+                minHeight: 84,
+                borderRadius: 14,
+                backgroundColor: colors.brand,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.85 : 1,
+                marginTop: space.xs,
+              })}>
               <T style={{ fontFamily: font.display, fontSize: 30, color: '#fff', letterSpacing: 1 }}>{offenseTeam.name.toUpperCase()} SCORED</T>
             </Pressable>
           </>
         )}
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <Button label="Timeout" onPress={() => setTimeoutSheet(true)} style={{ flex: 1 }} />
-          <Button label={state.stoppageSince ? `Resume ${clock((now - Date.parse(state.stoppageSince)) / 1000)}` : 'Discussion'} kind={state.stoppageSince ? 'dark' : 'secondary'} onPress={toggleStoppage} style={{ flex: 1.2 }} />
+          <Button
+            label={state.stoppageSince ? `Resume ${clock((now - Date.parse(state.stoppageSince)) / 1000)}` : 'Discussion'}
+            kind={state.stoppageSince ? 'dark' : 'secondary'}
+            onPress={toggleStoppage}
+            style={{ flex: 1.2 }}
+          />
           <Button label="Sub" onPress={() => setSubSheet({ teamId: offense })} style={{ flex: 0.8 }} />
         </View>
         {recent.length ? (
@@ -435,9 +462,7 @@ export default function ScoreGame() {
 
       <View style={{ flexDirection: 'row', gap: space.sm, padding: space.lg, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border }}>
         <Button label="Undo" icon="undo" onPress={doUndo} style={{ flex: 1, minHeight: 64 }} />
-        {state.phase !== 'inpoint' && !gameOverPending ? (
-          <Button label="PULL" kind="primary" big onPress={doPull} style={{ flex: 2.4 }} />
-        ) : null}
+        {state.phase !== 'inpoint' && !gameOverPending ? <Button label="PULL" kind="primary" big onPress={doPull} style={{ flex: 2.4 }} /> : null}
       </View>
 
       <Sheet visible={!!picker} onClose={() => setPicker(null)} title={picker?.title ?? ''}>
@@ -562,18 +587,49 @@ export default function ScoreGame() {
               <Choice key={r} label={END_REASONS[r]} selected={endReason === r} onPress={() => setEndReason(r)} style={{ paddingHorizontal: 14 }} />
             ))}
         </View>
-        {state.phase === 'inpoint' ? (
-          <T v="small">The point in progress isn’t finished, so it won’t count towards holds or breaks. Its turnovers and intercepts still count.</T>
-        ) : null}
+        {state.phase === 'inpoint' ? <T v="small">The point in progress isn’t finished, so it won’t count towards holds or breaks. Its turnovers and intercepts still count.</T> : null}
         <Button label={`End game at ${state.scoreA}–${state.scoreB}`} icon="flag-checkered" kind="primary" big onPress={() => finish(endReason)} />
         <Button label="Keep playing" kind="ghost" onPress={() => setEndSheet(false)} />
       </Sheet>
 
       <Sheet visible={menu} onClose={() => setMenu(false)} title="Game">
-        <Button label="End game early" icon="flag-checkered" kind="danger" onPress={() => { setMenu(false); setEndSheet(true); }} />
-        <Button label="See live stats" icon="chart-box-outline" onPress={() => { setMenu(false); router.push(`/game/${id}/report`); }} />
-        {tracksPlayers(ta.id) ? <Button label={`Edit ${ta.name} line`} icon="account-switch" onPress={() => { setMenu(false); router.push({ pathname: '/game/[id]/line', params: { id, team: ta.id } }); }} /> : null}
-        {tracksPlayers(tb.id) ? <Button label={`Edit ${tb.name} line`} icon="account-switch" onPress={() => { setMenu(false); router.push({ pathname: '/game/[id]/line', params: { id, team: tb.id } }); }} /> : null}
+        <Button
+          label="End game early"
+          icon="flag-checkered"
+          kind="danger"
+          onPress={() => {
+            setMenu(false);
+            setEndSheet(true);
+          }}
+        />
+        <Button
+          label="See live stats"
+          icon="chart-box-outline"
+          onPress={() => {
+            setMenu(false);
+            router.push(`/game/${id}/report`);
+          }}
+        />
+        {tracksPlayers(ta.id) ? (
+          <Button
+            label={`Edit ${ta.name} line`}
+            icon="account-switch"
+            onPress={() => {
+              setMenu(false);
+              router.push({ pathname: '/game/[id]/line', params: { id, team: ta.id } });
+            }}
+          />
+        ) : null}
+        {tracksPlayers(tb.id) ? (
+          <Button
+            label={`Edit ${tb.name} line`}
+            icon="account-switch"
+            onPress={() => {
+              setMenu(false);
+              router.push({ pathname: '/game/[id]/line', params: { id, team: tb.id } });
+            }}
+          />
+        ) : null}
         <T v="small">Tracking: {mode} · Everything saves on this phone as you go.</T>
       </Sheet>
     </SafeAreaView>

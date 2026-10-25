@@ -91,7 +91,8 @@ export default function PickupEdit() {
   }
   const chooser = !id || (access ? canChoosePickupEditors(f, access.level, access.meId) : false);
   const s = q.trim().toLowerCase();
-  const found = s.length >= 2 ? people.filter((p) => !editors.includes(p.id) && p.id !== (f.created_by_person ?? access?.meId) && `${p.first_name} ${p.last_name}`.toLowerCase().includes(s)).slice(0, 6) : [];
+  const found =
+    s.length >= 2 ? people.filter((p) => !editors.includes(p.id) && p.id !== (f.created_by_person ?? access?.meId) && `${p.first_name} ${p.last_name}`.toLowerCase().includes(s)).slice(0, 6) : [];
   const setEditors = (ids: string[]) => set('editor_ids', ids.length ? JSON.stringify(ids) : null);
 
   return (
@@ -159,7 +160,14 @@ export default function PickupEdit() {
             {editors.map((pid) => {
               const p = people.find((x) => x.id === pid);
               return (
-                <Choice key={pid} label={p ? `${p.first_name} ${p.last_name}`.trim() : 'Someone'} sublabel="Tap to remove" selected onPress={() => setEditors(editors.filter((x) => x !== pid))} style={{ alignItems: 'flex-start' }} />
+                <Choice
+                  key={pid}
+                  label={p ? `${p.first_name} ${p.last_name}`.trim() : 'Someone'}
+                  sublabel="Tap to remove"
+                  selected
+                  onPress={() => setEditors(editors.filter((x) => x !== pid))}
+                  style={{ alignItems: 'flex-start' }}
+                />
               );
             })}
             {editors.length < MAX_PICKUP_EDITORS ? (

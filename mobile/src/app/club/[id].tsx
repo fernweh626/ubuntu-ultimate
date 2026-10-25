@@ -34,7 +34,12 @@ export default function ClubPage() {
   const [showAll, setShowAll] = useState(false);
   const [opened] = useState(() => Date.now());
   if (bundle === undefined) return <Screen edges={[]}>{null}</Screen>;
-  if (!bundle) return <Screen edges={[]}><EmptyState icon="shield-off-outline" title="Club not found" /></Screen>;
+  if (!bundle)
+    return (
+      <Screen edges={[]}>
+        <EmptyState icon="shield-off-outline" title="Club not found" />
+      </Screen>
+    );
   const { club, teams, games, squad, staff, access } = bundle;
   const isAdmin = access.level === 'admin' || access.level === 'coordinator' || staff.some((s) => s.person_id === access.meId);
   const upcoming = games.filter((g) => g.status === 'scheduled' && g.scheduled_at && Date.parse(g.scheduled_at) > opened - 3 * 3600_000).sort((a, b) => a.scheduled_at!.localeCompare(b.scheduled_at!));
@@ -70,7 +75,11 @@ export default function ClubPage() {
 
         <Section
           title="Teams"
-          action={isAdmin ? <Button label="Add team" icon="plus" kind="ghost" onPress={() => router.push({ pathname: '/team/edit', params: { clubId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} /> : undefined}>
+          action={
+            isAdmin ? (
+              <Button label="Add team" icon="plus" kind="ghost" onPress={() => router.push({ pathname: '/team/edit', params: { clubId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+            ) : undefined
+          }>
           {teams.length ? (
             <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
               {teams.map((t) => (

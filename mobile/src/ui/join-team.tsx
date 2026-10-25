@@ -121,7 +121,12 @@ export function JoinRequests({ teamId }: { teamId: string }) {
     <Section title={`Wants to join · ${list.length}`}>
       {list.length > 1 ? (
         <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <Button label={allPicked ? 'Untick all' : 'Tick all'} icon={allPicked ? 'checkbox-blank-outline' : 'checkbox-multiple-marked-outline'} onPress={() => setPicked(allPicked ? [] : all)} style={{ flex: 1 }} />
+          <Button
+            label={allPicked ? 'Untick all' : 'Tick all'}
+            icon={allPicked ? 'checkbox-blank-outline' : 'checkbox-multiple-marked-outline'}
+            onPress={() => setPicked(allPicked ? [] : all)}
+            style={{ flex: 1 }}
+          />
           <Button label={picked.length ? `Approve ${picked.length}` : 'Approve all'} icon="check-all" kind="primary" disabled={busy} onPress={approveMany} style={{ flex: 1 }} />
         </View>
       ) : null}
@@ -139,7 +144,13 @@ export function JoinRequests({ teamId }: { teamId: string }) {
               <View style={{ paddingHorizontal: space.md, gap: space.sm, paddingBottom: space.md }}>
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   {LABELS.map((l) => (
-                    <Choice key={l.value} label={l.label} selected={labelOf(r) === l.value} onPress={() => setLabels({ ...labels, [r.id]: l.value })} style={{ flex: 1, minHeight: 36, paddingHorizontal: 6 }} />
+                    <Choice
+                      key={l.value}
+                      label={l.label}
+                      selected={labelOf(r) === l.value}
+                      onPress={() => setLabels({ ...labels, [r.id]: l.value })}
+                      style={{ flex: 1, minHeight: 36, paddingHorizontal: 6 }}
+                    />
                   ))}
                 </View>
                 <View style={{ flexDirection: 'row', gap: space.sm }}>

@@ -54,10 +54,7 @@ export function BreakClock({ data, state, teamName }: { data: GameData; state: L
         {look.title.toUpperCase()}
         {info.teamId ? ` · ${teamName(info.teamId).toUpperCase()}` : ''}
       </Text>
-      <Text
-        adjustsFontSizeToFit
-        numberOfLines={1}
-        style={{ fontFamily: font.display, fontSize: 120, lineHeight: 124, color: over ? '#fff' : look.ink, fontVariant: ['tabular-nums'] }}>
+      <Text adjustsFontSizeToFit numberOfLines={1} style={{ fontFamily: font.display, fontSize: 120, lineHeight: 124, color: over ? '#fff' : look.ink, fontVariant: ['tabular-nums'] }}>
         {over ? `+${clock(-seg.remaining)}` : clock(Math.ceil(seg.remaining))}
       </Text>
       <Text style={{ fontFamily: font.semibold, fontSize: 15, color: over ? '#fff' : look.ink, opacity: 0.85 }}>{sub}</Text>

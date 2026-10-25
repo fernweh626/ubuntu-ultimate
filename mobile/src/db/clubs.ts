@@ -68,7 +68,17 @@ export function clubTeams(db: SQLiteDatabase, clubId: string) {
 
 /** Everyone in the club, with the teams they're on. */
 export async function clubSquad(db: SQLiteDatabase, clubId: string) {
-  const rows = await db.getAllAsync<{ id: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; photo_uri: string | null; team_id: string; team: string; role: string }>(
+  const rows = await db.getAllAsync<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string | null;
+    gender: Gender | null;
+    photo_uri: string | null;
+    team_id: string;
+    team: string;
+    role: string;
+  }>(
     `SELECT p.id, p.first_name, p.last_name, p.birth_date, p.gender, p.photo_uri, t.id AS team_id, t.name AS team, m.role
        FROM membership m JOIN team t ON t.id = m.team_id JOIN person p ON p.id = m.person_id
       WHERE t.club_id = ? AND t.deleted_at IS NULL AND m.end_date IS NULL AND m.deleted_at IS NULL AND p.deleted_at IS NULL

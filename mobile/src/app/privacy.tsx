@@ -70,8 +70,15 @@ export default function Privacy() {
             <Icon name="shield-lock-outline" color={colors.brand} />
             <T v="bodyStrong">The short version</T>
           </View>
-          <T v="small">Your data is used to run ultimate in SA: games, teams, practices and tournaments. It’s never sold, never used for ads, and you can download it or ask for it to be deleted any time.</T>
-          <Button label="Read the full explanation" kind="ghost" onPress={() => router.push({ pathname: '/guide', params: { topic: 'data-where' } })} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
+          <T v="small">
+            Your data is used to run ultimate in SA: games, teams, practices and tournaments. It’s never sold, never used for ads, and you can download it or ask for it to be deleted any time.
+          </T>
+          <Button
+            label="Read the full explanation"
+            kind="ghost"
+            onPress={() => router.push({ pathname: '/guide', params: { topic: 'data-where' } })}
+            style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }}
+          />
         </Card>
 
         <Section title="Download my data">
@@ -84,7 +91,13 @@ export default function Privacy() {
           {REQUESTS.map((r) => (
             <Choice key={r.key} label={r.label} selected={kind === r.key} onPress={() => setKind(r.key)} style={{ alignItems: 'flex-start' }} />
           ))}
-          <Field label="Details (optional)" value={note} onChangeText={setNote} multiline placeholder={kind === 'delete' ? 'Anything we should keep, e.g. game scores for your team' : 'What should change?'} />
+          <Field
+            label="Details (optional)"
+            value={note}
+            onChangeText={setNote}
+            multiline
+            placeholder={kind === 'delete' ? 'Anything we should keep, e.g. game scores for your team' : 'What should change?'}
+          />
           <Button label="Send to the admins" icon="send" onPress={request} />
           <Button
             label={`Or email ${PRIVACY_EMAIL}`}
@@ -93,7 +106,9 @@ export default function Privacy() {
             onPress={() => Linking.openURL(`mailto:${PRIVACY_EMAIL}?subject=${encodeURIComponent('Privacy request')}`)}
             style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }}
           />
-          <T v="small">You can fix most things yourself: Me → Edit profile. Deleting removes your profile, contact details, ratings, fitness and accreditation. Game scores stay, with your name taken off.</T>
+          <T v="small">
+            You can fix most things yourself: Me → Edit profile. Deleting removes your profile, contact details, ratings, fitness and accreditation. Game scores stay, with your name taken off.
+          </T>
         </Section>
       </Screen>
     </>

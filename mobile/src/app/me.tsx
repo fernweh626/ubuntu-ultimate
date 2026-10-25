@@ -5,22 +5,7 @@ import { Alert, TextInput, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
-import {
-  getAccess,
-  getMe,
-  listEvents,
-  listFollows,
-  listGamesForPerson,
-  listPeople,
-  listTeams,
-  personLog,
-  myRoles,
-  savePerson,
-  setFollowing,
-  setMeId,
-  setMembershipRole,
-  type MyRole,
-} from '@/db/repo';
+import { getAccess, getMe, listEvents, listFollows, listGamesForPerson, listPeople, listTeams, personLog, myRoles, savePerson, setFollowing, setMeId, setMembershipRole, type MyRole } from '@/db/repo';
 import type { Gender } from '@/db/types';
 import { displayName, shortDate } from '@/domain/format';
 import { canSetTeamRole } from '@/domain/permissions';
@@ -41,39 +26,44 @@ const STAFF: MyRole['role'][] = ['captain', 'coach', 'spirit_captain', 'manager'
 
 const GROUP = { borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider } as const;
 
-
 export default function Me() {
   const db = useSQLiteContext();
   const me = useData(getMe);
   const roles = useData(async (d) => (me ? myRoles(d, me.id) : []), [me?.id]) ?? [];
   const access = useData(getAccess);
   const acc = useData(async (d) => (me ? getAccreditation(d, me.id) : null), [me?.id]);
-  const week = useData(async (d) => {
-    if (!me) return null;
-    const monday = new Date();
-    monday.setHours(0, 0, 0, 0);
-    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-    const items = (await personLog(d, me.id)).filter((e) => new Date(e.date) >= monday);
-    return { count: items.length, minutes: items.reduce((a, e) => a + e.minutes, 0) };
-  }, [me?.id]);
-  const following = useData(async (d) => {
-    const [follows, teams, events] = await Promise.all([listFollows(d), listTeams(d), listEvents(d)]);
-    const players = new Map(
-      (await d.getAllAsync<{ id: string; first_name: string; last_name: string }>(`SELECT id, first_name, last_name FROM person WHERE id IN (SELECT target_id FROM follow WHERE kind = 'player')`)).map((p) => [p.id, `${p.first_name} ${p.last_name}`.trim()]),
-    );
-    return follows
-      .filter((f) => f.kind !== 'pickup')
-      .map((f) =>
-        f.kind === 'team'
-          ? { ...f, name: teams.find((t) => t.id === f.target_id)?.name, color: teams.find((t) => t.id === f.target_id)?.primary_color ?? null }
-          : f.kind === 'player'
-            ? { ...f, name: players.get(f.target_id), color: null }
-            : { ...f, name: events.find((e) => e.id === f.target_id)?.name, color: null },
-      )
-      .filter((f) => f.name);
-  }) ?? [];
-  const totals = useData(async (d) => (me ? playerTotals(await loadFinishedGames(d, await listGamesForPerson(d, me.id))).get(me.id) ?? null : null), [me?.id]);
-  const shouts = useData(async (d) => (me ? (await d.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM shoutout WHERE to_person_id = ?`, me.id))?.n ?? 0 : 0), [me?.id]);
+  const week = useData(
+    async (d) => {
+      if (!me) return null;
+      const monday = new Date();
+      monday.setHours(0, 0, 0, 0);
+      monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+      const items = (await personLog(d, me.id)).filter((e) => new Date(e.date) >= monday);
+      return { count: items.length, minutes: items.reduce((a, e) => a + e.minutes, 0) };
+    },
+    [me?.id],
+  );
+  const following =
+    useData(async (d) => {
+      const [follows, teams, events] = await Promise.all([listFollows(d), listTeams(d), listEvents(d)]);
+      const players = new Map(
+        (
+          await d.getAllAsync<{ id: string; first_name: string; last_name: string }>(`SELECT id, first_name, last_name FROM person WHERE id IN (SELECT target_id FROM follow WHERE kind = 'player')`)
+        ).map((p) => [p.id, `${p.first_name} ${p.last_name}`.trim()]),
+      );
+      return follows
+        .filter((f) => f.kind !== 'pickup')
+        .map((f) =>
+          f.kind === 'team'
+            ? { ...f, name: teams.find((t) => t.id === f.target_id)?.name, color: teams.find((t) => t.id === f.target_id)?.primary_color ?? null }
+            : f.kind === 'player'
+              ? { ...f, name: players.get(f.target_id), color: null }
+              : { ...f, name: events.find((e) => e.id === f.target_id)?.name, color: null },
+        )
+        .filter((f) => f.name);
+    }) ?? [];
+  const totals = useData(async (d) => (me ? (playerTotals(await loadFinishedGames(d, await listGamesForPerson(d, me.id))).get(me.id) ?? null) : null), [me?.id]);
+  const shouts = useData(async (d) => (me ? ((await d.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM shoutout WHERE to_person_id = ?`, me.id))?.n ?? 0) : 0), [me?.id]);
   const [roleFor, setRoleFor] = useState<MyRole | null>(null);
 
   if (me === undefined) return <Screen edges={[]}>{null}</Screen>;
@@ -89,7 +79,11 @@ export default function Me() {
           <Avatar uri={me.photo_uri} name={`${me.first_name} ${me.last_name}`} size={72} />
           <View style={{ flex: 1 }}>
             <T v="heading">{displayName(me)}</T>
-            <T v="small">{[me.preferred_number ? `#${me.preferred_number}` : null, me.position ? me.position[0].toUpperCase() + me.position.slice(1) : null, roles.map((r) => r.team_name).join(', ') || null].filter(Boolean).join(' · ') || 'Add your number and position'}</T>
+            <T v="small">
+              {[me.preferred_number ? `#${me.preferred_number}` : null, me.position ? me.position[0].toUpperCase() + me.position.slice(1) : null, roles.map((r) => r.team_name).join(', ') || null]
+                .filter(Boolean)
+                .join(' · ') || 'Add your number and position'}
+            </T>
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -112,7 +106,12 @@ export default function Me() {
               left={<Icon name="run" color={colors.brand} />}
               onPress={() => router.push('/log')}
             />
-            <Row title="Shout-outs" subtitle={shouts ? `${shouts} from teammates` : 'From teammates after games and practices'} left={<Icon name="hand-clap" color={colors.brand} />} onPress={() => router.push('/shoutouts')} />
+            <Row
+              title="Shout-outs"
+              subtitle={shouts ? `${shouts} from teammates` : 'From teammates after games and practices'}
+              left={<Icon name="hand-clap" color={colors.brand} />}
+              onPress={() => router.push('/shoutouts')}
+            />
           </View>
         </Section>
 
@@ -142,11 +141,20 @@ export default function Me() {
           <View style={GROUP}>
             <Row
               title="Accreditation"
-              subtitle={!acc ? 'Add yours: needed for leagues and nationals' : `${ACCREDITATION_LEVELS[acc.level]}${acc.expires_on ? ` · ${accreditationState(acc.expires_on) === 'expired' ? 'expired' : 'valid until'} ${shortDate(acc.expires_on)}` : ''}`}
+              subtitle={
+                !acc
+                  ? 'Add yours: needed for leagues and nationals'
+                  : `${ACCREDITATION_LEVELS[acc.level]}${acc.expires_on ? ` · ${accreditationState(acc.expires_on) === 'expired' ? 'expired' : 'valid until'} ${shortDate(acc.expires_on)}` : ''}`
+              }
               left={<Icon name={accOk ? 'check-decagram' : 'alert-decagram-outline'} color={accOk ? colors.brand : colors.warn} />}
               onPress={() => router.push('/accreditation')}
             />
-            <Row title="Membership & fees" subtitle="SAFDA and regional numbers, where to pay" left={<Icon name="card-account-details-outline" color={colors.brand} />} onPress={() => router.push('/registration')} />
+            <Row
+              title="Membership & fees"
+              subtitle="SAFDA and regional numbers, where to pay"
+              left={<Icon name="card-account-details-outline" color={colors.brand} />}
+              onPress={() => router.push('/registration')}
+            />
             <Row title="My development" subtitle="Self-rating and fitness tests" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push('/development')} />
           </View>
         </Section>
@@ -168,7 +176,12 @@ export default function Me() {
           </Section>
         ) : null}
 
-        <Row title="Settings, help & admin" subtitle="Region, notifications, account, privacy, help guide" left={<Icon name="cog-outline" color={colors.brand} />} onPress={() => router.push('/more')} />
+        <Row
+          title="Settings, help & admin"
+          subtitle="Region, notifications, account, privacy, help guide"
+          left={<Icon name="cog-outline" color={colors.brand} />}
+          onPress={() => router.push('/more')}
+        />
 
         <Button label="Not you? Switch player" kind="ghost" onPress={() => setMeId(db, null)} />
       </Screen>
@@ -190,7 +203,15 @@ export default function Me() {
         ) : (
           <T>You’re {ROLE_LABEL[roleFor?.role ?? 'player'].toLowerCase()} here. Staff roles are given by this team’s captain or coach, a coordinator or an admin.</T>
         )}
-        <Button label="Open team page" kind="ghost" onPress={() => { const t = roleFor!.team_id; setRoleFor(null); router.push(`/team/${t}`); }} />
+        <Button
+          label="Open team page"
+          kind="ghost"
+          onPress={() => {
+            const t = roleFor!.team_id;
+            setRoleFor(null);
+            router.push(`/team/${t}`);
+          }}
+        />
       </Sheet>
     </>
   );
@@ -207,9 +228,7 @@ function WhoAreYou() {
   const [email, setEmail] = useState('');
 
   const s = q.trim().toLowerCase();
-  const matches = s
-    ? people.filter((p) => `${p.first_name} ${p.last_name} ${p.nickname ?? ''} ${p.preferred_number ?? ''}`.toLowerCase().includes(s))
-    : [];
+  const matches = s ? people.filter((p) => `${p.first_name} ${p.last_name} ${p.nickname ?? ''} ${p.preferred_number ?? ''}`.toLowerCase().includes(s)) : [];
 
   async function create() {
     if (!first.trim()) return;
@@ -223,7 +242,17 @@ function WhoAreYou() {
       <Stack.Screen options={{ title: 'Who are you?' }} />
       <Screen edges={[]}>
         <T>Find yourself so this button takes you straight to your stats, details and teams.</T>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.sm,
+            backgroundColor: colors.surface,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: space.md,
+          }}>
           <Icon name="magnify" color={colors.muted} />
           <TextInput
             value={q}

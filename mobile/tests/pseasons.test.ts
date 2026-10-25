@@ -1,8 +1,23 @@
 import { playerSeasons, type PlayerGameLine } from '@/domain/player-seasons';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
-const g = (date: string | null, ev: string | null, team: string, goals: number, assists = 0): PlayerGameLine => ({ date, eventId: ev, eventName: ev ? `Event ${ev}` : null, teamId: team, teamName: `Team ${team}`, goals, assists, intercepts: 0, points: 5, plusMinus: goals + assists });
+const g = (date: string | null, ev: string | null, team: string, goals: number, assists = 0): PlayerGameLine => ({
+  date,
+  eventId: ev,
+  eventName: ev ? `Event ${ev}` : null,
+  teamId: team,
+  teamName: `Team ${team}`,
+  goals,
+  assists,
+  intercepts: 0,
+  points: 5,
+  plusMinus: goals + assists,
+});
 const s = playerSeasons([g('2026-03-01', 'L', 'a', 2, 1), g('2026-04-01', 'L', 'a', 1), g('2026-05-01', null, 'a', 3), g('2025-02-01', 'T', 'b', 4), g('2026-06-01', 'T', 'c', 0, 2)]);
-ok('newest season first', s.map((y) => y.year).join() === '2026,2025', s.map((y) => y.year));
+ok(
+  'newest season first',
+  s.map((y) => y.year).join() === '2026,2025',
+  s.map((y) => y.year),
+);
 ok('2026 totals', s[0].games === 4 && s[0].goals === 6 && s[0].assists === 3, s[0]);
 ok('league line sums its games', s[0].competitions.find((c) => c.eventId === 'L')?.games === 2 && s[0].competitions.find((c) => c.eventId === 'L')?.goals === 3);
 ok('same event, different team: separate lines', s[0].competitions.filter((c) => c.eventId === 'T').length === 1 && s[0].competitions.find((c) => c.eventId === 'T')?.teamId === 'c');

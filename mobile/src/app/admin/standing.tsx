@@ -32,9 +32,7 @@ export default function StandingUpload() {
   // POPIA: member lists are admin-only.
   const allowed = bundle.access.level === 'admin';
 
-  const known = new Set(
-    bundle.regs.map((r) => normNumber(association === 'safda' ? r.safda_number : r.region_code === association ? r.region_number : null)).filter(Boolean),
-  );
+  const known = new Set(bundle.regs.map((r) => normNumber(association === 'safda' ? r.safda_number : r.region_code === association ? r.region_number : null)).filter(Boolean));
   const matched = parsed ? parsed.rows.filter((r) => known.has(r.number)).length : 0;
 
   async function pick() {
@@ -73,7 +71,8 @@ export default function StandingUpload() {
         ) : (
           <>
             <T v="small">
-              Export the member list from SAFDA or a region as CSV (Excel → Save as CSV). It needs a column with the membership number; a “status”/“paid” column and a “paid until” date are used if they’re there. Uploading replaces that association’s previous list.
+              Export the member list from SAFDA or a region as CSV (Excel → Save as CSV). It needs a column with the membership number; a “status”/“paid” column and a “paid until” date are used if
+              they’re there. Uploading replaces that association’s previous list.
             </T>
             <Section title="Current lists">
               {bundle.lists.length ? (
@@ -105,7 +104,11 @@ export default function StandingUpload() {
                 </T>
                 <T v="small">{matched} match players who’ve added their number in the app.</T>
                 <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
-                  {busy ? <ActivityIndicator color={colors.brand} /> : <Button label={`Upload to ${nameOf(association)}`} icon="cloud-upload-outline" kind="primary" onPress={upload} style={{ flex: 1 }} />}
+                  {busy ? (
+                    <ActivityIndicator color={colors.brand} />
+                  ) : (
+                    <Button label={`Upload to ${nameOf(association)}`} icon="cloud-upload-outline" kind="primary" onPress={upload} style={{ flex: 1 }} />
+                  )}
                 </View>
               </Card>
             ) : null}

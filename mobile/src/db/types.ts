@@ -77,20 +77,7 @@ export type RosterEntry = Person & {
   jersey_number: string | null;
 };
 
-export type GameEventType =
-  | 'pass'
-  | 'score'
-  | 'drop'
-  | 'throwaway'
-  | 'stall'
-  | 'intercept'
-  | 'callahan'
-  | 'timeout'
-  | 'halftime'
-  | 'stoppage_start'
-  | 'stoppage_end'
-  | 'injury_sub'
-  | 'end';
+export type GameEventType = 'pass' | 'score' | 'drop' | 'throwaway' | 'stall' | 'intercept' | 'callahan' | 'timeout' | 'halftime' | 'stoppage_start' | 'stoppage_end' | 'injury_sub' | 'end';
 
 export type GameEvent = {
   id: string;

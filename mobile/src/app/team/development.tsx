@@ -50,7 +50,13 @@ export default function SquadDevelopment() {
     const vals = p.tests.filter((t) => t.kind === view).map((t) => t.value);
     const pb = best(view, vals);
     const lower = FITNESS_TESTS.find((t) => t.kind === view)!.lowerIsBetter;
-    return { p, sort: pb == null ? -Infinity : lower ? -pb : pb, value: pb != null ? formatFitness(view, pb) : '—', sub: vals.length ? `${vals.length} result${vals.length > 1 ? 's' : ''}` : 'no result', tone: 'neutral' };
+    return {
+      p,
+      sort: pb == null ? -Infinity : lower ? -pb : pb,
+      value: pb != null ? formatFitness(view, pb) : '—',
+      sub: vals.length ? `${vals.length} result${vals.length > 1 ? 's' : ''}` : 'no result',
+      tone: 'neutral',
+    };
   });
   rows.sort((a, b) => (view === 'ready' ? a.sort - b.sort : b.sort - a.sort) || a.p.first_name.localeCompare(b.p.first_name));
 
@@ -80,7 +86,9 @@ export default function SquadDevelopment() {
         ) : null}
         {view === 'ready' && unchecked ? (
           <Card style={{ backgroundColor: colors.warnTint, borderColor: 'transparent' }}>
-            <T v="bodyStrong">{unchecked} certificate{unchecked > 1 ? 's' : ''} to check</T>
+            <T v="bodyStrong">
+              {unchecked} certificate{unchecked > 1 ? 's' : ''} to check
+            </T>
             <T v="small">Before a CTFDA, regional or SAFDA event, open each certificate and confirm the type and expiry date match. Tap “Check certificate” on a player.</T>
           </Card>
         ) : null}
@@ -110,7 +118,11 @@ export default function SquadDevelopment() {
               const wa = whatsappLink(p.reg?.phone, `Hi ${p.first_name}, ${team?.name ?? 'team'} here about being tournament-ready: `);
               const line = (label: string, x: { check: Check; text: string }) => (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Icon name={x.check === 'ok' ? 'check-circle' : x.check === 'unknown' ? 'help-circle-outline' : 'alert-circle'} size={16} color={x.check === 'ok' ? colors.brand : x.check === 'unknown' ? colors.faint : x.check === 'warn' ? colors.warn : colors.danger} />
+                  <Icon
+                    name={x.check === 'ok' ? 'check-circle' : x.check === 'unknown' ? 'help-circle-outline' : 'alert-circle'}
+                    size={16}
+                    color={x.check === 'ok' ? colors.brand : x.check === 'unknown' ? colors.faint : x.check === 'warn' ? colors.warn : colors.danger}
+                  />
                   <T v="small" style={{ flex: 1 }}>
                     {label}: {x.text}
                   </T>
@@ -134,7 +146,10 @@ export default function SquadDevelopment() {
                     {line('SAFDA', c.safda)}
                     {line(c.body, c.region)}
                     {p.reg?.emergency_phone ? (
-                      <Pressable onPress={() => Linking.openURL(`tel:${p.reg!.emergency_phone!.replace(/\s/g, '')}`)} accessibilityRole="link" accessibilityLabel={`Call emergency contact ${p.reg.emergency_name ?? ''}`}>
+                      <Pressable
+                        onPress={() => Linking.openURL(`tel:${p.reg!.emergency_phone!.replace(/\s/g, '')}`)}
+                        accessibilityRole="link"
+                        accessibilityLabel={`Call emergency contact ${p.reg.emergency_name ?? ''}`}>
                         <T v="small" style={{ color: colors.danger }}>
                           ✚ Emergency: {[p.reg.emergency_name, p.reg.emergency_phone].filter(Boolean).join(' · ')} (tap to call)
                         </T>
@@ -143,7 +158,13 @@ export default function SquadDevelopment() {
                       <T v="small">✚ No emergency contact</T>
                     )}
                   </Pressable>
-                  {wa ? <IconButton icon="whatsapp" label={`WhatsApp ${p.first_name}`} color="#25D366" onPress={() => Linking.openURL(wa)} /> : <T v="small" style={{ width: 52, textAlign: 'center' }}>no phone</T>}
+                  {wa ? (
+                    <IconButton icon="whatsapp" label={`WhatsApp ${p.first_name}`} color="#25D366" onPress={() => Linking.openURL(wa)} />
+                  ) : (
+                    <T v="small" style={{ width: 52, textAlign: 'center' }}>
+                      no phone
+                    </T>
+                  )}
                 </View>
               );
             }
@@ -172,7 +193,22 @@ export default function SquadDevelopment() {
 }
 
 /** Staff open the certificate and confirm the level and expiry the player entered, or say what's wrong. */
-function CheckSheet({ player, onClose }: { player: { id: string; first_name: string; last_name: string; birth_date: string | null; level: keyof typeof ACCREDITATION_LEVELS | null; expires_on: string | null; acc_file: string | null; acc_note: string | null } | null; onClose: () => void }) {
+function CheckSheet({
+  player,
+  onClose,
+}: {
+  player: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string | null;
+    level: keyof typeof ACCREDITATION_LEVELS | null;
+    expires_on: string | null;
+    acc_file: string | null;
+    acc_note: string | null;
+  } | null;
+  onClose: () => void;
+}) {
   const db = useSQLiteContext();
   const access = useData(getAccess);
   const [note, setNote] = useState('');

@@ -148,7 +148,12 @@ export function mySignup(db: SQLiteDatabase, eventId: string, personId: string) 
   return db.getFirstAsync<Signup>(`SELECT * FROM hat_signup WHERE event_id = ? AND person_id = ?`, eventId, personId);
 }
 
-export function saveSignup(db: SQLiteDatabase, eventId: string, personId: string, s: { attending: Signup['attending']; wantsCaptain: boolean; skill: number | null; paid: boolean; note?: string | null; onTheDay?: boolean }) {
+export function saveSignup(
+  db: SQLiteDatabase,
+  eventId: string,
+  personId: string,
+  s: { attending: Signup['attending']; wantsCaptain: boolean; skill: number | null; paid: boolean; note?: string | null; onTheDay?: boolean },
+) {
   return write(db, async () => {
     const ts = now();
     await db.runAsync(
@@ -173,7 +178,9 @@ export function saveSignup(db: SQLiteDatabase, eventId: string, personId: string
 
 /** Organiser marks a payment as received (players can only say they've paid). */
 export function confirmPaid(db: SQLiteDatabase, signupId: string, confirmed: boolean) {
-  return write(db, () => db.runAsync(`UPDATE hat_signup SET paid_confirmed = ?, paid = CASE WHEN ? THEN 1 ELSE paid END, updated_at = ? WHERE id = ?`, confirmed ? 1 : 0, confirmed ? 1 : 0, now(), signupId));
+  return write(db, () =>
+    db.runAsync(`UPDATE hat_signup SET paid_confirmed = ?, paid = CASE WHEN ? THEN 1 ELSE paid END, updated_at = ? WHERE id = ?`, confirmed ? 1 : 0, confirmed ? 1 : 0, now(), signupId),
+  );
 }
 
 export type SignupRow = Signup & { first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; rating: number | null; rated_on: string | null };
@@ -207,7 +214,17 @@ export function drawPool(rows: SignupRow[]): HatPlayer[] {
 /* ---------------- Teams ---------------- */
 
 export function hatTeams(db: SQLiteDatabase, eventId: string) {
-  return db.getAllAsync<{ team_id: string; name: string; color: string | null; person_id: string; role: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null }>(
+  return db.getAllAsync<{
+    team_id: string;
+    name: string;
+    color: string | null;
+    person_id: string;
+    role: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string | null;
+    gender: Gender | null;
+  }>(
     `SELECT t.id AS team_id, t.name, t.primary_color AS color, m.person_id, m.role, p.first_name, p.last_name, p.birth_date, p.gender
        FROM event_team et JOIN team t ON t.id = et.team_id
        JOIN membership m ON m.team_id = t.id AND m.deleted_at IS NULL AND m.end_date IS NULL
@@ -218,7 +235,12 @@ export function hatTeams(db: SQLiteDatabase, eventId: string) {
 }
 
 /** Save the draw: one team per entry (captain first), memberships for this hat only, and a round robin. */
-export function commitDraw(db: SQLiteDatabase, eventId: string, teams: HatTeam[], opts: { startIso: string; gameMinutes: number; fields: number; venueId: string | null; rules: Rules; region: string | null }) {
+export function commitDraw(
+  db: SQLiteDatabase,
+  eventId: string,
+  teams: HatTeam[],
+  opts: { startIso: string; gameMinutes: number; fields: number; venueId: string | null; rules: Rules; region: string | null },
+) {
   return write(db, async () => {
     const ts = now();
     const ids: string[] = [];

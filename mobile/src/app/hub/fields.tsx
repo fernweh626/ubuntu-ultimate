@@ -31,9 +31,7 @@ export default function Fields() {
         }}
       />
       <Screen edges={[]}>
-        <T v="small">
-          {locating ? 'Finding where you are…' : here ? 'Nearest first. Saved fields can be picked when starting a game.' : 'Location is off, so fields are listed by name.'}
-        </T>
+        <T v="small">{locating ? 'Finding where you are…' : here ? 'Nearest first. Saved fields can be picked when starting a game.' : 'Location is off, so fields are listed by name.'}</T>
         <Button label="Save the field I’m at" icon="map-marker-plus" kind="primary" onPress={() => setAdding(true)} />
         {fields.length === 0 ? (
           <EmptyState icon="map-marker-outline" title="No fields saved yet" body="Stand on a field and save it with the name people use for it." />

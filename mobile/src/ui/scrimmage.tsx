@@ -29,7 +29,10 @@ export function ScrimmagePicker({ value, onChange }: { value: Sides; onChange: (
   const found = s.length >= 2 ? people.filter((p) => !taken.has(p.id) && `${p.first_name} ${p.last_name} ${p.nickname ?? ''}`.toLowerCase().includes(s)).slice(0, 8) : [];
   const add = (side: 'light' | 'dark', id: string) => onChange({ ...value, [side]: [...value[side], id] });
   const remove = (id: string) => onChange({ light: value.light.filter((x) => x !== id), dark: value.dark.filter((x) => x !== id) });
-  const swap = (id: string) => (value.light.includes(id) ? onChange({ light: value.light.filter((x) => x !== id), dark: [...value.dark, id] }) : onChange({ dark: value.dark.filter((x) => x !== id), light: [...value.light, id] }));
+  const swap = (id: string) =>
+    value.light.includes(id)
+      ? onChange({ light: value.light.filter((x) => x !== id), dark: [...value.dark, id] })
+      : onChange({ dark: value.dark.filter((x) => x !== id), light: [...value.light, id] });
 
   return (
     <>
@@ -67,10 +70,25 @@ export function ScrimmagePicker({ value, onChange }: { value: Sides; onChange: (
         );
       })}
 
-      <Sheet visible={!!adding} onClose={() => { setAdding(null); setQ(''); }} title={`Add to ${adding === 'dark' ? 'Dark' : 'Light'}`}>
+      <Sheet
+        visible={!!adding}
+        onClose={() => {
+          setAdding(null);
+          setQ('');
+        }}
+        title={`Add to ${adding === 'dark' ? 'Dark' : 'Light'}`}>
         <Field label="Name" value={q} onChangeText={setQ} placeholder="Search, or type a new name" autoFocus />
         {found.map((p) => (
-          <Choice key={p.id} label={displayName(p)} sublabel={p.gender === 'W' ? 'Female matching' : p.gender === 'M' ? 'Male matching' : undefined} onPress={() => { add(adding!, p.id); setQ(''); }} style={{ alignItems: 'flex-start' }} />
+          <Choice
+            key={p.id}
+            label={displayName(p)}
+            sublabel={p.gender === 'W' ? 'Female matching' : p.gender === 'M' ? 'Male matching' : undefined}
+            onPress={() => {
+              add(adding!, p.id);
+              setQ('');
+            }}
+            style={{ alignItems: 'flex-start' }}
+          />
         ))}
         {s.length >= 2 ? (
           <View style={{ gap: space.sm, borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: space.md }}>
@@ -95,7 +113,14 @@ export function ScrimmagePicker({ value, onChange }: { value: Sides; onChange: (
             />
           </View>
         ) : null}
-        <Button label="Done" kind="primary" onPress={() => { setAdding(null); setQ(''); }} />
+        <Button
+          label="Done"
+          kind="primary"
+          onPress={() => {
+            setAdding(null);
+            setQ('');
+          }}
+        />
       </Sheet>
     </>
   );

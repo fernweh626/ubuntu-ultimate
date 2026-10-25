@@ -106,6 +106,16 @@ export async function setFeedbackStatus(id: string, status: ServerFeedback['stat
  * player's name attached so an admin can reply. Returns true if it went now, false if it's queued.
  */
 export async function sendRequest(db: SQLiteDatabase, title: string, body: string, personId: string | null) {
-  await saveFeedback(db, { kind: 'other', title: title.slice(0, 200), body: body.slice(0, 5000), screen: null, app_version: null, device: null, contact_ok: 1, person_id: personId, images_json: null });
+  await saveFeedback(db, {
+    kind: 'other',
+    title: title.slice(0, 200),
+    body: body.slice(0, 5000),
+    screen: null,
+    app_version: null,
+    device: null,
+    contact_ok: 1,
+    person_id: personId,
+    images_json: null,
+  });
   return (await sendPendingFeedback(db).catch(() => 0)) > 0;
 }

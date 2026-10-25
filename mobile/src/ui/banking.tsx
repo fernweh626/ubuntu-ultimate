@@ -26,7 +26,11 @@ export function BankingCard({ name, details, path }: { name: string; details: st
   }
   if (!open)
     return (
-      <Pressable onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel="Show fees and banking details" style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: 6 }}>
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Show fees and banking details"
+        style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: 6 }}>
         <Icon name="bank-outline" color={colors.brand} size={18} />
         <T v="smallStrong" style={{ flex: 1, color: colors.brand }}>
           Fees & banking details

@@ -74,9 +74,7 @@ export default function Pickups() {
                   }}>
                   <T style={{ fontFamily: font.semibold, fontSize: 14, color: selected ? '#fff' : colors.ink }}>{d}</T>
                   <T style={{ fontFamily: font.display, fontSize: 18, color: selected ? '#fff' : n ? colors.brand : colors.faint }}>{n}</T>
-                  {i === weekdayIndex() ? (
-                    <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: selected ? '#fff' : colors.brand }} />
-                  ) : null}
+                  {i === weekdayIndex() ? <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: selected ? '#fff' : colors.brand }} /> : null}
                 </Pressable>
               );
             })}
@@ -136,14 +134,8 @@ export default function Pickups() {
                       kind={going.has(p.id) ? 'primary' : 'secondary'}
                       onPress={() => setFollowing(db, 'pickup', p.id, !going.has(p.id))}
                     />
-                    {p.whatsapp_url ? (
-                      <Button label="WhatsApp group" icon="whatsapp" kind="primary" onPress={() => Linking.openURL(p.whatsapp_url!)} />
-                    ) : null}
-                    <Button
-                      label="Map"
-                      icon="map-marker"
-                      onPress={() => Linking.openURL(p.map_url || mapsUrl([p.venue_text, p.area, p.city].filter(Boolean).join(', ')))}
-                    />
+                    {p.whatsapp_url ? <Button label="WhatsApp group" icon="whatsapp" kind="primary" onPress={() => Linking.openURL(p.whatsapp_url!)} /> : null}
+                    <Button label="Map" icon="map-marker" onPress={() => Linking.openURL(p.map_url || mapsUrl([p.venue_text, p.area, p.city].filter(Boolean).join(', ')))} />
                     {p.contact_phone ? <Button label="Call" icon="phone" onPress={() => Linking.openURL(`tel:${p.contact_phone}`)} /> : null}
                     {access && canEditPickup(p, access.level, access.meId) ? (
                       <Button label="Edit" icon="pencil" kind="ghost" onPress={() => router.push({ pathname: '/hub/pickup-edit', params: { id: p.id } })} />

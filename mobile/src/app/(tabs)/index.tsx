@@ -46,7 +46,10 @@ export default function Home() {
           style={{ backgroundColor: colors.warnTint, borderRadius: 10, paddingHorizontal: space.md, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
           <Icon name="flask-outline" color={colors.warnInk} size={18} />
           <T v="small" style={{ flex: 1, color: colors.warnInk }}>
-            <T v="smallStrong" style={{ color: colors.warnInk }}>Preview.</T> Play with the demo data; nothing is saved for real. Tap to send feedback.
+            <T v="smallStrong" style={{ color: colors.warnInk }}>
+              Preview.
+            </T>{' '}
+            Play with the demo data; nothing is saved for real. Tap to send feedback.
           </T>
         </Pressable>
       ) : null}
@@ -62,7 +65,6 @@ export default function Home() {
         </View>
         <MeButton />
       </View>
-
 
       <YearlyInfoCard />
       <News />
@@ -82,7 +84,8 @@ function NeedsYou() {
     const upcoming = sched.items.filter((i) => Date.parse(i.endAt) >= opened && !i.cancelled);
     return {
       answers: upcoming.filter((i) => !i.status && (i.kind === 'practice' || i.gameStatus === 'scheduled')).length,
-      checkins: sched.items.filter((i) => (i.kind === 'practice' || i.kind === 'game') && Date.parse(i.endAt) < opened && !i.cancelled && i.played && !i.checkedIn && i.gameStatus !== 'scheduled').length,
+      checkins: sched.items.filter((i) => (i.kind === 'practice' || i.kind === 'game') && Date.parse(i.endAt) < opened && !i.cancelled && i.played && !i.checkedIn && i.gameStatus !== 'scheduled')
+        .length,
       requests: (await pendingForStaff(d, access.staffTeamIds)).length,
       teamId: access.staffTeamIds[0],
     };
@@ -95,7 +98,11 @@ function NeedsYou() {
   return (
     <View style={{ backgroundColor: colors.warnTint, borderRadius: 14, overflow: 'hidden' }}>
       {rows.map(([icon, label, go], i) => (
-        <Pressable key={label} onPress={go} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: '#F3D9C6' }}>
+        <Pressable
+          key={label}
+          onPress={go}
+          accessibilityRole="button"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: '#F3D9C6' }}>
           <Icon name={icon as never} color={colors.warnInk} />
           <T v="bodyStrong" style={{ flex: 1, color: colors.warnInk }}>
             {label}

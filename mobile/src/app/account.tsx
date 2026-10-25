@@ -64,24 +64,36 @@ export default function Account() {
     <>
       <Stack.Screen options={{ title: 'Account & sync' }} />
       {!user ? (
-        <SignInForm busy={busy} onSubmit={(mode, email, pw) => run(async () => {
-          if (mode === 'up') await signUp(email, pw);
-          else await signIn(email, pw);
-          // Already linked on another phone: reconnect. Otherwise move on to "Which player are you?".
-          // Signing in doesn't touch the local database, so refresh the screen ourselves.
-          if (!(await resumeAccount(db))) notifyChanged();
-        })} />
+        <SignInForm
+          busy={busy}
+          onSubmit={(mode, email, pw) =>
+            run(async () => {
+              if (mode === 'up') await signUp(email, pw);
+              else await signIn(email, pw);
+              // Already linked on another phone: reconnect. Otherwise move on to "Which player are you?".
+              // Signing in doesn't touch the local database, so refresh the screen ourselves.
+              if (!(await resumeAccount(db))) notifyChanged();
+            })
+          }
+        />
       ) : !signedIn ? (
-        <LinkPlayer me={me ?? null} busy={busy} email={user.email ?? ''} onLink={(pid) => run(async () => {
-          const admin = await linkAccount(db, pid);
-          Alert.alert(
-            'You’re part of Ubuntu now 🥏',
-            admin
-              ? 'You’re the very first account, so you’re the admin. Give others coordinator and scorekeeper access from their profiles.'
-              : 'Your games, teams and stats are backed up and follow you to any phone. Welcome to the community!',
-          );
-          router.back();
-        })} />
+        <LinkPlayer
+          me={me ?? null}
+          busy={busy}
+          email={user.email ?? ''}
+          onLink={(pid) =>
+            run(async () => {
+              const admin = await linkAccount(db, pid);
+              Alert.alert(
+                'You’re part of Ubuntu now 🥏',
+                admin
+                  ? 'You’re the very first account, so you’re the admin. Give others coordinator and scorekeeper access from their profiles.'
+                  : 'Your games, teams and stats are backed up and follow you to any phone. Welcome to the community!',
+              );
+              router.back();
+            })
+          }
+        />
       ) : (
         <Screen edges={[]}>
           <Card>
@@ -114,10 +126,12 @@ export default function Account() {
                 icon="sync"
                 kind="primary"
                 disabled={busy}
-                onPress={() => run(async () => {
-                  const r = await syncNow(db);
-                  Alert.alert('Synced', `${r.pushed} sent · ${r.pulled} received`);
-                })}
+                onPress={() =>
+                  run(async () => {
+                    const r = await syncNow(db);
+                    Alert.alert('Synced', `${r.pushed} sent · ${r.pulled} received`);
+                  })
+                }
               />
             </Card>
             <T v="small">The app works offline. It syncs on its own when you have signal — this button is just for peace of mind.</T>
@@ -155,7 +169,15 @@ function SignInForm({ busy, onSubmit }: { busy: boolean; onSubmit: (mode: 'in' |
           { value: 'in', label: 'Sign in' },
         ]}
       />
-      <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" hint="Never shown to anyone. Only used to sign in and send you game summaries." />
+      <Field
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        hint="Never shown to anyone. Only used to sign in and send you game summaries."
+      />
       <Field label="Password" value={pw} onChangeText={setPw} secureTextEntry autoCapitalize="none" hint={mode === 'up' ? 'At least 6 characters.' : undefined} />
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
       <Button
@@ -173,7 +195,17 @@ function SignInForm({ busy, onSubmit }: { busy: boolean; onSubmit: (mode: 'in' |
   );
 }
 
-function LinkPlayer({ me, busy, email, onLink }: { me: { id: string; first_name: string; last_name: string; birth_date: string | null } | null; busy: boolean; email: string; onLink: (personId: string) => void }) {
+function LinkPlayer({
+  me,
+  busy,
+  email,
+  onLink,
+}: {
+  me: { id: string; first_name: string; last_name: string; birth_date: string | null } | null;
+  busy: boolean;
+  email: string;
+  onLink: (personId: string) => void;
+}) {
   const db = useSQLiteContext();
   const people = useData(listPeople) ?? [];
   const [q, setQ] = useState('');
@@ -200,9 +232,25 @@ function LinkPlayer({ me, busy, email, onLink }: { me: { id: string; first_name:
         </Card>
       ) : null}
       <Section title="Find yourself">
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.sm,
+            backgroundColor: colors.surface,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: space.md,
+          }}>
           <Icon name="magnify" color={colors.muted} />
-          <TextInput value={q} onChangeText={setQ} placeholder="Your name or number" placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }} />
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder="Your name or number"
+            placeholderTextColor={colors.faint}
+            style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }}
+          />
         </View>
         {matches.length ? (
           <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>

@@ -79,10 +79,23 @@ export default function PlayerProfile() {
   const seasons = playerSeasons(
     filtered.map((g) => {
       const s = g.stats.players[id];
-      return { date: g.item.started_at ?? g.item.scheduled_at, eventId: g.item.event_id, eventName: g.item.event_name, teamId: s.teamId, teamName: teamOf(g), goals: s.goals, assists: s.assists, intercepts: s.intercepts, points: s.points, plusMinus: s.plusMinus };
+      return {
+        date: g.item.started_at ?? g.item.scheduled_at,
+        eventId: g.item.event_id,
+        eventName: g.item.event_name,
+        teamId: s.teamId,
+        teamName: teamOf(g),
+        goals: s.goals,
+        assists: s.assists,
+        intercepts: s.intercepts,
+        points: s.points,
+        plusMinus: s.plusMinus,
+      };
     }),
   );
-  const reportTitle = [comp ? comps.find(([c]) => c === comp)?.[1] : type ? TYPE_LABEL[type] : null, team ? teamsPlayed.find(([t]) => t === team)?.[1] : null, year ?? 'All time'].filter(Boolean).join(' · ');
+  const reportTitle = [comp ? comps.find(([c]) => c === comp)?.[1] : type ? TYPE_LABEL[type] : null, team ? teamsPlayed.find(([t]) => t === team)?.[1] : null, year ?? 'All time']
+    .filter(Boolean)
+    .join(' · ');
   const signed = (n: number) => `${n >= 0 ? '+' : ''}${n}`;
 
   function shareReport() {
@@ -125,8 +138,16 @@ export default function PlayerProfile() {
     setShare({
       kicker: `${last.item.event_name ?? 'Game'} · ${shortDate(last.item.started_at)}`,
       title: `${name}'s game`,
-      left: { name: mine === last.item.team_a_id ? last.item.a_name : last.item.b_name, color: mine === last.item.team_a_id ? last.item.a_color : last.item.b_color, score: last.stats.teams[mine].score },
-      right: { name: theirs === last.item.team_a_id ? last.item.a_name : last.item.b_name, color: theirs === last.item.team_a_id ? last.item.a_color : last.item.b_color, score: last.stats.teams[theirs].score },
+      left: {
+        name: mine === last.item.team_a_id ? last.item.a_name : last.item.b_name,
+        color: mine === last.item.team_a_id ? last.item.a_color : last.item.b_color,
+        score: last.stats.teams[mine].score,
+      },
+      right: {
+        name: theirs === last.item.team_a_id ? last.item.a_name : last.item.b_name,
+        color: theirs === last.item.team_a_id ? last.item.a_color : last.item.b_color,
+        score: last.stats.teams[theirs].score,
+      },
       stats: [
         { label: 'Goals', value: String(s.goals) },
         { label: 'Assists', value: String(s.assists) },
@@ -328,7 +349,19 @@ export default function PlayerProfile() {
 }
 
 /** One row of filter chips: "All" plus each option. */
-function Filter<V extends string | number>({ label, all = 'All', value, options, onChange }: { label: string; all?: string; value: V | null; options: readonly (readonly [V, string])[]; onChange: (v: V | null) => void }) {
+function Filter<V extends string | number>({
+  label,
+  all = 'All',
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  all?: string;
+  value: V | null;
+  options: readonly (readonly [V, string])[];
+  onChange: (v: V | null) => void;
+}) {
   return (
     <>
       <T v="smallStrong">{label}</T>

@@ -7,7 +7,19 @@ import { Alert, Linking, Pressable, Switch, View } from 'react-native';
 import { ASSOCIATIONS, formatRand, ORIGINS, paymentReference, POPULATION_GROUPS, type AssociationForm } from '@/content/associations';
 import { getRegistration, saveRegistration, type Registration } from '@/db/development';
 import { useData } from '@/db/live';
-import { claimMemberNumber, claimPaid, ensureNumber, getDemographic, getMembership, issueMemberNumber, prefillFromRoster, saveDemographic, submitMembership, type Demographic, type Membership } from '@/db/membership';
+import {
+  claimMemberNumber,
+  claimPaid,
+  ensureNumber,
+  getDemographic,
+  getMembership,
+  issueMemberNumber,
+  prefillFromRoster,
+  saveDemographic,
+  submitMembership,
+  type Demographic,
+  type Membership,
+} from '@/db/membership';
 import { getAccess, getMe } from '@/db/repo';
 import { dmyToIso } from '@/domain/format';
 import type { Gender, Person } from '@/db/types';
@@ -19,20 +31,28 @@ import { colors, font, space } from '@/ui/theme';
 export default function MembershipForm() {
   const { assoc: code } = useLocalSearchParams<{ assoc: string }>();
   const assoc = ASSOCIATIONS[code ?? ''];
-  const bundle = useData(async (d) => {
-    const me = await getMe(d);
-    if (!me || !assoc) return { me: null };
-    const email = (await d.getFirstAsync<{ email: string | null }>(`SELECT email FROM person WHERE id = ?`, me.id))?.email ?? null;
-    return {
-      me,
-      email,
-      access: await getAccess(d),
-      reg: await getRegistration(d, me.id),
-      demo: await getDemographic(d, me.id),
-      membership: await getMembership(d, me.id, assoc.code, assoc.season),
-    };
-  }, [code]);
-  if (!assoc) return <Screen edges={[]}><T>Unknown association.</T></Screen>;
+  const bundle = useData(
+    async (d) => {
+      const me = await getMe(d);
+      if (!me || !assoc) return { me: null };
+      const email = (await d.getFirstAsync<{ email: string | null }>(`SELECT email FROM person WHERE id = ?`, me.id))?.email ?? null;
+      return {
+        me,
+        email,
+        access: await getAccess(d),
+        reg: await getRegistration(d, me.id),
+        demo: await getDemographic(d, me.id),
+        membership: await getMembership(d, me.id, assoc.code, assoc.season),
+      };
+    },
+    [code],
+  );
+  if (!assoc)
+    return (
+      <Screen edges={[]}>
+        <T>Unknown association.</T>
+      </Screen>
+    );
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
   if (!bundle.me)
     return (
@@ -44,12 +64,38 @@ export default function MembershipForm() {
         </Card>
       </Screen>
     );
-  if (bundle.membership?.submitted_at)
-    return <Done assoc={assoc} m={bundle.membership} me={bundle.me} signedIn={!!bundle.access?.signedIn} />;
-  return <Form key={bundle.membership?.id ?? 'new'} assoc={assoc} me={bundle.me} email={bundle.email} reg={bundle.reg} demo={bundle.demo} membership={bundle.membership} signedIn={!!bundle.access?.signedIn} />;
+  if (bundle.membership?.submitted_at) return <Done assoc={assoc} m={bundle.membership} me={bundle.me} signedIn={!!bundle.access?.signedIn} />;
+  return (
+    <Form
+      key={bundle.membership?.id ?? 'new'}
+      assoc={assoc}
+      me={bundle.me}
+      email={bundle.email}
+      reg={bundle.reg}
+      demo={bundle.demo}
+      membership={bundle.membership}
+      signedIn={!!bundle.access?.signedIn}
+    />
+  );
 }
 
-function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }: { assoc: AssociationForm; me: Person; email: string | null; reg: Registration | null; demo: Demographic | null; membership: Membership | null; signedIn: boolean }) {
+function Form({
+  assoc,
+  me,
+  email: savedEmail,
+  reg,
+  demo,
+  membership,
+  signedIn,
+}: {
+  assoc: AssociationForm;
+  me: Person;
+  email: string | null;
+  reg: Registration | null;
+  demo: Demographic | null;
+  membership: Membership | null;
+  signedIn: boolean;
+}) {
   const db = useSQLiteContext();
   const consents0 = membership?.consents_json ? (JSON.parse(membership.consents_json) as Record<string, boolean>) : {};
   const [email, setEmail] = useState(savedEmail ?? '');
@@ -147,7 +193,13 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
   return (
     <>
       <Stack.Screen options={{ title: `${assoc.short} ${assoc.season} membership` }} />
-      <Screen edges={[]} footer={<Footer><Button label={busy ? 'Saving…' : 'Submit'} icon="check" kind="primary" big disabled={busy} onPress={submit} /></Footer>}>
+      <Screen
+        edges={[]}
+        footer={
+          <Footer>
+            <Button label={busy ? 'Saving…' : 'Submit'} icon="check" kind="primary" big disabled={busy} onPress={submit} />
+          </Footer>
+        }>
         <Card>
           <T v="bodyStrong">{assoc.name}</T>
           <T v="small">{assoc.intro}</T>
@@ -155,7 +207,14 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
         {signedIn ? (
           <Card>
             <T v="small">Been a member before? We can fill in what {assoc.short} already has for your email.</T>
-            <Button label="Fill in from my past forms" icon="account-arrow-down-outline" kind="ghost" disabled={busy} onPress={fillFromList} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
+            <Button
+              label="Fill in from my past forms"
+              icon="account-arrow-down-outline"
+              kind="ghost"
+              disabled={busy}
+              onPress={fillFromList}
+              style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }}
+            />
             {prefilled ? <T v="small">{prefilled.length ? `Filled in: ${prefilled.join(', ')}.` : 'Nothing found for your email. No problem: fill it in below.'}</T> : null}
           </Card>
         ) : null}
@@ -180,10 +239,18 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
               {have.population ? <T v="small">Population group: {population}</T> : null}
               {have.origin ? <T v="small">{ORIGINS.find((o) => o.key === origin)?.label}</T> : null}
               {have.suburb ? <T v="small">Suburb: {suburb}</T> : null}
-              <Button label="Change in your profile" icon="account-edit-outline" kind="ghost" onPress={() => router.push({ pathname: '/player/edit', params: { id: me.id } })} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
+              <Button
+                label="Change in your profile"
+                icon="account-edit-outline"
+                kind="ghost"
+                onPress={() => router.push({ pathname: '/player/edit', params: { id: me.id } })}
+                style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }}
+              />
             </Card>
           ) : null}
-          <T v="small">{assoc.short} uses this to track growth and diversity. Only you and the admins see it, and reports only ever show totals. It’s saved on your profile, so you only answer once.</T>
+          <T v="small">
+            {assoc.short} uses this to track growth and diversity. Only you and the admins see it, and reports only ever show totals. It’s saved on your profile, so you only answer once.
+          </T>
           {!have.gender ? (
             <>
               <T v="smallStrong">Gender matching (the Ultimate rules category you play in)</T>
@@ -222,7 +289,14 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
 
         <Section title={`Your ${assoc.season} involvement (not ability)`}>
           {assoc.involvement.map((i) => (
-            <Choice key={i.key} label={i.label} sublabel={i.competitive ? 'Club membership and fees' : 'Free'} selected={involvement === i.key} onPress={() => setInvolvement(i.key)} style={{ alignItems: 'flex-start' }} />
+            <Choice
+              key={i.key}
+              label={i.label}
+              sublabel={i.competitive ? 'Club membership and fees' : 'Free'}
+              selected={involvement === i.key}
+              onPress={() => setInvolvement(i.key)}
+              style={{ alignItems: 'flex-start' }}
+            />
           ))}
         </Section>
 
@@ -235,10 +309,24 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
                 </T>
               </Card>
             ) : null}
-            <Field label={`${assoc.short} number`} value={number} onChangeText={(v) => setNumber(v.toUpperCase())} autoCapitalize="characters" placeholder={`${assoc.numberPrefix}123`} hint={`Have one from before? Type it. New to ${assoc.short}? Leave it empty and you’ll get one when you submit.`} />
+            <Field
+              label={`${assoc.short} number`}
+              value={number}
+              onChangeText={(v) => setNumber(v.toUpperCase())}
+              autoCapitalize="characters"
+              placeholder={`${assoc.numberPrefix}123`}
+              hint={`Have one from before? Type it. New to ${assoc.short}? Leave it empty and you’ll get one when you submit.`}
+            />
             <T v="smallStrong">Membership type</T>
             {assoc.options.map((o) => (
-              <Choice key={o.key} label={`${o.label} · ${formatRand(o.feeCents)}`} sublabel={o.note} selected={option === o.key} onPress={() => setOption(o.key)} style={{ alignItems: 'flex-start' }} />
+              <Choice
+                key={o.key}
+                label={`${o.label} · ${formatRand(o.feeCents)}`}
+                sublabel={o.note}
+                selected={option === o.key}
+                onPress={() => setOption(o.key)}
+                style={{ alignItems: 'flex-start' }}
+              />
             ))}
             {assoc.policies.map((p) => (
               <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
@@ -261,7 +349,13 @@ function Form({ assoc, me, email: savedEmail, reg, demo, membership, signedIn }:
           <Choice label="I agree" selected={!!consents.waiver} onPress={() => tick('waiver')} style={{ alignItems: 'flex-start' }} />
         </Section>
 
-        <Field label="Talk to us (optional)" value={note} onChangeText={setNote} multiline placeholder="Events you’d like (skills clinics, social tournaments, women-only games…) and whether you could help run them." />
+        <Field
+          label="Talk to us (optional)"
+          value={note}
+          onChangeText={setNote}
+          multiline
+          placeholder="Events you’d like (skills clinics, social tournaments, women-only games…) and whether you could help run them."
+        />
       </Screen>
     </>
   );
@@ -290,7 +384,9 @@ function Done({ assoc, m, me, signedIn }: { assoc: AssociationForm; m: Membershi
         <View style={{ backgroundColor: colors.night, borderRadius: 14, padding: space.lg, gap: 6 }}>
           <T style={{ fontFamily: font.bold, fontSize: 12, letterSpacing: 1, color: '#F0A27E' }}>{assoc.short.toUpperCase()} NUMBER</T>
           <T style={{ fontFamily: font.display, fontSize: 40, lineHeight: 44, color: '#fff' }}>{m.number ?? 'Coming soon'}</T>
-          {!m.number ? <T style={{ color: colors.nightMuted }}>{signedIn ? 'We couldn’t get your number just now. It comes through next time you’re online.' : 'Go online (Me → Settings) to get your number.'}</T> : null}
+          {!m.number ? (
+            <T style={{ color: colors.nightMuted }}>{signedIn ? 'We couldn’t get your number just now. It comes through next time you’re online.' : 'Go online (Me → Settings) to get your number.'}</T>
+          ) : null}
           <Chip label={s.label} tone={s.tone} />
         </View>
 
@@ -298,7 +394,11 @@ function Done({ assoc, m, me, signedIn }: { assoc: AssociationForm; m: Membershi
           <Section title={`Pay ${formatRand(m.fee_cents)}`}>
             <Card>
               <T v="small">Use this exact reference so {assoc.short} can match your payment:</T>
-              <Pressable onPress={() => Clipboard.setStringAsync(ref).then(() => Alert.alert('Copied', ref))} accessibilityRole="button" accessibilityLabel={`Copy reference ${ref}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderRadius: 10, backgroundColor: colors.brandTint }}>
+              <Pressable
+                onPress={() => Clipboard.setStringAsync(ref).then(() => Alert.alert('Copied', ref))}
+                accessibilityRole="button"
+                accessibilityLabel={`Copy reference ${ref}`}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderRadius: 10, backgroundColor: colors.brandTint }}>
                 <T style={{ fontFamily: font.display, fontSize: 26, flex: 1, color: colors.brandDark }}>{ref}</T>
                 <Icon name="content-copy" color={colors.brandDark} />
               </Pressable>
@@ -319,7 +419,14 @@ function Done({ assoc, m, me, signedIn }: { assoc: AssociationForm; m: Membershi
           </Section>
         ) : null}
 
-        <Button label="Edit my form" icon="pencil" kind="ghost" onPress={() => db.runAsync(`UPDATE association_membership SET submitted_at = NULL WHERE id = ?`, m.id).then(() => router.replace({ pathname: '/membership/[assoc]', params: { assoc: assoc.code } }))} />
+        <Button
+          label="Edit my form"
+          icon="pencil"
+          kind="ghost"
+          onPress={() =>
+            db.runAsync(`UPDATE association_membership SET submitted_at = NULL WHERE id = ?`, m.id).then(() => router.replace({ pathname: '/membership/[assoc]', params: { assoc: assoc.code } }))
+          }
+        />
       </Screen>
     </>
   );

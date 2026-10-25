@@ -87,10 +87,29 @@ export function RegionMap({ value, onChange }: { value: string | null; onChange:
                 <G key={r.code}>
                   {[true, false].map((halo) => (
                     <G key={String(halo)}>
-                      <SvgText x={x} y={at.y} fontSize={46} fontFamily={font.bold} fontWeight="700" textAnchor="middle" fill={halo ? 'none' : colors.night} stroke={halo ? '#FFFFFF' : 'none'} strokeWidth={halo ? 10 : 0} strokeLinejoin="round">
+                      <SvgText
+                        x={x}
+                        y={at.y}
+                        fontSize={46}
+                        fontFamily={font.bold}
+                        fontWeight="700"
+                        textAnchor="middle"
+                        fill={halo ? 'none' : colors.night}
+                        stroke={halo ? '#FFFFFF' : 'none'}
+                        strokeWidth={halo ? 10 : 0}
+                        strokeLinejoin="round">
                         {name}
                       </SvgText>
-                      <SvgText x={x} y={at.y + 40} fontSize={30} fontFamily={font.semibold} textAnchor="middle" fill={halo ? 'none' : colors.muted} stroke={halo ? '#FFFFFF' : 'none'} strokeWidth={halo ? 8 : 0} strokeLinejoin="round">
+                      <SvgText
+                        x={x}
+                        y={at.y + 40}
+                        fontSize={30}
+                        fontFamily={font.semibold}
+                        textAnchor="middle"
+                        fill={halo ? 'none' : colors.muted}
+                        stroke={halo ? '#FFFFFF' : 'none'}
+                        strokeWidth={halo ? 8 : 0}
+                        strokeLinejoin="round">
                         {sub}
                       </SvgText>
                     </G>

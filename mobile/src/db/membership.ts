@@ -31,7 +31,15 @@ export type Membership = {
   submitted_at: string | null;
   paid_at: string | null;
 };
-export type Demographic = { id: string; person_id: string; population_group: string | null; origin: 'local' | 'transplant' | null; birth_year: number | null; suburb: string | null; consent_at: string | null };
+export type Demographic = {
+  id: string;
+  person_id: string;
+  population_group: string | null;
+  origin: 'local' | 'transplant' | null;
+  birth_year: number | null;
+  suburb: string | null;
+  consent_at: string | null;
+};
 
 const now = () => new Date().toISOString();
 export const membershipId = (assoc: string, season: number, personId: string) => `${assoc}:${season}:${personId}`;
@@ -51,7 +59,15 @@ export async function saveDemographic(db: SQLiteDatabase, personId: string, d: O
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET population_group = excluded.population_group, origin = excluded.origin, birth_year = excluded.birth_year,
        suburb = excluded.suburb, consent_at = excluded.consent_at, updated_at = excluded.updated_at`,
-    personId, personId, d.population_group, d.origin, d.birth_year, d.suburb, ts, ts, ts,
+    personId,
+    personId,
+    d.population_group,
+    d.origin,
+    d.birth_year,
+    d.suburb,
+    ts,
+    ts,
+    ts,
   );
   notifyChanged();
 }
@@ -75,15 +91,28 @@ export async function submitMembership(db: SQLiteDatabase, m: MembershipInput) {
   const existing = await db.getFirstAsync<{ status: MembershipStatus }>(`SELECT status FROM association_membership WHERE id = ?`, id);
   const competitive = !!m.option;
   // Keep a payment that's already confirmed or claimed; otherwise work it out from the fee.
-  const status: MembershipStatus =
-    existing && (existing.status === 'paid' || existing.status === 'claimed') ? existing.status : !competitive ? 'social' : m.feeCents ? 'unpaid' : 'waived';
+  const status: MembershipStatus = existing && (existing.status === 'paid' || existing.status === 'claimed') ? existing.status : !competitive ? 'social' : m.feeCents ? 'unpaid' : 'waived';
   await db.runAsync(
     `INSERT INTO association_membership (id, person_id, association, season, number, involvement, option, fee_cents, status, pay_reference, consents_json, note, submitted_at, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET number = excluded.number, involvement = excluded.involvement, option = excluded.option, fee_cents = excluded.fee_cents,
        status = excluded.status, pay_reference = excluded.pay_reference, consents_json = excluded.consents_json, note = excluded.note,
        submitted_at = excluded.submitted_at, updated_at = excluded.updated_at`,
-    id, m.personId, m.assoc.code, m.assoc.season, m.number, m.involvement, m.option, m.feeCents, status, m.payReference, JSON.stringify(m.consents), m.note, ts, ts, ts,
+    id,
+    m.personId,
+    m.assoc.code,
+    m.assoc.season,
+    m.number,
+    m.involvement,
+    m.option,
+    m.feeCents,
+    status,
+    m.payReference,
+    JSON.stringify(m.consents),
+    m.note,
+    ts,
+    ts,
+    ts,
   );
   notifyChanged();
   return status;
@@ -150,7 +179,16 @@ export async function prefillFromRoster(db: SQLiteDatabase, personId: string, as
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(person_id) DO UPDATE SET region_code = excluded.region_code, region_number = excluded.region_number, phone = excluded.phone,
        emergency_name = excluded.emergency_name, emergency_phone = excluded.emergency_phone, updated_at = excluded.updated_at`,
-    reg?.id ?? uuid(), personId, reg?.safda_number ?? null, next.region_code, next.region_number, next.phone, next.emergency_name, next.emergency_phone, ts, ts,
+    reg?.id ?? uuid(),
+    personId,
+    reg?.safda_number ?? null,
+    next.region_code,
+    next.region_number,
+    next.phone,
+    next.emergency_name,
+    next.emergency_phone,
+    ts,
+    ts,
   );
   if (r.gender) {
     const res = await db.runAsync(`UPDATE person SET gender = ?, updated_at = ? WHERE id = ? AND gender IS NULL`, r.gender, ts, personId);
@@ -171,15 +209,36 @@ export async function ensureNumber(db: SQLiteDatabase, m: Membership, assoc: Ass
   const n = await issueMemberNumber(assoc);
   if (!n) return null;
   const ts = now();
-  await db.runAsync(`UPDATE association_membership SET number = ?, pay_reference = CASE WHEN fee_cents > 0 AND status IN ('unpaid','claimed') AND (pay_reference IS NULL OR pay_reference LIKE 'member_%') THEN ? ELSE pay_reference END, updated_at = ? WHERE id = ?`, n, n, ts, m.id);
-  await db.runAsync(`UPDATE registration SET region_number = ?, region_code = COALESCE(region_code, ?), updated_at = ? WHERE person_id = ? AND (region_number IS NULL OR region_number = '')`, n, assoc.regionCode, ts, m.person_id);
+  await db.runAsync(
+    `UPDATE association_membership SET number = ?, pay_reference = CASE WHEN fee_cents > 0 AND status IN ('unpaid','claimed') AND (pay_reference IS NULL OR pay_reference LIKE 'member_%') THEN ? ELSE pay_reference END, updated_at = ? WHERE id = ?`,
+    n,
+    n,
+    ts,
+    m.id,
+  );
+  await db.runAsync(
+    `UPDATE registration SET region_number = ?, region_code = COALESCE(region_code, ?), updated_at = ? WHERE person_id = ? AND (region_number IS NULL OR region_number = '')`,
+    n,
+    assoc.regionCode,
+    ts,
+    m.person_id,
+  );
   notifyChanged();
   return n;
 }
 
 /* ---------------- Admin: the register ---------------- */
 
-export type RegisterRow = Membership & { first_name: string; last_name: string; gender: string | null; email: string | null; phone: string | null; population_group: string | null; origin: string | null; birth_year: number | null };
+export type RegisterRow = Membership & {
+  first_name: string;
+  last_name: string;
+  gender: string | null;
+  email: string | null;
+  phone: string | null;
+  population_group: string | null;
+  origin: string | null;
+  birth_year: number | null;
+};
 
 export function membershipRegister(db: SQLiteDatabase, assoc: string, season: number) {
   return db.getAllAsync<RegisterRow>(

@@ -6,7 +6,21 @@ import { Alert, Pressable, View } from 'react-native';
 import { addFitnessResults, deleteFitnessResult, fitnessResults, getAccreditation, selfRatings, type FitnessResult, type SelfRating } from '@/db/development';
 import { useData } from '@/db/live';
 import { getAccess, getPerson } from '@/db/repo';
-import { ACCREDITATION_LEVELS, accreditationState, best, FITNESS_TESTS, fitnessTest, formatFitness, isBetter, parseFitness, RATING_AREAS, RATING_MAX, RATING_SCALE, ratingDue, type FitnessKind } from '@/domain/development';
+import {
+  ACCREDITATION_LEVELS,
+  accreditationState,
+  best,
+  FITNESS_TESTS,
+  fitnessTest,
+  formatFitness,
+  isBetter,
+  parseFitness,
+  RATING_AREAS,
+  RATING_MAX,
+  RATING_SCALE,
+  ratingDue,
+  type FitnessKind,
+} from '@/domain/development';
 import { displayName, dmyToIso, localDmy, shortDate } from '@/domain/format';
 import { Button, Card, Chip, DateField, Field, Screen, Section, Segmented, Sheet, T } from '@/ui/components';
 import { colors, font, space } from '@/ui/theme';
@@ -68,7 +82,11 @@ export default function Development() {
             { value: 'fitness', label: 'Fitness tests' },
           ]}
         />
-        {tab === 'rating' ? <Ratings ratings={ratings} own={own} /> : <Fitness tests={tests} canAdd={own || !!access.staffTeamIds.length || access.level === 'admin' || access.level === 'coordinator'} onAdd={setAdding} canDelete={own} />}
+        {tab === 'rating' ? (
+          <Ratings ratings={ratings} own={own} />
+        ) : (
+          <Fitness tests={tests} canAdd={own || !!access.staffTeamIds.length || access.level === 'admin' || access.level === 'coordinator'} onAdd={setAdding} canDelete={own} />
+        )}
       </Screen>
       <AddResult
         kind={adding}
@@ -89,7 +107,9 @@ function Ratings({ ratings, own }: { ratings: SelfRating[]; own: boolean }) {
     <>
       {own ? (
         <Card style={due ? { backgroundColor: colors.brandTint, borderColor: colors.brandTint } : undefined}>
-          <T v="bodyStrong">{latest ? (due ? 'Time to re-rate yourself' : `Next check-in after ${shortDate(new Date(new Date(latest.rated_on).getTime() + 182 * 86400_000).toISOString())}`) : 'Rate yourself'}</T>
+          <T v="bodyStrong">
+            {latest ? (due ? 'Time to re-rate yourself' : `Next check-in after ${shortDate(new Date(new Date(latest.rated_on).getTime() + 182 * 86400_000).toISOString())}`) : 'Rate yourself'}
+          </T>
           <T v="small">Five areas, 1 to 5. Every six months, so you can see how you’re growing. Your coaches can see it too.</T>
           <Button label={latest ? 'Rate myself now' : 'Start'} icon="star-half-full" kind={due ? 'primary' : 'secondary'} onPress={() => router.push('/rate')} />
         </Card>
@@ -104,7 +124,8 @@ function Ratings({ ratings, own }: { ratings: SelfRating[]; own: boolean }) {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <T v="smallStrong">{a.label}</T>
                   <T v="smallStrong" style={{ color: d > 0 ? colors.brandDark : d < 0 ? colors.danger : colors.muted }}>
-                    {v}/5 · {RATING_SCALE[v - 1]}{previous && d ? ` (${d > 0 ? '+' : ''}${d})` : ''}
+                    {v}/5 · {RATING_SCALE[v - 1]}
+                    {previous && d ? ` (${d > 0 ? '+' : ''}${d})` : ''}
                   </T>
                 </View>
                 <View style={{ height: 10, borderRadius: 5, backgroundColor: colors.neutralTint, overflow: 'hidden' }}>
@@ -156,7 +177,10 @@ function Fitness({ tests, canAdd, canDelete, onAdd }: { tests: FitnessResult[]; 
     <>
       {FITNESS_TESTS.map((t) => {
         const mine = tests.filter((r) => r.kind === t.kind);
-        const pb = best(t.kind, mine.map((r) => r.value));
+        const pb = best(
+          t.kind,
+          mine.map((r) => r.value),
+        );
         const last = mine[0];
         const prev = mine[1];
         return (

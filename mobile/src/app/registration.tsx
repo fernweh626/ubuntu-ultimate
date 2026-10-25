@@ -90,7 +90,10 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
           </Footer>
         }>
         <AssociationCards meId={meId} />
-        <T v="small">To play leagues, regionals and nationals you need to be paid up with SAFDA and your region. Your team staff and coordinators can see these numbers so they can help you get sorted before a tournament.</T>
+        <T v="small">
+          To play leagues, regionals and nationals you need to be paid up with SAFDA and your region. Your team staff and coordinators can see these numbers so they can help you get sorted before a
+          tournament.
+        </T>
         <Card>
           {line('SAFDA', reg?.safda_number, standing?.safda)}
           {line(body, reg?.region_number, standing?.region)}
@@ -131,7 +134,13 @@ function Form({ meId, reg, home, links }: { meId: string; reg: Registration | nu
           ) : (
             <T v="small">No registration link for this region yet. The admins add them each January.</T>
           )}
-          <Button label="Merch, pickup groups & more links" icon="tshirt-crew-outline" kind="ghost" onPress={() => router.push('/hub/links')} style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }} />
+          <Button
+            label="Merch, pickup groups & more links"
+            icon="tshirt-crew-outline"
+            kind="ghost"
+            onPress={() => router.push('/hub/links')}
+            style={{ alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 0 }}
+          />
         </Section>
       </Screen>
     </>
@@ -146,7 +155,10 @@ function AssociationCards({ meId }: { meId: string }) {
   return (
     <>
       {rows.map(({ a, m }) => (
-        <Card key={a.code} onPress={() => router.push({ pathname: '/membership/[assoc]', params: { assoc: a.code } })} style={{ borderColor: m?.submitted_at ? colors.border : colors.brand, borderWidth: m?.submitted_at ? 1 : 2 }}>
+        <Card
+          key={a.code}
+          onPress={() => router.push({ pathname: '/membership/[assoc]', params: { assoc: a.code } })}
+          style={{ borderColor: m?.submitted_at ? colors.border : colors.brand, borderWidth: m?.submitted_at ? 1 : 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <Icon name={m?.status === 'paid' || m?.status === 'social' || m?.status === 'waived' ? 'check-decagram' : 'card-account-details-outline'} color={colors.brand} size={28} />
             <View style={{ flex: 1 }}>

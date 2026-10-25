@@ -20,12 +20,15 @@ export default function TeamReport() {
   const [share, setShare] = useState<ShareCardData | null>(null);
 
   const team = useData((d) => getTeam(d, id), [id]);
-  const loaded = useData(async (d) => {
-    const games = await loadFinishedGames(d, await listGamesForTeam(d, id));
-    const ids = new Set<string>();
-    games.forEach((g) => Object.keys(g.stats.players).forEach((p) => ids.add(p)));
-    return { games, people: await peopleById(d, [...ids]) };
-  }, [id]);
+  const loaded = useData(
+    async (d) => {
+      const games = await loadFinishedGames(d, await listGamesForTeam(d, id));
+      const ids = new Set<string>();
+      games.forEach((g) => Object.keys(g.stats.players).forEach((p) => ids.add(p)));
+      return { games, people: await peopleById(d, [...ids]) };
+    },
+    [id],
+  );
 
   if (!team || !loaded) return <Screen edges={[]}>{null}</Screen>;
 
@@ -38,7 +41,7 @@ export default function TeamReport() {
   const advanced = full.length ? addAdvanced(full.map((g) => computeAdvanced(g.data)[id]).filter(Boolean), id) : null;
   const personName = (pid: string | null) => (pid && loaded.people.get(pid) ? shortName(loaded.people.get(pid)!) : 'Unknown');
   const top = (k: 'goals' | 'assists' | 'intercepts') => [...totals].sort((a, b) => b[k] - a[k])[0];
-  const scopeLabel = filter === 'all' ? 'All games' : events.find(([eid]) => eid === filter)?.[1] ?? 'Event';
+  const scopeLabel = filter === 'all' ? 'All games' : (events.find(([eid]) => eid === filter)?.[1] ?? 'Event');
 
   function openShare() {
     const g = top('goals');
@@ -131,7 +134,12 @@ export default function TeamReport() {
             </Section>
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               <Button label="Share card" icon="share-variant" kind="primary" onPress={openShare} style={{ flex: 1 }} />
-              <Button label="Full report" icon="file-document-multiple-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'team', teamId: id, ...(eventId ? { eventId } : {}) } })} style={{ flex: 1 }} />
+              <Button
+                label="Full report"
+                icon="file-document-multiple-outline"
+                onPress={() => router.push({ pathname: '/report', params: { kind: 'team', teamId: id, ...(eventId ? { eventId } : {}) } })}
+                style={{ flex: 1 }}
+              />
             </View>
             <Section title="Games">
               {games.map((g) => (

@@ -29,10 +29,16 @@ export default function LineBuilder() {
       if (!data) return null;
       const team = await getTeam(d, teamId);
       const other = await getTeam(d, data.game.team_a_id === teamId ? data.game.team_b_id : data.game.team_a_id);
-      const people = await peopleById(d, data.players.map((p) => p.person_id));
+      const people = await peopleById(
+        d,
+        data.players.map((p) => p.person_id),
+      );
       const lines = await savedLines(d, teamId);
       // Heavy sessions in the last day and a half (from reflections) count towards fatigue too.
-      const recent = await recentLoad(d, data.players.filter((p) => p.team_id === teamId).map((p) => p.person_id));
+      const recent = await recentLoad(
+        d,
+        data.players.filter((p) => p.team_id === teamId).map((p) => p.person_id),
+      );
       return { data, team: team!, people, lines, recent, other };
     },
     [id, teamId],
@@ -94,8 +100,7 @@ export default function LineBuilder() {
       .filter((s) => available(s) && !chosen.includes(s.person_id) && gender(s.person_id) === p?.gender)
       .sort(
         (a, b) =>
-          Number((b.position ?? person(b.person_id)?.position) === (gp?.position ?? p?.position)) -
-            Number((a.position ?? person(a.person_id)?.position) === (gp?.position ?? p?.position)) ||
+          Number((b.position ?? person(b.person_id)?.position) === (gp?.position ?? p?.position)) - Number((a.position ?? person(a.person_id)?.position) === (gp?.position ?? p?.position)) ||
           freshness(a.person_id) - freshness(b.person_id),
       )
       .slice(0, 2)
@@ -104,7 +109,10 @@ export default function LineBuilder() {
 
   async function save() {
     if (chosen.length !== LINE_SIZE || !ratioOk) {
-      const problem = chosen.length !== LINE_SIZE ? `${chosen.length} players picked (this game is ${LINE_SIZE} a side).` : `Ratio is ${w}F ${m}M; this ${ratioCode(point!.ratio, point!.number)} point needs ${need!.W}F ${need!.M}M.`;
+      const problem =
+        chosen.length !== LINE_SIZE
+          ? `${chosen.length} players picked (this game is ${LINE_SIZE} a side).`
+          : `Ratio is ${w}F ${m}M; this ${ratioCode(point!.ratio, point!.number)} point needs ${need!.W}F ${need!.M}M.`;
       Alert.alert('Use this line anyway?', problem, [
         { text: 'Fix it', style: 'cancel' },
         { text: 'Use it', onPress: commit },
@@ -171,7 +179,12 @@ export default function LineBuilder() {
               {gp.jersey_number ? <T v="small"> #{gp.jersey_number}</T> : null}
             </T>
             <T v="small">
-              {[p.gender === 'W' ? 'F' : p.gender === 'M' ? 'M' : null, `${f?.pointsPlayed ?? 0} pts`, f?.consecutive ? `${f.consecutive} in a row` : f?.restedPoints ? `rested ${f.restedPoints}` : null, injured ? 'injured' : gp.status === 'tired' ? 'says tired' : heavy ? 'played hard recently' : null]
+              {[
+                p.gender === 'W' ? 'F' : p.gender === 'M' ? 'M' : null,
+                `${f?.pointsPlayed ?? 0} pts`,
+                f?.consecutive ? `${f.consecutive} in a row` : f?.restedPoints ? `rested ${f.restedPoints}` : null,
+                injured ? 'injured' : gp.status === 'tired' ? 'says tired' : heavy ? 'played hard recently' : null,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </T>
@@ -185,12 +198,7 @@ export default function LineBuilder() {
               Swap for
             </T>
             {subs.map((s) => (
-              <Choice
-                key={s}
-                label={shortName(person(s)!)}
-                onPress={() => setChosen(chosen.map((x) => (x === pid ? s : x)))}
-                style={{ minHeight: 40, paddingHorizontal: 12 }}
-              />
+              <Choice key={s} label={shortName(person(s)!)} onPress={() => setChosen(chosen.map((x) => (x === pid ? s : x)))} style={{ minHeight: 40, paddingHorizontal: 12 }} />
             ))}
           </View>
         ) : null}
@@ -199,9 +207,7 @@ export default function LineBuilder() {
   };
 
   const onLine = squad.filter((s) => chosen.includes(s.person_id));
-  const bench = squad
-    .filter((s) => !chosen.includes(s.person_id))
-    .sort((a, b) => Number(!available(a)) - Number(!available(b)) || freshness(a.person_id) - freshness(b.person_id));
+  const bench = squad.filter((s) => !chosen.includes(s.person_id)).sort((a, b) => Number(!available(a)) - Number(!available(b)) || freshness(a.person_id) - freshness(b.person_id));
   const relevantLines = lines.filter((l) => l.side === 'any' || l.side === (onO ? 'O' : 'D'));
   const otherLines = lines.filter((l) => !relevantLines.includes(l));
 
@@ -210,7 +216,7 @@ export default function LineBuilder() {
       <Stack.Screen options={{ title: `${team.name} · point ${point.number}` }} />
       <Screen
         edges={[]}
-        header={state ? <BreakClock data={data} state={state} teamName={(tid) => (tid === team.id ? team.name : other?.name ?? '')} /> : undefined}
+        header={state ? <BreakClock data={data} state={state} teamName={(tid) => (tid === team.id ? team.name : (other?.name ?? ''))} /> : undefined}
         footer={
           <Footer>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -223,9 +229,7 @@ export default function LineBuilder() {
           </Footer>
         }>
         <RatioBadge ratio={point.ratio} point={point.number} />
-        <T v="small">
-          {onO ? 'Receiving — on offence.' : 'Pulling — on defence.'} Tap to add or remove. Long-press a player to mark them tired or injured.
-        </T>
+        <T v="small">{onO ? 'Receiving — on offence.' : 'Pulling — on defence.'} Tap to add or remove. Long-press a player to mark them tired or injured.</T>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
           <Choice label="Auto: freshest" onPress={() => setChosen(pickFrom(squad.filter(available).map((s) => s.person_id)))} style={{ minHeight: 40, paddingHorizontal: 14 }} />
           {[...relevantLines, ...otherLines].map((l) => (

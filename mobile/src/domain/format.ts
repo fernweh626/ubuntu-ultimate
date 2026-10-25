@@ -27,10 +27,7 @@ function initial(s: string) {
 }
 
 export function byFirstName<T extends Pick<Person, 'first_name' | 'last_name'>>(a: T, b: T) {
-  return (
-    a.first_name.localeCompare(b.first_name, undefined, { sensitivity: 'base' }) ||
-    a.last_name.localeCompare(b.last_name, undefined, { sensitivity: 'base' })
-  );
+  return a.first_name.localeCompare(b.first_name, undefined, { sensitivity: 'base' }) || a.last_name.localeCompare(b.last_name, undefined, { sensitivity: 'base' });
 }
 
 export function initials(name: string) {
@@ -101,7 +98,7 @@ export function isoToDmy(iso: string | null | undefined) {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
-export const DAYS =['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export const DAYS_LONG = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

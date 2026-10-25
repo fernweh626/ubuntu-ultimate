@@ -106,9 +106,26 @@ function Who({ onNext }: { onNext: () => void }) {
       <T v="small">If your team has added you already, you’ll be on the list. Otherwise create your profile: it takes ten seconds.</T>
       {!creating ? (
         <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space.sm,
+              backgroundColor: colors.surface,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: colors.border,
+              paddingHorizontal: space.md,
+            }}>
             <Icon name="magnify" color={colors.muted} />
-            <TextInput value={q} onChangeText={setQ} autoFocus placeholder="Your name" placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }} />
+            <TextInput
+              value={q}
+              onChangeText={setQ}
+              autoFocus
+              placeholder="Your name"
+              placeholderTextColor={colors.faint}
+              style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }}
+            />
           </View>
           {matches.length ? (
             <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
@@ -131,7 +148,15 @@ function Who({ onNext }: { onNext: () => void }) {
               <Field label="Surname" value={last} onChangeText={setLast} />
             </View>
           </View>
-          <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="you@example.com" hint="Never shown to anyone. Used for your association membership and to sign in later." />
+          <Field
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholder="you@example.com"
+            hint="Never shown to anyone. Used for your association membership and to sign in later."
+          />
           <T v="smallStrong">You play as</T>
           <Segmented
             value={gender}
@@ -181,9 +206,25 @@ function Teams({ meId, onNext }: { meId: string; onNext: () => void }) {
     <View style={{ gap: space.md }}>
       <T v="heading">Your team</T>
       <T v="small">Tap the teams you play for. You’ll see their games, practices and polls. You can add more later.</T>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.sm,
+          backgroundColor: colors.surface,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingHorizontal: space.md,
+        }}>
         <Icon name="magnify" color={colors.muted} />
-        <TextInput value={q} onChangeText={setQ} placeholder="Search clubs or towns" placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }} />
+        <TextInput
+          value={q}
+          onChangeText={setQ}
+          placeholder="Search clubs or towns"
+          placeholderTextColor={colors.faint}
+          style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }}
+        />
       </View>
       <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ gap: space.sm }}>
         {shown.map((t) => {
@@ -253,7 +294,9 @@ function Done({ onFinish }: { onFinish: () => void }) {
         </Card>
       ) : null}
       <Button label="Go to Home" kind="primary" big onPress={onFinish} />
-      <T v="small" style={{ textAlign: 'center' }}>Stuck any time? More → Help & how-to guide.</T>
+      <T v="small" style={{ textAlign: 'center' }}>
+        Stuck any time? More → Help & how-to guide.
+      </T>
     </View>
   );
 }

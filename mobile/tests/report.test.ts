@@ -8,22 +8,47 @@ import { rulesFor } from '@/domain/rules';
 import { biggestRun, connections, gameLine, pace, squadTotals, teamTotals } from '@/domain/report';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x));
 (async () => {
-  const db: any = open(); await migrate(db); await seedIfEmpty(db);
+  const db: any = open();
+  await migrate(db);
+  await seedIfEmpty(db);
   const teams = await repo.listTeams(db);
-  const light = teams.find((t) => t.name === 'Sample Light')!, dark = teams.find((t) => t.name === 'Sample Dark')!;
-  const rl = await repo.roster(db, light.id), rd = await repo.roster(db, dark.id);
-  const ev = await repo.saveEvent(db, { name: 'Cup', kind: 'tournament', level: 'regional', division: 'mixed', teams: [{ teamId: light.id, pool: 'A' }, { teamId: dark.id, pool: 'A' }] });
-  const gid = await repo.createGame(db, { eventId: ev, venueId: null, teamAId: light.id, teamBId: dark.id, trackingMode: 'standard', rules: rulesFor('wfdf', 'mixed'), firstPullTeamId: light.id, ratioPoint1: 'W',
-    squads: [...rl, ...rd].map((p) => ({ teamId: rl.includes(p) ? light.id : dark.id, personId: p.id, jersey: p.jersey_number, position: p.position })) });
+  const light = teams.find((t) => t.name === 'Sample Light')!,
+    dark = teams.find((t) => t.name === 'Sample Dark')!;
+  const rl = await repo.roster(db, light.id),
+    rd = await repo.roster(db, dark.id);
+  const ev = await repo.saveEvent(db, {
+    name: 'Cup',
+    kind: 'tournament',
+    level: 'regional',
+    division: 'mixed',
+    teams: [
+      { teamId: light.id, pool: 'A' },
+      { teamId: dark.id, pool: 'A' },
+    ],
+  });
+  const gid = await repo.createGame(db, {
+    eventId: ev,
+    venueId: null,
+    teamAId: light.id,
+    teamBId: dark.id,
+    trackingMode: 'standard',
+    rules: rulesFor('wfdf', 'mixed'),
+    firstPullTeamId: light.id,
+    ratioPoint1: 'W',
+    squads: [...rl, ...rd].map((p) => ({ teamId: rl.includes(p) ? light.id : dark.id, personId: p.id, jersey: p.jersey_number, position: p.position })),
+  });
   const L = (r: any[]) => [...r.filter((p) => p.gender === 'W').slice(0, 4), ...r.filter((p) => p.gender === 'M').slice(0, 3)].map((p) => p.id);
   // pattern: light scores 3, dark 1, repeat; varied scorers
   const who = [light.id, light.id, light.id, dark.id];
   for (let i = 0; i < 40; i++) {
-    let data = (await repo.loadGameData(db, gid))!; const st = deriveState(data);
-    await repo.setLine(db, st.point!.id, light.id, L(rl)); await repo.setLine(db, st.point!.id, dark.id, L(rd));
+    let data = (await repo.loadGameData(db, gid))!;
+    const st = deriveState(data);
+    await repo.setLine(db, st.point!.id, light.id, L(rl));
+    await repo.setLine(db, st.point!.id, dark.id, L(rd));
     await repo.pull(db, gid, st.point!.id);
     data = (await repo.loadGameData(db, gid))!;
-    const t = who[i % 4]; const r = t === light.id ? rl : rd;
+    const t = who[i % 4];
+    const r = t === light.id ? rl : rd;
     const r2 = await repo.scorePoint(db, data, t, { scorerId: r[(i % 3) + 1].id, assistId: r[i % 2 ? 0 : 5].id });
     if (r2.gameOver) break;
   }

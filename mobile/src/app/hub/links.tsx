@@ -17,10 +17,7 @@ export default function Links() {
   const body = REGIONS.find((r) => r.code === region.value)?.body;
   // Your region's links first, then national ones. "All of SA" shows everything.
   const shown = links.filter((l) => region.value === 'all' || !l.region_code || l.region_code === region.value);
-  const ofKind = (kind: string) =>
-    shown
-      .filter((l) => (l.kind ?? 'website') === kind)
-      .sort((a, b) => Number(!a.region_code) - Number(!b.region_code) || a.sort - b.sort);
+  const ofKind = (kind: string) => shown.filter((l) => (l.kind ?? 'website') === kind).sort((a, b) => Number(!a.region_code) - Number(!b.region_code) || a.sort - b.sort);
   const merch = ofKind('merch');
 
   return (

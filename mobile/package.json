@@ -45,6 +45,7 @@
     "@types/react": "~19.3.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
+    "prettier": "3.9.10",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
@@ -55,7 +56,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "node tests/run.mjs"
+    "test": "node tests/run.mjs",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\""
   },
   "private": true
 }

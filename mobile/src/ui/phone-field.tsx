@@ -23,7 +23,17 @@ export function PhoneField({ label, value, onChange, hint, placeholder = '82 123
           onPress={() => setPicking(true)}
           accessibilityRole="button"
           accessibilityLabel={`Country code +${dial}. Change`}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 48, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: '#C9CDC5', backgroundColor: colors.surface }}>
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            minHeight: 48,
+            paddingHorizontal: 12,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: '#C9CDC5',
+            backgroundColor: colors.surface,
+          }}>
           <T style={{ fontFamily: font.semibold, fontSize: 16 }}>{DIAL_CODES.find((c) => c.dial === dial)?.label ?? `+${dial}`}</T>
           <Icon name="chevron-down" size={18} color={colors.muted} />
         </Pressable>
@@ -34,7 +44,18 @@ export function PhoneField({ label, value, onChange, hint, placeholder = '82 123
           placeholder={placeholder}
           placeholderTextColor={colors.faint}
           accessibilityLabel={label}
-          style={{ flex: 1, minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: '#C9CDC5', backgroundColor: colors.surface, paddingHorizontal: space.md, fontFamily: font.regular, fontSize: 16, color: colors.ink }}
+          style={{
+            flex: 1,
+            minHeight: 48,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: '#C9CDC5',
+            backgroundColor: colors.surface,
+            paddingHorizontal: space.md,
+            fontFamily: font.regular,
+            fontSize: 16,
+            color: colors.ink,
+          }}
         />
       </View>
       {hint ? <T v="small">{hint}</T> : null}

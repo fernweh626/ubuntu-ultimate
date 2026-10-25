@@ -40,7 +40,13 @@ export function EventPicker({ value, onChange }: { value: string | null; onChang
       key={e.id}
       onPress={() => pick(e.id)}
       accessibilityRole="button"
-      style={({ pressed }) => ({ paddingVertical: space.sm, paddingHorizontal: space.md, minHeight: 52, justifyContent: 'center', backgroundColor: value === e.id ? colors.brandTint : pressed ? colors.neutralTint : colors.surface })}>
+      style={({ pressed }) => ({
+        paddingVertical: space.sm,
+        paddingHorizontal: space.md,
+        minHeight: 52,
+        justifyContent: 'center',
+        backgroundColor: value === e.id ? colors.brandTint : pressed ? colors.neutralTint : colors.surface,
+      })}>
       <T v="bodyStrong">{e.name}</T>
       <T v="small">{[e.kind === 'league' ? 'League' : 'Tournament', e.start_date ? dateRange(e.start_date, e.end_date) : null, e.location].filter(Boolean).join(' · ')}</T>
     </Pressable>
@@ -59,7 +65,17 @@ export function EventPicker({ value, onChange }: { value: string | null; onChang
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 52, paddingHorizontal: space.md, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.sm,
+          minHeight: 52,
+          paddingHorizontal: space.md,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+        }}>
         <Icon name="trophy-outline" color={colors.muted} />
         <View style={{ flex: 1 }}>
           <T v="bodyStrong">{picked ? picked.name : 'None (friendly)'}</T>
@@ -69,9 +85,25 @@ export function EventPicker({ value, onChange }: { value: string | null; onChang
       </Pressable>
 
       <Sheet visible={open} onClose={() => setOpen(false)} title="Which league or tournament?">
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.sm,
+            backgroundColor: colors.surface,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: space.md,
+          }}>
           <Icon name="magnify" color={colors.muted} />
-          <TextInput value={q} onChangeText={setQ} placeholder="Search leagues and tournaments" placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }} />
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder="Search leagues and tournaments"
+            placeholderTextColor={colors.faint}
+            style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }}
+          />
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           <Choice label="All regions" selected={!region} onPress={() => setRegion(null)} style={{ minHeight: 36, paddingHorizontal: 12 }} />
@@ -82,7 +114,12 @@ export function EventPicker({ value, onChange }: { value: string | null; onChang
         <Choice label="None (friendly)" selected={!value} onPress={() => pick(null)} style={{ alignItems: 'flex-start' }} />
         {list('On now', active)}
         {list('Coming up', upcoming)}
-        {!active.length && !upcoming.length ? <T v="small">No current or upcoming leagues or tournaments{region ? ' in this region' : ''}{q ? ` matching “${q}”` : ''}.</T> : null}
+        {!active.length && !upcoming.length ? (
+          <T v="small">
+            No current or upcoming leagues or tournaments{region ? ' in this region' : ''}
+            {q ? ` matching “${q}”` : ''}.
+          </T>
+        ) : null}
       </Sheet>
     </Section>
   );

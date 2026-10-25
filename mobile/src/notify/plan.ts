@@ -63,10 +63,7 @@ export async function getPrefs(db: SQLiteDatabase): Promise<NotifyPrefs> {
 }
 
 export async function setPrefs(db: SQLiteDatabase, prefs: NotifyPrefs) {
-  await db.runAsync(
-    `INSERT INTO app_meta (key, value) VALUES ('notify:prefs', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    JSON.stringify(prefs),
-  );
+  await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('notify:prefs', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, JSON.stringify(prefs));
 }
 
 export type Planned = { key: string; kind: keyof NotifyPrefs; at: Date; title: string; body: string; url: string; gameDay?: boolean };
@@ -128,12 +125,20 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
     const done = await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = ?`, `yearly_info_done:${season}`);
     if (!done) {
       const text = yearlyInfoText(season, access.level);
-      for (const d of yearlyInfoReminders(season)) out.push({ key: `yearlyinfo:${season}:${d.toISOString().slice(0, 10)}`, kind: 'admin', at: d, ...text, url: access.level === 'admin' ? '/admin/links' : '/' });
+      for (const d of yearlyInfoReminders(season))
+        out.push({ key: `yearlyinfo:${season}:${d.toISOString().slice(0, 10)}`, kind: 'admin', at: d, ...text, url: access.level === 'admin' ? '/admin/links' : '/' });
     }
   }
   if (prefs.fees) {
     const feb = nextYearly(COUNTRY.feesOpen.month, COUNTRY.feesOpen.day);
-    out.push({ key: `fees:${feb.getFullYear()}`, kind: 'fees', at: feb, title: `Time to pay your ${feb.getFullYear()} fees`, body: `Register and pay with ${COUNTRY.nationalBody.short} and your region so you can play leagues, regionals and nationals.`, url: '/registration' });
+    out.push({
+      key: `fees:${feb.getFullYear()}`,
+      kind: 'fees',
+      at: feb,
+      title: `Time to pay your ${feb.getFullYear()} fees`,
+      body: `Register and pay with ${COUNTRY.nationalBody.short} and your region so you can play leagues, regionals and nationals.`,
+      url: '/registration',
+    });
   }
 
   // Meetings (AGM, SGM…) for your region or national: the evening before, and 15 minutes before with the link.
@@ -150,8 +155,23 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
       const eve = new Date(start);
       eve.setDate(eve.getDate() - 1);
       eve.setHours(18, 0, 0, 0);
-      out.push({ key: `meet1:${m.id}:${m.start_date}${m.start_time}`, kind: 'meetings', at: eve, title: `Tomorrow ${m.start_time}: ${m.name}`, body: m.meeting_url ? 'Online: the join link is in the app. Tap to see the agenda and RSVP.' : 'Tap to see the agenda and RSVP.', url: `/hub/meeting/${m.id}` });
-      out.push({ key: `meet2:${m.id}:${m.start_date}${m.start_time}`, kind: 'meetings', at: new Date(start.getTime() - 15 * 60_000), title: `${m.name} starts in 15 minutes`, body: m.meeting_url ? 'Tap to join.' : 'Tap for details.', url: `/hub/meeting/${m.id}`, gameDay: true });
+      out.push({
+        key: `meet1:${m.id}:${m.start_date}${m.start_time}`,
+        kind: 'meetings',
+        at: eve,
+        title: `Tomorrow ${m.start_time}: ${m.name}`,
+        body: m.meeting_url ? 'Online: the join link is in the app. Tap to see the agenda and RSVP.' : 'Tap to see the agenda and RSVP.',
+        url: `/hub/meeting/${m.id}`,
+      });
+      out.push({
+        key: `meet2:${m.id}:${m.start_date}${m.start_time}`,
+        kind: 'meetings',
+        at: new Date(start.getTime() - 15 * 60_000),
+        title: `${m.name} starts in 15 minutes`,
+        body: m.meeting_url ? 'Tap to join.' : 'Tap for details.',
+        url: `/hub/meeting/${m.id}`,
+        gameDay: true,
+      });
     }
   }
 
@@ -165,11 +185,27 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
       const start = meetingStart(h);
       if (!start) continue;
       if ((access.level === 'admin' || access.level === 'coordinator') && h.hat_status !== 'drawn') {
-        out.push({ key: `hatdraw:${h.id}:${h.start_date}`, kind: 'hats', at: new Date(start.getTime() - 48 * 3600_000), title: `Time to draw the teams for ${h.name}`, body: 'Paid sign-ups go into balanced teams. Pick captains from the willing, then confirm.', url: `/hat/${h.id}/draw` });
+        out.push({
+          key: `hatdraw:${h.id}:${h.start_date}`,
+          kind: 'hats',
+          at: new Date(start.getTime() - 48 * 3600_000),
+          title: `Time to draw the teams for ${h.name}`,
+          body: 'Paid sign-ups go into balanced teams. Pick captains from the willing, then confirm.',
+          url: `/hat/${h.id}/draw`,
+        });
       }
-      const mine = me ? await db.getFirstAsync<{ attending: string; paid: number; paid_confirmed: number }>(`SELECT attending, paid, paid_confirmed FROM hat_signup WHERE event_id = ? AND person_id = ?`, h.id, me) : null;
+      const mine = me
+        ? await db.getFirstAsync<{ attending: string; paid: number; paid_confirmed: number }>(`SELECT attending, paid, paid_confirmed FROM hat_signup WHERE event_id = ? AND person_id = ?`, h.id, me)
+        : null;
       if (mine && mine.attending !== 'no' && !mine.paid && !mine.paid_confirmed) {
-        out.push({ key: `hatpay:${h.id}`, kind: 'hats', at: respectQuiet(new Date(start.getTime() - 72 * 3600_000), prefs, start), title: `Pay for ${h.name} to secure your spot`, body: 'Only paid players are drawn into teams, 48 hours before.', url: `/hat/${h.id}` });
+        out.push({
+          key: `hatpay:${h.id}`,
+          kind: 'hats',
+          at: respectQuiet(new Date(start.getTime() - 72 * 3600_000), prefs, start),
+          title: `Pay for ${h.name} to secure your spot`,
+          body: 'Only paid players are drawn into teams, 48 hours before.',
+          url: `/hat/${h.id}`,
+        });
       }
     }
   }
@@ -225,21 +261,39 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
   if (lastRating && prefs.development) {
     const due = new Date(`${lastRating.rated_on.slice(0, 10)}T09:00:00`);
     due.setDate(due.getDate() + 182);
-    out.push({ key: `rate:${lastRating.rated_on}`, kind: 'development', at: due, title: 'Six months on: rate yourself again', body: 'Two minutes, five areas. See how far you’ve come since last time.', url: '/rate' });
+    out.push({
+      key: `rate:${lastRating.rated_on}`,
+      kind: 'development',
+      at: due,
+      title: 'Six months on: rate yourself again',
+      body: 'Two minutes, five areas. See how far you’ve come since last time.',
+      url: '/rate',
+    });
   }
 
-  const myTeams = (
-    await db.getAllAsync<{ team_id: string; role: string }>(
-      `SELECT team_id, role FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`,
-      me,
-    )
-  ).map((r) => ({ id: r.team_id, staff: r.role !== 'player', spirit: r.role === 'spirit_captain' || r.role === 'captain' }));
+  const myTeams = (await db.getAllAsync<{ team_id: string; role: string }>(`SELECT team_id, role FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`, me)).map((r) => ({
+    id: r.team_id,
+    staff: r.role !== 'player',
+    spirit: r.role === 'spirit_captain' || r.role === 'captain',
+  }));
   if (!myTeams.length) return out.filter((p) => p.at > now);
   const teamIds = myTeams.map((t) => t.id);
   const q = teamIds.map(() => '?').join(',');
   const horizon = new Date(now.getTime() + 14 * 86400_000).toISOString();
 
-  type G = { id: string; status: string; scheduled_at: string | null; ended_at: string | null; team_a_id: string; team_b_id: string; home_team_id: string | null; a: string; b: string; venue: string | null; forfeit_team_id: string | null };
+  type G = {
+    id: string;
+    status: string;
+    scheduled_at: string | null;
+    ended_at: string | null;
+    team_a_id: string;
+    team_b_id: string;
+    home_team_id: string | null;
+    a: string;
+    b: string;
+    venue: string | null;
+    forfeit_team_id: string | null;
+  };
   const games = await db.getAllAsync<G>(
     `SELECT g.id, g.status, g.scheduled_at, g.ended_at, g.team_a_id, g.team_b_id, g.home_team_id, g.forfeit_team_id,
             ta.name AS a, tb.name AS b, v.name AS venue
@@ -297,11 +351,7 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
 
     if (g.status === 'final' && g.ended_at && !g.forfeit_team_id) {
       const ended = new Date(g.ended_at);
-      const played = await db.getFirstAsync(
-        `SELECT 1 FROM game_player WHERE game_id = ? AND person_id = ? AND confirmation != 'removed'`,
-        g.id,
-        me,
-      );
+      const played = await db.getFirstAsync(`SELECT 1 FROM game_player WHERE game_id = ? AND person_id = ? AND confirmation != 'removed'`, g.id, me);
       const answered = await db.getFirstAsync(`SELECT 1 FROM reflection WHERE game_id = ? AND person_id = ?`, g.id, me);
       if (played && !answered && prefs.postGame) {
         // One message after the game (card + check-in), and one nudge next morning if still not done.
@@ -337,11 +387,7 @@ export async function planNotifications(db: SQLiteDatabase, now = new Date()): P
         }
       }
       if (team.staff && prefs.roster) {
-        const pending = await db.getFirstAsync<{ n: number }>(
-          `SELECT COUNT(*) AS n FROM game_player WHERE game_id = ? AND team_id = ? AND confirmation = 'pending'`,
-          g.id,
-          mine,
-        );
+        const pending = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM game_player WHERE game_id = ? AND team_id = ? AND confirmation = 'pending'`, g.id, mine);
         if (pending && pending.n > 0) {
           out.push({
             key: `roster:${g.id}`,

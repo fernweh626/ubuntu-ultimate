@@ -26,10 +26,7 @@ const REPEAT = [
 export default function PracticeEdit() {
   const { teamId, id } = useLocalSearchParams<{ teamId: string; id?: string }>();
   const db = useSQLiteContext();
-  const bundle = useData(
-    async (d) => ({ team: await getTeam(d, teamId), existing: id ? await getSession(d, id) : null, access: await getAccess(d) }),
-    [teamId, id],
-  );
+  const bundle = useData(async (d) => ({ team: await getTeam(d, teamId), existing: id ? await getSession(d, id) : null, access: await getAccess(d) }), [teamId, id]);
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
   return <Form key={id ?? 'new'} db={db} teamId={teamId} teamName={bundle.team?.name ?? ''} existing={bundle.existing} meId={bundle.access.meId} />;
 }
@@ -101,7 +98,8 @@ function Form({
             <Segmented value={repeat} onChange={setRepeat} options={REPEAT} />
             {at && Number(repeat) > 1 ? (
               <T v="small">
-                Every {shortDate(at).split(' ')[0]} at {time} until {shortDate(new Date(new Date(at).getTime() + (Number(repeat) - 1) * 7 * 86400_000).toISOString())}. You can cancel single weeks later.
+                Every {shortDate(at).split(' ')[0]} at {time} until {shortDate(new Date(new Date(at).getTime() + (Number(repeat) - 1) * 7 * 86400_000).toISOString())}. You can cancel single weeks
+                later.
               </T>
             ) : null}
           </>

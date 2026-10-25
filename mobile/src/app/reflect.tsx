@@ -5,32 +5,10 @@ import { Alert, TextInput, View } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
-import {
-  getAccess,
-  getMe,
-  getMyReflection,
-  getSession,
-  getTeam,
-  listPeople,
-  loadGameData,
-  myShoutout,
-  roster,
-  saveReflection,
-  saveShoutout,
-} from '@/db/repo';
+import { getAccess, getMe, getMyReflection, getSession, getTeam, listPeople, loadGameData, myShoutout, roster, saveReflection, saveShoutout } from '@/db/repo';
 import type { Person } from '@/db/types';
 import { shortName } from '@/domain/format';
-import {
-  ASKS,
-  BODY_AREAS,
-  parseAnswers,
-  PLAYING_TIME_LABEL,
-  type Answers,
-  type NiggleSeverity,
-  type PlayingTime,
-  type ReflectionKind,
-  type ReflectionRow,
-} from '@/domain/reflection';
+import { ASKS, BODY_AREAS, parseAnswers, PLAYING_TIME_LABEL, type Answers, type NiggleSeverity, type PlayingTime, type ReflectionKind, type ReflectionRow } from '@/domain/reflection';
 import { computeGameStats } from '@/domain/stats';
 import { Button, Card, Choice, EmptyState, Field, Footer, Screen, Segmented, T } from '@/ui/components';
 import { colors, font, space } from '@/ui/theme';
@@ -66,7 +44,10 @@ export default function Reflect() {
         const team = teamId ? await getTeam(d, teamId) : null;
         const other = teamId ? await getTeam(d, teamId === data.game.team_a_id ? data.game.team_b_id : data.game.team_a_id) : null;
         const s = computeGameStats(data).players[me.id];
-        const mates = await peopleById(d, data.players.filter((p) => p.team_id === teamId && p.person_id !== me.id).map((p) => p.person_id));
+        const mates = await peopleById(
+          d,
+          data.players.filter((p) => p.team_id === teamId && p.person_id !== me.id).map((p) => p.person_id),
+        );
         const shout = await myShoutout(d, me.id, { gameId });
         // Minutes actually on the field, from the points this player was on the line for.
         const onField = data.points
@@ -193,9 +174,7 @@ function ReflectForm({ l, gameId, sessionId }: { l: Loaded; gameId: string | nul
     router.back();
   }
 
-  const mates = mateSearch
-    ? l.teammates.filter((p) => `${p.first_name} ${p.last_name}`.toLowerCase().includes(mateSearch.toLowerCase()))
-    : l.teammates.slice(0, 24);
+  const mates = mateSearch ? l.teammates.filter((p) => `${p.first_name} ${p.last_name}`.toLowerCase().includes(mateSearch.toLowerCase())) : l.teammates.slice(0, 24);
 
   return (
     <>
@@ -209,10 +188,7 @@ function ReflectForm({ l, gameId, sessionId }: { l: Loaded; gameId: string | nul
         }>
         <View>
           <T v="title">{l.title}</T>
-          <T v="small">
-            About a minute · skip anything.{' '}
-            {l.teamName ? `Only ${l.teamName}’s staff see your answers, with your name. Shout-outs are seen by the squad.` : 'Saved to your own log.'}
-          </T>
+          <T v="small">About a minute · skip anything. {l.teamName ? `Only ${l.teamName}’s staff see your answers, with your name. Shout-outs are seen by the squad.` : 'Saved to your own log.'}</T>
         </View>
 
         {asks.has('points') && l.pointsPlayed ? (
@@ -398,7 +374,13 @@ function ReflectForm({ l, gameId, sessionId }: { l: Loaded; gameId: string | nul
               <>
                 <Field label="How did the lines work?" value={answers.staffLines ?? ''} onChangeText={(v) => set('staffLines', v)} multiline />
                 <Field label="How did our strategies work (zone, force, set plays)?" value={answers.staffStrategies ?? ''} onChangeText={(v) => set('staffStrategies', v)} multiline />
-                <Field label="Scouting notes on the opponent" value={answers.staffScouting ?? ''} onChangeText={(v) => set('staffScouting', v)} multiline placeholder="Key players, tendencies, what worked against them" />
+                <Field
+                  label="Scouting notes on the opponent"
+                  value={answers.staffScouting ?? ''}
+                  onChangeText={(v) => set('staffScouting', v)}
+                  multiline
+                  placeholder="Key players, tendencies, what worked against them"
+                />
               </>
             ) : (
               <Field label="How did the session plan work?" value={answers.staffStrategies ?? ''} onChangeText={(v) => set('staffStrategies', v)} multiline />

@@ -70,7 +70,8 @@ export default function PlayerEdit() {
   async function save(another: boolean) {
     if (!f.first_name.trim()) return Alert.alert('Add a first name');
     // Your own profile needs an email (for your association membership and signing in). Optional for people staff add.
-    if (isMe && !onFile?.has_email && !/^\S+@\S+\.\S+$/.test((f.email ?? '').trim())) return Alert.alert('Add your email', 'It’s never shown to anyone. Your association needs it for your membership.');
+    if (isMe && !onFile?.has_email && !/^\S+@\S+\.\S+$/.test((f.email ?? '').trim()))
+      return Alert.alert('Add your email', 'It’s never shown to anyone. Your association needs it for your membership.');
     const birth = dob ? dmyToIso(dob) : null;
     if (dob && !birth) return Alert.alert('Check the birth date', 'Use dd/mm/yyyy, for example 30/06/2001.');
     const savedId = await savePerson(db, { ...f, birth_date: birth, id }, teamId && !id ? { teamId, kind, jersey: f.preferred_number ?? null } : undefined);
@@ -174,7 +175,9 @@ export default function PlayerEdit() {
               : 'Used for age divisions. Nobody can read it back — only the age group is shown.'
           }
         />
-        {onFile?.is_minor != null ? <Button label="Remove birth date" kind="ghost" onPress={() => clear('birth_date')} style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }} /> : null}
+        {onFile?.is_minor != null ? (
+          <Button label="Remove birth date" kind="ghost" onPress={() => clear('birth_date')} style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }} />
+        ) : null}
         <Field
           label={onFile?.has_email ? 'Email (on file — type to replace)' : isMe ? 'Email' : 'Email (optional)'}
           value={f.email ?? ''}

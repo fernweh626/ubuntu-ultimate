@@ -41,7 +41,12 @@ export default function MyLog() {
   if (!bundle) {
     return (
       <Screen edges={[]}>
-        <EmptyState icon="account-question-outline" title="Pick yourself first" body="Open Me (top right on any tab) and choose who you are." action={<Button label="Go to Me" kind="primary" onPress={() => router.replace('/me')} />} />
+        <EmptyState
+          icon="account-question-outline"
+          title="Pick yourself first"
+          body="Open Me (top right on any tab) and choose who you are."
+          action={<Button label="Go to Me" kind="primary" onPress={() => router.replace('/me')} />}
+        />
       </Screen>
     );
   }
@@ -56,9 +61,7 @@ export default function MyLog() {
     return { start, minutes: items.reduce((a, e) => a + e.minutes, 0), count: items.length };
   });
   const now = weeks[weeks.length - 1];
-  const loadWeek = log
-    .filter((e) => new Date(e.date) >= thisWeek)
-    .reduce((a, e) => a + (e.rpe ? e.rpe * e.minutes : 0), 0);
+  const loadWeek = log.filter((e) => new Date(e.date) >= thisWeek).reduce((a, e) => a + (e.rpe ? e.rpe * e.minutes : 0), 0);
   const missing = log.filter((e) => e.kind === 'game' && !e.reflected).slice(0, 3);
 
   return (

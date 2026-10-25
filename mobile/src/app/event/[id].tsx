@@ -49,7 +49,12 @@ export default function EventPage() {
   const teamById = new Map(teams.map((t) => [t.id, t]));
   // Standings come from round robin / Swiss / pool games; playoff results are shown in the bracket.
   const poolLoaded = loaded.filter((g) => g.item.stage !== 'playoff');
-  const aggs = teams.map((t) => teamAggregate(t.id, poolLoaded.filter((g) => g.item.team_a_id === t.id || g.item.team_b_id === t.id)));
+  const aggs = teams.map((t) =>
+    teamAggregate(
+      t.id,
+      poolLoaded.filter((g) => g.item.team_a_id === t.id || g.item.team_b_id === t.id),
+    ),
+  );
   const poolResults = poolLoaded.map((g) => ({ a: g.item.team_a_id, b: g.item.team_b_id, scoreA: g.item.score_a, scoreB: g.item.score_b }));
   /** Wins (draws count half), then head-to-head among tied teams, then point difference, then points scored. */
   const ranked = (rows: TeamAggregate[]) => {
@@ -62,7 +67,11 @@ export default function EventPage() {
   const { placings, decided } = bundle.final;
   const pools = Array.from(new Set(teams.map((t) => t.pool ?? ''))).sort();
   const totals = [...playerTotals(loaded).values()];
-  const leaders = (k: 'goals' | 'assists' | 'intercepts' | 'plusMinus') => [...totals].sort((a, b) => b[k] - a[k]).filter((p) => p[k] > 0).slice(0, 5);
+  const leaders = (k: 'goals' | 'assists' | 'intercepts' | 'plusMinus') =>
+    [...totals]
+      .sort((a, b) => b[k] - a[k])
+      .filter((p) => p[k] > 0)
+      .slice(0, 5);
   const spiritByTeam = teams
     .map((t) => {
       const got = spirit.filter((s) => s.to_team_id === t.id);
@@ -72,7 +81,11 @@ export default function EventPage() {
     .sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
 
   function openShare() {
-    const podium = decided ? placings.slice(0, 3) : ranked(aggs).slice(0, 3).map((a, i) => ({ teamId: a.teamId, place: i + 1 }));
+    const podium = decided
+      ? placings.slice(0, 3)
+      : ranked(aggs)
+          .slice(0, 3)
+          .map((a, i) => ({ teamId: a.teamId, place: i + 1 }));
     const topScorer = leaders('goals')[0];
     const topAssist = leaders('assists')[0];
     setShare({
@@ -114,7 +127,15 @@ export default function EventPage() {
           <Pressable
             key={a.teamId}
             onPress={() => router.push({ pathname: '/team/report', params: { id: a.teamId, eventId: id } })}
-            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.md, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.divider, backgroundColor: pressed ? colors.neutralTint : colors.surface })}>
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: space.md,
+              minHeight: 48,
+              borderTopWidth: 1,
+              borderTopColor: colors.divider,
+              backgroundColor: pressed ? colors.neutralTint : colors.surface,
+            })}>
             <T v="bodyStrong" style={{ width: 22 }}>
               {i + 1}
             </T>
@@ -190,18 +211,18 @@ export default function EventPage() {
           <EmptyState icon="account-group-outline" title="No teams yet" action={<Button label="Add teams" onPress={() => router.push({ pathname: '/event/edit', params: { id } })} />} />
         ) : null}
 
+        {tab === 'standings' && teams.length
+          ? pools.length > 1 || pools[0]
+            ? pools.map((p) => (
+                <Section key={p} title={p ? `Pool ${p}` : 'No pool'}>
+                  {standingsTable(aggs.filter((a) => (teamById.get(a.teamId)?.pool ?? '') === p))}
+                </Section>
+              ))
+            : standingsTable(aggs)
+          : null}
         {tab === 'standings' && teams.length ? (
-          pools.length > 1 || pools[0] ? (
-            pools.map((p) => (
-              <Section key={p} title={p ? `Pool ${p}` : 'No pool'}>
-                {standingsTable(aggs.filter((a) => (teamById.get(a.teamId)?.pool ?? '') === p))}
-              </Section>
-            ))
-          ) : (
-            standingsTable(aggs)
-          )
+          <T v="small">Ranked by wins, then head-to-head between tied teams, then point difference, then points scored. Playoff games aren’t included. Tap a team for its report.</T>
         ) : null}
-        {tab === 'standings' && teams.length ? <T v="small">Ranked by wins, then head-to-head between tied teams, then point difference, then points scored. Playoff games aren’t included. Tap a team for its report.</T> : null}
 
         {tab === 'playoffs' ? (
           <BracketView
@@ -212,7 +233,11 @@ export default function EventPage() {
             teamName={(tid) => teamById.get(tid)?.name ?? ''}
             teamColor={(tid) => teamById.get(tid)?.primary_color ?? null}
             onSlotPress={(_, g) =>
-              g ? router.push(g.status === 'scheduled' ? `/game/${g.id}/fixture` : g.status === 'live' ? `/game/${g.id}` : `/game/${g.id}/report`) : runsEvents ? router.push({ pathname: '/event/playoffs', params: { eventId: id } }) : undefined
+              g
+                ? router.push(g.status === 'scheduled' ? `/game/${g.id}/fixture` : g.status === 'live' ? `/game/${g.id}` : `/game/${g.id}/report`)
+                : runsEvents
+                  ? router.push({ pathname: '/event/playoffs', params: { eventId: id } })
+                  : undefined
             }
           />
         ) : null}
@@ -248,7 +273,9 @@ export default function EventPage() {
                 </Pressable>
               ))}
             </View>
-            <T v="small">{bundle.final.hasBracket ? 'Places come from the playoff games; anyone without a placing game is ranked by the standings.' : 'No playoffs, so places come straight from the standings.'}</T>
+            <T v="small">
+              {bundle.final.hasBracket ? 'Places come from the playoff games; anyone without a placing game is ranked by the standings.' : 'No playoffs, so places come straight from the standings.'}
+            </T>
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               <Button label="Share podium" icon="share-variant" kind="primary" onPress={openShare} style={{ flex: 1 }} />
               <Button label="Full report" icon="file-document-multiple-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'event', eventId: id } })} style={{ flex: 1 }} />
@@ -262,9 +289,27 @@ export default function EventPage() {
               <Card>
                 <T v="bodyStrong">Build the schedule</T>
                 <T v="small">Choose a format, import a spreadsheet, or add games one at a time. Formats can be combined — e.g. round robin or Swiss, then playoffs.</T>
-                <Choice label="Round robin" sublabel="Everyone plays everyone, once or home & away" onPress={() => router.push({ pathname: '/event/schedule-generate', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
-                <Choice label="Swiss draw" sublabel="Pair one round at a time by record, no rematches" onPress={() => router.push({ pathname: '/event/swiss', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
-                <Choice label={bundle.bracket.slots.length ? 'Playoffs (bracket set up)' : 'Playoffs'} sublabel="Top 4, top 8, or crossovers from two pools — winners advance automatically" onPress={() => router.push({ pathname: '/event/playoffs', params: { eventId: id } })} tall style={{ alignItems: 'flex-start' }} />
+                <Choice
+                  label="Round robin"
+                  sublabel="Everyone plays everyone, once or home & away"
+                  onPress={() => router.push({ pathname: '/event/schedule-generate', params: { eventId: id } })}
+                  tall
+                  style={{ alignItems: 'flex-start' }}
+                />
+                <Choice
+                  label="Swiss draw"
+                  sublabel="Pair one round at a time by record, no rematches"
+                  onPress={() => router.push({ pathname: '/event/swiss', params: { eventId: id } })}
+                  tall
+                  style={{ alignItems: 'flex-start' }}
+                />
+                <Choice
+                  label={bundle.bracket.slots.length ? 'Playoffs (bracket set up)' : 'Playoffs'}
+                  sublabel="Top 4, top 8, or crossovers from two pools — winners advance automatically"
+                  onPress={() => router.push({ pathname: '/event/playoffs', params: { eventId: id } })}
+                  tall
+                  style={{ alignItems: 'flex-start' }}
+                />
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   <Button label="Import" icon="file-upload-outline" onPress={() => router.push({ pathname: '/event/schedule-import', params: { eventId: id } })} style={{ flex: 1 }} />
                   <Button label="Add a game" icon="plus" onPress={() => router.push({ pathname: '/event/schedule-add', params: { eventId: id } })} style={{ flex: 1 }} />
@@ -272,7 +317,11 @@ export default function EventPage() {
               </Card>
             ) : null}
             {games.length === 0 ? (
-              <EmptyState icon="calendar-blank" title="No games scheduled yet" body={runsEvents ? 'Use the tools above to build the schedule.' : 'The coordinator hasn’t published the schedule yet.'} />
+              <EmptyState
+                icon="calendar-blank"
+                title="No games scheduled yet"
+                body={runsEvents ? 'Use the tools above to build the schedule.' : 'The coordinator hasn’t published the schedule yet.'}
+              />
             ) : null}
             {[...byDay.entries()].map(([day, gs]) => (
               <Section key={day} title={day}>

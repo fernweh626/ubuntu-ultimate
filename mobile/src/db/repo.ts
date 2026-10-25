@@ -79,9 +79,7 @@ export async function getHomeRegion(db: SQLiteDatabase) {
 }
 
 export function setHomeRegion(db: SQLiteDatabase, region: string | null) {
-  return write(db, () =>
-    db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('home_region', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, region ?? 'all'),
-  );
+  return write(db, () => db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('home_region', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, region ?? 'all'));
 }
 
 /** First-run welcome: done (or skipped) once per phone. */
@@ -101,10 +99,7 @@ export async function getMeId(db: SQLiteDatabase) {
 export function setMeId(db: SQLiteDatabase, personId: string | null) {
   return write(db, async () => {
     if (personId) {
-      await db.runAsync(
-        `INSERT INTO app_meta (key, value) VALUES ('me_person_id', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-        personId,
-      );
+      await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('me_person_id', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, personId);
     } else {
       await db.runAsync(`DELETE FROM app_meta WHERE key = 'me_person_id'`);
     }
@@ -124,9 +119,7 @@ export async function getTestLevel(db: SQLiteDatabase): Promise<Level> {
 }
 
 export function setTestLevel(db: SQLiteDatabase, level: Exclude<Level, 'staff'>) {
-  return write(db, () =>
-    db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('me_level', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, level),
-  );
+  return write(db, () => db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('me_level', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, level));
 }
 
 export type Access = { level: Level; meId: string | null; staffTeamIds: string[]; signedIn: boolean };
@@ -138,18 +131,10 @@ export type Access = { level: Level; meId: string | null; staffTeamIds: string[]
  */
 export async function getAccess(db: SQLiteDatabase): Promise<Access> {
   const meId = await getMeId(db);
-  const staff = meId
-    ? await db.getAllAsync<{ team_id: string }>(
-        `SELECT team_id FROM membership WHERE person_id = ? AND role != 'player' AND end_date IS NULL AND deleted_at IS NULL`,
-        meId,
-      )
-    : [];
+  const staff = meId ? await db.getAllAsync<{ team_id: string }>(`SELECT team_id FROM membership WHERE person_id = ? AND role != 'player' AND end_date IS NULL AND deleted_at IS NULL`, meId) : [];
   // Club staff run every team in their club.
   const viaClub = meId
-    ? await db.getAllAsync<{ team_id: string }>(
-        `SELECT t.id AS team_id FROM club_staff cs JOIN team t ON t.club_id = cs.club_id WHERE cs.person_id = ? AND t.deleted_at IS NULL`,
-        meId,
-      )
+    ? await db.getAllAsync<{ team_id: string }>(`SELECT t.id AS team_id FROM club_staff cs JOIN team t ON t.club_id = cs.club_id WHERE cs.person_id = ? AND t.deleted_at IS NULL`, meId)
     : [];
   const staffTeamIds = [...new Set([...staff, ...viaClub].map((s) => s.team_id))];
   const signedIn = !!(await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'signed_in'`));
@@ -178,15 +163,7 @@ export function myRoles(db: SQLiteDatabase, personId: string) {
 }
 
 export function setMembershipRole(db: SQLiteDatabase, personId: string, teamId: string, role: RosterEntry['role']) {
-  return write(db, () =>
-    db.runAsync(
-      `UPDATE membership SET role = ?, updated_at = ? WHERE person_id = ? AND team_id = ? AND end_date IS NULL AND deleted_at IS NULL`,
-      role,
-      now(),
-      personId,
-      teamId,
-    ),
-  );
+  return write(db, () => db.runAsync(`UPDATE membership SET role = ?, updated_at = ? WHERE person_id = ? AND team_id = ? AND end_date IS NULL AND deleted_at IS NULL`, role, now(), personId, teamId));
 }
 
 /* ---------------- Teams & people ---------------- */
@@ -205,7 +182,13 @@ export function createScrimmageSides(db: SQLiteDatabase) {
       const id = uuid();
       await db.runAsync(
         `INSERT INTO team (id, name, short_name, kind, region, primary_color, about, is_sample, created_at, updated_at) VALUES (?, ?, ?, 'pickup', ?, ?, 'Scrimmage side', 0, ?, ?)`,
-        id, name, name.slice(0, 3).toUpperCase(), region && region !== 'all' ? region : null, color, ts, ts,
+        id,
+        name,
+        name.slice(0, 3).toUpperCase(),
+        region && region !== 'all' ? region : null,
+        color,
+        ts,
+        ts,
       );
       return (await db.getFirstAsync<Team>(`SELECT * FROM team WHERE id = ?`, id))!;
     };
@@ -307,9 +290,7 @@ export function clearPrivateField(db: SQLiteDatabase, id: string, field: 'email'
 }
 
 export function listPeople(db: SQLiteDatabase) {
-  return db
-    .getAllAsync<Person>(`SELECT ${personCols()} FROM person WHERE deleted_at IS NULL`)
-    .then((rows) => rows.sort(byFirstName));
+  return db.getAllAsync<Person>(`SELECT ${personCols()} FROM person WHERE deleted_at IS NULL`).then((rows) => rows.sort(byFirstName));
 }
 
 export type PersonInput = {
@@ -325,11 +306,7 @@ export type PersonInput = {
   is_placeholder?: number;
 };
 
-export function savePerson(
-  db: SQLiteDatabase,
-  p: PersonInput,
-  join?: { teamId: string; kind?: 'core' | 'guest' | 'mercenary'; jersey?: string | null; role?: RosterEntry['role'] },
-) {
+export function savePerson(db: SQLiteDatabase, p: PersonInput, join?: { teamId: string; kind?: 'core' | 'guest' | 'mercenary'; jersey?: string | null; role?: RosterEntry['role'] }) {
   return write(db, async () => {
     const id = p.id ?? uuid();
     const ts = now();
@@ -361,29 +338,11 @@ export function savePerson(
   });
 }
 
-async function addMembership(
-  db: SQLiteDatabase,
-  personId: string,
-  teamId: string,
-  kind: 'core' | 'guest' | 'mercenary',
-  jersey: string | null,
-  role: RosterEntry['role'],
-) {
-  const existing = await db.getFirstAsync<{ id: string }>(
-    `SELECT id FROM membership WHERE person_id = ? AND team_id = ? AND deleted_at IS NULL AND end_date IS NULL`,
-    personId,
-    teamId,
-  );
+async function addMembership(db: SQLiteDatabase, personId: string, teamId: string, kind: 'core' | 'guest' | 'mercenary', jersey: string | null, role: RosterEntry['role']) {
+  const existing = await db.getFirstAsync<{ id: string }>(`SELECT id FROM membership WHERE person_id = ? AND team_id = ? AND deleted_at IS NULL AND end_date IS NULL`, personId, teamId);
   const ts = now();
   if (existing) {
-    await db.runAsync(
-      `UPDATE membership SET kind = ?, jersey_number = ?, role = ?, updated_at = ? WHERE id = ?`,
-      kind,
-      jersey,
-      role,
-      ts,
-      existing.id,
-    );
+    await db.runAsync(`UPDATE membership SET kind = ?, jersey_number = ?, role = ?, updated_at = ? WHERE id = ?`, kind, jersey, role, ts, existing.id);
     return;
   }
   await db.runAsync(
@@ -401,13 +360,7 @@ async function addMembership(
   );
 }
 
-export function joinTeam(
-  db: SQLiteDatabase,
-  personId: string,
-  teamId: string,
-  kind: 'core' | 'guest' | 'mercenary',
-  jersey: string | null,
-) {
+export function joinTeam(db: SQLiteDatabase, personId: string, teamId: string, kind: 'core' | 'guest' | 'mercenary', jersey: string | null) {
   return write(db, () => addMembership(db, personId, teamId, kind, jersey, 'player'));
 }
 
@@ -434,7 +387,13 @@ export async function joinOrRequest(db: SQLiteDatabase, personId: string, teamId
     else
       await db.runAsync(
         `INSERT INTO join_request (id, person_id, team_id, kind, message, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
-        uuid(), personId, teamId, kind, message ?? null, ts, ts,
+        uuid(),
+        personId,
+        teamId,
+        kind,
+        message ?? null,
+        ts,
+        ts,
       );
   });
   return 'requested';
@@ -454,7 +413,17 @@ export function cancelJoinRequest(db: SQLiteDatabase, id: string) {
 
 /** Who's asking to join this team, for its staff. */
 export function pendingJoinRequests(db: SQLiteDatabase, teamId: string) {
-  return db.getAllAsync<{ id: string; person_id: string; kind: JoinKind; message: string | null; created_at: string; first_name: string; last_name: string; nickname: string | null; birth_date: string | null }>(
+  return db.getAllAsync<{
+    id: string;
+    person_id: string;
+    kind: JoinKind;
+    message: string | null;
+    created_at: string;
+    first_name: string;
+    last_name: string;
+    nickname: string | null;
+    birth_date: string | null;
+  }>(
     `SELECT r.id, r.person_id, r.kind, r.message, r.created_at, p.first_name, p.last_name, p.nickname, p.birth_date
        FROM join_request r JOIN person p ON p.id = r.person_id
       WHERE r.team_id = ? AND r.status = 'pending' ORDER BY r.created_at`,
@@ -493,9 +462,7 @@ export function setBankingDetails(db: SQLiteDatabase, table: 'team' | 'club', id
 
 /** Leaving keeps the history: the membership gets an end date instead of being deleted. */
 export function leaveTeam(db: SQLiteDatabase, membershipId: string) {
-  return write(db, () =>
-    db.runAsync(`UPDATE membership SET end_date = ?, updated_at = ? WHERE id = ?`, now().slice(0, 10), now(), membershipId),
-  );
+  return write(db, () => db.runAsync(`UPDATE membership SET end_date = ?, updated_at = ? WHERE id = ?`, now().slice(0, 10), now(), membershipId));
 }
 
 export type MembershipHistory = {
@@ -527,10 +494,7 @@ export function listVenues(db: SQLiteDatabase) {
   return db.getAllAsync<Venue>(`SELECT * FROM venue WHERE deleted_at IS NULL ORDER BY name`);
 }
 
-export function saveVenue(
-  db: SQLiteDatabase,
-  v: { id?: string; name: string; city: string | null; latitude: number | null; longitude: number | null; notes?: string | null },
-) {
+export function saveVenue(db: SQLiteDatabase, v: { id?: string; name: string; city: string | null; latitude: number | null; longitude: number | null; notes?: string | null }) {
   return write(db, async () => {
     const id = v.id ?? uuid();
     const ts = now();
@@ -562,9 +526,7 @@ export function getVenue(db: SQLiteDatabase, id: string) {
 /* ---------------- Events (tournaments, leagues) ---------------- */
 
 export function listEvents(db: SQLiteDatabase) {
-  return db.getAllAsync<EventRow>(
-    `SELECT * FROM event WHERE deleted_at IS NULL ORDER BY COALESCE(start_date, created_at) DESC`,
-  );
+  return db.getAllAsync<EventRow>(`SELECT * FROM event WHERE deleted_at IS NULL ORDER BY COALESCE(start_date, created_at) DESC`);
 }
 
 /** An event's games starting soon (from 3 hours ago to `hours` ahead) that haven't been started yet. */
@@ -633,15 +595,7 @@ export function saveEvent(db: SQLiteDatabase, e: EventInput) {
     );
     await db.runAsync(`DELETE FROM event_team WHERE event_id = ?`, id);
     for (const t of e.teams) {
-      await db.runAsync(
-        `INSERT INTO event_team (id, event_id, team_id, pool, seed, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-        uuid(),
-        id,
-        t.teamId,
-        t.pool,
-        t.seed ?? null,
-        ts,
-      );
+      await db.runAsync(`INSERT INTO event_team (id, event_id, team_id, pool, seed, created_at) VALUES (?, ?, ?, ?, ?, ?)`, uuid(), id, t.teamId, t.pool, t.seed ?? null, ts);
     }
     return id;
   });
@@ -698,18 +652,11 @@ export function getGameListItem(db: SQLiteDatabase, gameId: string) {
 }
 
 export function listGamesForEvent(db: SQLiteDatabase, eventId: string) {
-  return db.getAllAsync<GameListItem>(
-    `${GAME_LIST_SQL} AND g.event_id = ? ORDER BY COALESCE(g.scheduled_at, g.started_at, '9999'), g.created_at`,
-    eventId,
-  );
+  return db.getAllAsync<GameListItem>(`${GAME_LIST_SQL} AND g.event_id = ? ORDER BY COALESCE(g.scheduled_at, g.started_at, '9999'), g.created_at`, eventId);
 }
 
 export function listGamesForTeam(db: SQLiteDatabase, teamId: string) {
-  return db.getAllAsync<GameListItem>(
-    `${GAME_LIST_SQL} AND (g.team_a_id = ? OR g.team_b_id = ?) ORDER BY COALESCE(g.started_at, g.scheduled_at, g.created_at) DESC`,
-    teamId,
-    teamId,
-  );
+  return db.getAllAsync<GameListItem>(`${GAME_LIST_SQL} AND (g.team_a_id = ? OR g.team_b_id = ?) ORDER BY COALESCE(g.started_at, g.scheduled_at, g.created_at) DESC`, teamId, teamId);
 }
 
 export function listGamesForPerson(db: SQLiteDatabase, personId: string) {
@@ -726,10 +673,7 @@ export async function loadGameData(db: SQLiteDatabase, gameId: string): Promise<
   const [points, events, lines, players] = await Promise.all([
     db.getAllAsync<Point>(`SELECT * FROM point WHERE game_id = ? ORDER BY number`, gameId),
     db.getAllAsync<GameEvent>(`SELECT * FROM game_event WHERE game_id = ? ORDER BY seq`, gameId),
-    db.getAllAsync<{ point_id: string; team_id: string; person_id: string }>(
-      `SELECT pp.* FROM point_player pp JOIN point p ON p.id = pp.point_id WHERE p.game_id = ?`,
-      gameId,
-    ),
+    db.getAllAsync<{ point_id: string; team_id: string; person_id: string }>(`SELECT pp.* FROM point_player pp JOIN point p ON p.id = pp.point_id WHERE p.game_id = ?`, gameId),
     db.getAllAsync<GamePlayer>(`SELECT * FROM game_player WHERE game_id = ?`, gameId),
   ]);
   return { game, points, events, lines, players };
@@ -769,15 +713,7 @@ export function createGame(db: SQLiteDatabase, g: NewGame) {
       ts,
     );
     for (const s of g.squads) {
-      await db.runAsync(
-        `INSERT INTO game_player (id, game_id, team_id, person_id, jersey_number, position) VALUES (?, ?, ?, ?, ?, ?)`,
-        uuid(),
-        id,
-        s.teamId,
-        s.personId,
-        s.jersey,
-        s.position,
-      );
+      await db.runAsync(`INSERT INTO game_player (id, game_id, team_id, person_id, jersey_number, position) VALUES (?, ?, ?, ?, ?, ?)`, uuid(), id, s.teamId, s.personId, s.jersey, s.position);
     }
     const receiving = g.firstPullTeamId === g.teamAId ? g.teamBId : g.teamAId;
     await insertPoint(db, id, 1, 1, receiving, ratioForPoint(1, g.ratioPoint1));
@@ -844,13 +780,7 @@ export function updateFixture(db: SQLiteDatabase, gameId: string, f: { scheduled
       gameId,
     );
     if (before?.scheduled_at !== f.scheduledAt) {
-      await db.runAsync(
-        `INSERT INTO game_status_log (id, game_id, action, previous_scheduled_at, created_at) VALUES (?, ?, 'reschedule', ?, ?)`,
-        uuid(),
-        gameId,
-        before?.scheduled_at ?? null,
-        now(),
-      );
+      await db.runAsync(`INSERT INTO game_status_log (id, game_id, action, previous_scheduled_at, created_at) VALUES (?, ?, 'reschedule', ?, ?)`, uuid(), gameId, before?.scheduled_at ?? null, now());
     }
   });
 }
@@ -870,14 +800,7 @@ export function statusLog(db: SQLiteDatabase, gameId: string) {
 }
 
 /** Postpone a league game (max twice). The new date can be set now or later (date TBC). */
-export function postponeGame(
-  db: SQLiteDatabase,
-  gameId: string,
-  byTeamId: string,
-  reason: StatusReason,
-  note: string | null,
-  newScheduledAt: string | null,
-) {
+export function postponeGame(db: SQLiteDatabase, gameId: string, byTeamId: string, reason: StatusReason, note: string | null, newScheduledAt: string | null) {
   return write(db, async () => {
     const g = await db.getFirstAsync<{ scheduled_at: string | null; postponements: number; kind: EventKind | null }>(
       `SELECT g.scheduled_at, g.postponements, e.kind FROM game g LEFT JOIN event e ON e.id = g.event_id WHERE g.id = ?`,
@@ -895,12 +818,7 @@ export function postponeGame(
       g.scheduled_at,
       now(),
     );
-    await db.runAsync(
-      `UPDATE game SET postponements = postponements + 1, scheduled_at = ?, updated_at = ? WHERE id = ?`,
-      newScheduledAt,
-      now(),
-      gameId,
-    );
+    await db.runAsync(`UPDATE game SET postponements = postponements + 1, scheduled_at = ?, updated_at = ? WHERE id = ?`, newScheduledAt, now(), gameId);
   });
 }
 
@@ -908,22 +826,8 @@ export function postponeGame(
 export function forfeitGame(db: SQLiteDatabase, gameId: string, forfeitingTeamId: string, reason: StatusReason, note: string | null) {
   return write(db, async () => {
     const ts = now();
-    await db.runAsync(
-      `INSERT INTO game_status_log (id, game_id, action, team_id, reason, note, created_at) VALUES (?, ?, 'forfeit', ?, ?, ?, ?)`,
-      uuid(),
-      gameId,
-      forfeitingTeamId,
-      reason,
-      note,
-      ts,
-    );
-    await db.runAsync(
-      `UPDATE game SET status = 'final', forfeit_team_id = ?, ended_at = ?, updated_at = ? WHERE id = ?`,
-      forfeitingTeamId,
-      ts,
-      ts,
-      gameId,
-    );
+    await db.runAsync(`INSERT INTO game_status_log (id, game_id, action, team_id, reason, note, created_at) VALUES (?, ?, 'forfeit', ?, ?, ?, ?)`, uuid(), gameId, forfeitingTeamId, reason, note, ts);
+    await db.runAsync(`UPDATE game SET status = 'final', forfeit_team_id = ?, ended_at = ?, updated_at = ? WHERE id = ?`, forfeitingTeamId, ts, ts, gameId);
     const ev = await db.getFirstAsync<{ event_id: string | null }>(`SELECT event_id FROM game WHERE id = ?`, gameId);
     if (ev?.event_id) await fillBracket(db, ev.event_id);
   });
@@ -948,15 +852,7 @@ export function startScheduledGame(db: SQLiteDatabase, gameId: string, g: NewGam
     );
     await db.runAsync(`DELETE FROM game_player WHERE game_id = ?`, gameId);
     for (const sq of g.squads) {
-      await db.runAsync(
-        `INSERT INTO game_player (id, game_id, team_id, person_id, jersey_number, position) VALUES (?, ?, ?, ?, ?, ?)`,
-        uuid(),
-        gameId,
-        sq.teamId,
-        sq.personId,
-        sq.jersey,
-        sq.position,
-      );
+      await db.runAsync(`INSERT INTO game_player (id, game_id, team_id, person_id, jersey_number, position) VALUES (?, ?, ?, ?, ?, ?)`, uuid(), gameId, sq.teamId, sq.personId, sq.jersey, sq.position);
     }
     const receiving = g.firstPullTeamId === g.teamAId ? g.teamBId : g.teamAId;
     await insertPoint(db, gameId, 1, 1, receiving, ratioForPoint(1, g.ratioPoint1));
@@ -966,16 +862,7 @@ export function startScheduledGame(db: SQLiteDatabase, gameId: string, g: NewGam
 
 async function insertPoint(db: SQLiteDatabase, gameId: string, number: number, half: number, offense: string, ratio: string | null) {
   const id = uuid();
-  await db.runAsync(
-    `INSERT INTO point (id, game_id, number, half, offense_team_id, ratio, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    id,
-    gameId,
-    number,
-    half,
-    offense,
-    ratio,
-    now(),
-  );
+  await db.runAsync(`INSERT INTO point (id, game_id, number, half, offense_team_id, ratio, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, id, gameId, number, half, offense, ratio, now());
   return id;
 }
 
@@ -1056,9 +943,7 @@ export function pull(db: SQLiteDatabase, gameId: string, pointId: string) {
 }
 
 export function setPullDetails(db: SQLiteDatabase, pointId: string, pullerId: string | null, outcome: PullOutcome) {
-  return write(db, () =>
-    db.runAsync(`UPDATE point SET puller_id = ?, pull_outcome = ? WHERE id = ?`, pullerId, outcome, pointId),
-  );
+  return write(db, () => db.runAsync(`UPDATE point SET puller_id = ?, pull_outcome = ? WHERE id = ?`, pullerId, outcome, pointId));
 }
 
 /**
@@ -1100,23 +985,15 @@ export function scorePoint(
     }
     if (top >= rules.pointTarget) return { gameOver: true };
 
-    const offense =
-      startsSecondHalf && game.first_pull_team_id ? game.first_pull_team_id : otherTeam(game, scoringTeamId);
+    const offense = startsSecondHalf && game.first_pull_team_id ? game.first_pull_team_id : otherTeam(game, scoringTeamId);
     const n = point.number + 1;
     await insertPoint(db, game.id, n, startsSecondHalf ? 2 : point.half, offense, ratioForPoint(n, game.ratio_point1));
     return { gameOver: false };
   });
 }
 
-export function updateScoreNames(
-  db: SQLiteDatabase,
-  eventId: string,
-  scorerId: string | null,
-  assistId: string | null,
-) {
-  return write(db, () =>
-    db.runAsync(`UPDATE game_event SET actor_id = ?, secondary_id = ? WHERE id = ?`, scorerId, assistId, eventId),
-  );
+export function updateScoreNames(db: SQLiteDatabase, eventId: string, scorerId: string | null, assistId: string | null) {
+  return write(db, () => db.runAsync(`UPDATE game_event SET actor_id = ?, secondary_id = ? WHERE id = ?`, scorerId, assistId, eventId));
 }
 
 export const END_REASONS = {
@@ -1176,12 +1053,7 @@ export function undo(db: SQLiteDatabase, data: GameData) {
         await db.runAsync(`UPDATE game_event SET voided_at = ? WHERE id = ?`, ts, lastInPoint.id);
         if (lastInPoint.type === 'injury_sub' && lastInPoint.actor_id && lastInPoint.secondary_id && lastInPoint.team_id) {
           await db.runAsync(`DELETE FROM point_player WHERE point_id = ? AND person_id = ?`, current.id, lastInPoint.secondary_id);
-          await db.runAsync(
-            `INSERT OR IGNORE INTO point_player (point_id, team_id, person_id) VALUES (?, ?, ?)`,
-            current.id,
-            lastInPoint.team_id,
-            lastInPoint.actor_id,
-          );
+          await db.runAsync(`INSERT OR IGNORE INTO point_player (point_id, team_id, person_id) VALUES (?, ?, ?)`, current.id, lastInPoint.team_id, lastInPoint.actor_id);
         }
         return 'event';
       }
@@ -1202,11 +1074,7 @@ export function undo(db: SQLiteDatabase, data: GameData) {
       await db.runAsync(`DELETE FROM point_player WHERE point_id = ?`, current.id);
       await db.runAsync(`DELETE FROM point WHERE id = ?`, current.id);
     }
-    await db.runAsync(
-      `UPDATE game_event SET voided_at = ? WHERE point_id = ? AND type IN ('score','callahan','halftime') AND voided_at IS NULL`,
-      ts,
-      previous.id,
-    );
+    await db.runAsync(`UPDATE game_event SET voided_at = ? WHERE point_id = ? AND type IN ('score','callahan','halftime') AND voided_at IS NULL`, ts, previous.id);
     await db.runAsync(`UPDATE point SET scored_at = NULL, scoring_team_id = NULL WHERE id = ?`, previous.id);
     if (data.game.status === 'final') {
       await db.runAsync(`UPDATE game SET status = 'live', ended_at = NULL WHERE id = ?`, data.game.id);
@@ -1217,39 +1085,22 @@ export function undo(db: SQLiteDatabase, data: GameData) {
 }
 
 export function setPlayerStatus(db: SQLiteDatabase, gameId: string, personId: string, status: GamePlayer['status']) {
-  return write(db, () =>
-    db.runAsync(`UPDATE game_player SET status = ? WHERE game_id = ? AND person_id = ?`, status, gameId, personId),
-  );
+  return write(db, () => db.runAsync(`UPDATE game_player SET status = ? WHERE game_id = ? AND person_id = ?`, status, gameId, personId));
 }
 
 export function addGamePlayer(db: SQLiteDatabase, gameId: string, teamId: string, personId: string, jersey: string | null) {
   return write(db, () =>
-    db.runAsync(
-      `INSERT OR IGNORE INTO game_player (id, game_id, team_id, person_id, jersey_number, added_in_game) VALUES (?, ?, ?, ?, ?, 1)`,
-      uuid(),
-      gameId,
-      teamId,
-      personId,
-      jersey,
-    ),
+    db.runAsync(`INSERT OR IGNORE INTO game_player (id, game_id, team_id, person_id, jersey_number, added_in_game) VALUES (?, ?, ?, ?, ?, 1)`, uuid(), gameId, teamId, personId, jersey),
   );
 }
 
 /** After the game: team staff confirm or remove, or a player confirms they played. */
 export function setConfirmation(db: SQLiteDatabase, gameId: string, personId: string, confirmation: GamePlayer['confirmation']) {
-  return write(db, () =>
-    db.runAsync(`UPDATE game_player SET confirmation = ? WHERE game_id = ? AND person_id = ?`, confirmation, gameId, personId),
-  );
+  return write(db, () => db.runAsync(`UPDATE game_player SET confirmation = ? WHERE game_id = ? AND person_id = ?`, confirmation, gameId, personId));
 }
 
 export function confirmTeamRoster(db: SQLiteDatabase, gameId: string, teamId: string) {
-  return write(db, () =>
-    db.runAsync(
-      `UPDATE game_player SET confirmation = 'confirmed' WHERE game_id = ? AND team_id = ? AND confirmation IN ('pending','played')`,
-      gameId,
-      teamId,
-    ),
-  );
+  return write(db, () => db.runAsync(`UPDATE game_player SET confirmation = 'confirmed' WHERE game_id = ? AND team_id = ? AND confirmation IN ('pending','played')`, gameId, teamId));
 }
 
 /* ---------------- Following ---------------- */
@@ -1278,14 +1129,14 @@ export function setFollowing(db: SQLiteDatabase, kind: FollowKind, targetId: str
  */
 export async function myScope(db: SQLiteDatabase) {
   const meId = await getMeId(db);
-  const mine = meId
-    ? (await db.getAllAsync<{ team_id: string }>(`SELECT team_id FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`, meId)).map((r) => r.team_id)
-    : [];
+  const mine = meId ? (await db.getAllAsync<{ team_id: string }>(`SELECT team_id FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`, meId)).map((r) => r.team_id) : [];
   const follows = await listFollows(db);
   const players = follows.filter((f) => f.kind === 'player').map((f) => f.target_id);
   // Teams of players you follow count as followed, so their games show under "For you".
   const theirTeams = players.length
-    ? (await db.getAllAsync<{ team_id: string }>(`SELECT team_id FROM membership WHERE person_id IN (${players.map(() => '?').join(',')}) AND end_date IS NULL AND deleted_at IS NULL`, ...players)).map((r) => r.team_id)
+    ? (
+        await db.getAllAsync<{ team_id: string }>(`SELECT team_id FROM membership WHERE person_id IN (${players.map(() => '?').join(',')}) AND end_date IS NULL AND deleted_at IS NULL`, ...players)
+      ).map((r) => r.team_id)
     : [];
   const teamIds = new Set([...mine, ...follows.filter((f) => f.kind === 'team').map((f) => f.target_id), ...theirTeams]);
   const eventIds = new Set(follows.filter((f) => f.kind === 'event').map((f) => f.target_id));
@@ -1310,14 +1161,8 @@ export function deleteGame(db: SQLiteDatabase, gameId: string) {
 /* ---------------- Saved lines ---------------- */
 
 export async function savedLines(db: SQLiteDatabase, teamId: string): Promise<SavedLine[]> {
-  const lines = await db.getAllAsync<Omit<SavedLine, 'member_ids'>>(
-    `SELECT id, team_id, name, side FROM saved_line WHERE team_id = ? AND deleted_at IS NULL ORDER BY created_at`,
-    teamId,
-  );
-  const members = await db.getAllAsync<{ line_id: string; person_id: string }>(
-    `SELECT m.* FROM saved_line_member m JOIN saved_line l ON l.id = m.line_id WHERE l.team_id = ?`,
-    teamId,
-  );
+  const lines = await db.getAllAsync<Omit<SavedLine, 'member_ids'>>(`SELECT id, team_id, name, side FROM saved_line WHERE team_id = ? AND deleted_at IS NULL ORDER BY created_at`, teamId);
+  const members = await db.getAllAsync<{ line_id: string; person_id: string }>(`SELECT m.* FROM saved_line_member m JOIN saved_line l ON l.id = m.line_id WHERE l.team_id = ?`, teamId);
   return lines.map((l) => ({ ...l, member_ids: members.filter((m) => m.line_id === l.id).map((m) => m.person_id) }));
 }
 
@@ -1354,10 +1199,7 @@ export function spiritForGame(db: SQLiteDatabase, gameId: string) {
 }
 
 export function spiritForEvent(db: SQLiteDatabase, eventId: string) {
-  return db.getAllAsync<SpiritScore>(
-    `SELECT s.* FROM spirit_score s JOIN game g ON g.id = s.game_id WHERE g.event_id = ? AND g.deleted_at IS NULL`,
-    eventId,
-  );
+  return db.getAllAsync<SpiritScore>(`SELECT s.* FROM spirit_score s JOIN game g ON g.id = s.game_id WHERE g.event_id = ? AND g.deleted_at IS NULL`, eventId);
 }
 
 export function saveSpirit(db: SQLiteDatabase, s: Omit<SpiritScore, 'id' | 'submitted_at'>) {
@@ -1440,9 +1282,7 @@ export function deletePickup(db: SQLiteDatabase, id: string) {
 }
 
 export function listCalendar(db: SQLiteDatabase) {
-  return db.getAllAsync<CalendarEntry>(
-    `SELECT * FROM calendar_entry WHERE deleted_at IS NULL ORDER BY COALESCE(start_date, '9999'), name`,
-  );
+  return db.getAllAsync<CalendarEntry>(`SELECT * FROM calendar_entry WHERE deleted_at IS NULL ORDER BY COALESCE(start_date, '9999'), name`);
 }
 
 export function getCalendarEntry(db: SQLiteDatabase, id: string) {
@@ -1752,7 +1592,16 @@ export function setRsvp(db: SQLiteDatabase, sessionId: string, personId: string,
   });
 }
 
-export type PracticeAttendee = { personId: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; photo_uri: string | null; status: RsvpStatus | null; reason: string | null };
+export type PracticeAttendee = {
+  personId: string;
+  first_name: string;
+  last_name: string;
+  birth_date: string | null;
+  gender: Gender | null;
+  photo_uri: string | null;
+  status: RsvpStatus | null;
+  reason: string | null;
+};
 
 /** A practice with everyone on the squad and their answer (null = hasn't said). */
 export async function practiceDetail(db: SQLiteDatabase, id: string) {
@@ -1868,18 +1717,10 @@ export function reflectionsFor(db: SQLiteDatabase, target: { gameId?: string; se
     : db.getAllAsync<ReflectionRow>(`SELECT * FROM reflection WHERE ${col} = ? ORDER BY created_at`, id);
 }
 
-export function saveShoutout(
-  db: SQLiteDatabase,
-  s: { fromId: string; toId: string; teamId: string | null; gameId: string | null; sessionId: string | null; reason: string | null },
-) {
+export function saveShoutout(db: SQLiteDatabase, s: { fromId: string; toId: string; teamId: string | null; gameId: string | null; sessionId: string | null; reason: string | null }) {
   return write(db, async () => {
     // One shout-out per person per game/session: replace any earlier one.
-    await db.runAsync(
-      `DELETE FROM shoutout WHERE from_person_id = ? AND COALESCE(game_id, '') = COALESCE(?, '') AND COALESCE(session_id, '') = COALESCE(?, '')`,
-      s.fromId,
-      s.gameId,
-      s.sessionId,
-    );
+    await db.runAsync(`DELETE FROM shoutout WHERE from_person_id = ? AND COALESCE(game_id, '') = COALESCE(?, '') AND COALESCE(session_id, '') = COALESCE(?, '')`, s.fromId, s.gameId, s.sessionId);
     await db.runAsync(
       `INSERT INTO shoutout (id, from_person_id, to_person_id, team_id, game_id, session_id, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       uuid(),
@@ -1960,7 +1801,16 @@ export async function personLog(db: SQLiteDatabase, personId: string): Promise<L
         AND gp.confirmation != 'removed'`,
     personId,
   );
-  const sessions = await db.getAllAsync<{ id: string; kind: LogEntry['kind']; date: string; title: string | null; team: string | null; minutes: number | null; duration_min: number; rpe: number | null }>(
+  const sessions = await db.getAllAsync<{
+    id: string;
+    kind: LogEntry['kind'];
+    date: string;
+    title: string | null;
+    team: string | null;
+    minutes: number | null;
+    duration_min: number;
+    rpe: number | null;
+  }>(
     `SELECT s.id, s.kind, s.started_at AS date, s.title, t.name AS team, r.minutes, s.duration_min, r.rpe
        FROM reflection r JOIN session s ON s.id = r.session_id LEFT JOIN team t ON t.id = s.team_id
       WHERE r.person_id = ? AND s.deleted_at IS NULL`,

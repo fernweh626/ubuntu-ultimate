@@ -78,7 +78,7 @@ export function FieldPicker({ value, onChange }: { value: string | null; onChang
           <Choice
             key={f.id}
             label={f.name}
-            sublabel={f.distance != null ? formatDistance(f.distance) : f.city ?? undefined}
+            sublabel={f.distance != null ? formatDistance(f.distance) : (f.city ?? undefined)}
             selected={value === f.id}
             onPress={() => onChange(f.id)}
             style={{ paddingHorizontal: 14 }}
@@ -136,9 +136,7 @@ function AddFieldForm({ onClose, onSaved }: { onClose: () => void; onSaved?: (id
 
   return (
     <>
-      <T v="small">
-        {locating ? 'Getting your location…' : pos ? 'Saved at your current spot. Stand on the field when you save it.' : 'Location is off — turn it on to save a field.'}
-      </T>
+      <T v="small">{locating ? 'Getting your location…' : pos ? 'Saved at your current spot. Stand on the field when you save it.' : 'Location is off — turn it on to save a field.'}</T>
       <Field label="Name people use for it" value={name} onChangeText={setName} placeholder="e.g. Plumstead 2, Green Point back field" autoFocus />
       <Field label="Suburb / town" value={area} onChangeText={setArea} placeholder="Filled in from your location" />
       <Button label="Save field" icon="map-marker-plus" kind="primary" big onPress={save} disabled={locating} />

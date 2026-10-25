@@ -34,7 +34,6 @@ const LEVELS = ['international', 'national', 'regional', 'league', 'social'];
 const KINDS = ['tournament', 'league', 'hat', 'camp', 'agm', 'sgm', 'meeting', 'other'];
 const TIME = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
-
 export default function CalendarEdit() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const db = useSQLiteContext();
@@ -149,13 +148,13 @@ export default function CalendarEdit() {
           </>
         ) : null}
         {!isMeeting(f.kind) ? (
-        <Section title="Level">
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            {LEVELS.map((k) => (
-              <Choice key={k} label={k[0].toUpperCase() + k.slice(1)} selected={f.level === k} onPress={() => set('level', k)} style={{ paddingHorizontal: 14 }} />
-            ))}
-          </View>
-        </Section>
+          <Section title="Level">
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+              {LEVELS.map((k) => (
+                <Choice key={k} label={k[0].toUpperCase() + k.slice(1)} selected={f.level === k} onPress={() => set('level', k)} style={{ paddingHorizontal: 14 }} />
+              ))}
+            </View>
+          </Section>
         ) : null}
         {!isMeeting(f.kind) ? (
           <View style={{ flexDirection: 'row', gap: space.md }}>
@@ -167,9 +166,7 @@ export default function CalendarEdit() {
             </View>
           </View>
         ) : null}
-        {!start ? (
-          <Field label="Roughly when (until dates are set)" value={f.month_hint ?? ''} onChangeText={(v) => set('month_hint', v || null)} placeholder="e.g. October" />
-        ) : null}
+        {!start ? <Field label="Roughly when (until dates are set)" value={f.month_hint ?? ''} onChangeText={(v) => set('month_hint', v || null)} placeholder="e.g. October" /> : null}
         <Section title="Region">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
             <Choice label="National" selected={!f.region} onPress={() => set('region', null)} style={{ paddingHorizontal: 14 }} />

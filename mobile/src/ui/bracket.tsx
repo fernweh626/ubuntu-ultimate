@@ -104,13 +104,7 @@ export function BracketView({
                           const winner = state.get(from.slot.id)?.winner;
                           const lit = !!highlight && winner === highlight;
                           return (
-                            <Path
-                              key={`${from.slot.id}-${p.slot.id}`}
-                              d={`M${x1} ${y1} H${mid} V${y2} H${x2}`}
-                              stroke={lit ? colors.brand : colors.border}
-                              strokeWidth={lit ? 3 : 1.5}
-                              fill="none"
-                            />
+                            <Path key={`${from.slot.id}-${p.slot.id}`} d={`M${x1} ${y1} H${mid} V${y2} H${x2}`} stroke={lit ? colors.brand : colors.border} strokeWidth={lit ? 3 : 1.5} fill="none" />
                           );
                         }),
                     )}
@@ -159,11 +153,16 @@ export function BracketView({
                               key={i}
                               disabled={!real}
                               onPress={() => setHighlight(highlight === real ? null : real)}
-                              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 26, borderRadius: 6, backgroundColor: real && real === highlight ? colors.brandTint : 'transparent' }}>
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 6,
+                                minHeight: 26,
+                                borderRadius: 6,
+                                backgroundColor: real && real === highlight ? colors.brandTint : 'transparent',
+                              }}>
                               <View style={{ width: 6, height: 18, borderRadius: 2, backgroundColor: real ? teamColor(real) || DEFAULT_TEAM_COLOR : colors.divider }} />
-                              <T
-                                numberOfLines={1}
-                                style={{ flex: 1, fontSize: 14, fontFamily: won ? font.bold : real ? font.semibold : font.regular, color: real ? colors.ink : colors.faint }}>
+                              <T numberOfLines={1} style={{ flex: 1, fontSize: 14, fontFamily: won ? font.bold : real ? font.semibold : font.regular, color: real ? colors.ink : colors.faint }}>
                                 {real ? teamName(real) : s.team === NOBODY ? 'Bye' : describeSource(s.src, slotName)}
                               </T>
                               {s.score != null ? <T style={{ fontFamily: font.display, fontSize: 18, color: won ? colors.ink : colors.muted }}>{s.score}</T> : null}

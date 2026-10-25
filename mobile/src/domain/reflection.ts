@@ -92,8 +92,7 @@ export function summarise(rows: ReflectionRow[], nameOf: (personId: string) => s
   const a = rows.map((r) => ({ r, ans: parseAnswers(r.answers_json), name: nameOf(r.person_id) }));
   const playingTime: Record<PlayingTime, string[]> = { too_little: [], right: [], too_much: [] };
   for (const x of a) if (x.r.playing_time) playingTime[x.r.playing_time].push(x.name);
-  const texts = (k: keyof Answers) =>
-    a.filter((x) => typeof x.ans[k] === 'string' && (x.ans[k] as string).trim()).map((x) => ({ name: x.name, text: (x.ans[k] as string).trim() }));
+  const texts = (k: keyof Answers) => a.filter((x) => typeof x.ans[k] === 'string' && (x.ans[k] as string).trim()).map((x) => ({ name: x.name, text: (x.ans[k] as string).trim() }));
   return {
     responses: rows.length,
     avgRpe: avg(rows.map((r) => r.rpe).filter((v): v is number => v != null)),
@@ -115,11 +114,9 @@ export function summarise(rows: ReflectionRow[], nameOf: (personId: string) => s
 /** Plain-text debrief for staff to edit and share (WhatsApp, email). */
 export function debriefText(title: string, s: StaffSummary, squadSize: number) {
   const lines: string[] = [`*${title}* — team debrief`, `${s.responses} of ${squadSize} players replied.`];
-  const nums = [
-    s.avgRpe != null ? `effort ${s.avgRpe}/10` : null,
-    s.avgOffence != null ? `offence ${s.avgOffence}/5` : null,
-    s.avgDefence != null ? `defence ${s.avgDefence}/5` : null,
-  ].filter(Boolean);
+  const nums = [s.avgRpe != null ? `effort ${s.avgRpe}/10` : null, s.avgOffence != null ? `offence ${s.avgOffence}/5` : null, s.avgDefence != null ? `defence ${s.avgDefence}/5` : null].filter(
+    Boolean,
+  );
   if (nums.length) lines.push(`Averages: ${nums.join(', ')}.`);
   const bullets = (head: string, items: { text: string }[]) => {
     if (!items.length) return;

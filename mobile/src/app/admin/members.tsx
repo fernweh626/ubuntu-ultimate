@@ -52,7 +52,25 @@ export default function Members() {
     // Individuals' population group is left out on purpose: it's special personal information. Totals are on screen.
     const head = ['Number', 'First name', 'Surname', 'Email', 'Cell', 'Gender', 'Year of birth', 'Involvement', 'Membership', 'Fee', 'Status', 'Reference', 'Submitted', 'Paid on'];
     const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const lines = [head, ...rows.map((r) => [r.number, r.first_name, r.last_name, r.email, r.phone, r.gender === 'W' ? 'Women matching' : r.gender === 'M' ? 'Man matching' : '', r.birth_year, assoc.involvement.find((i) => i.key === r.involvement)?.label ?? r.involvement, assoc.options.find((o) => o.key === r.option)?.label ?? '', r.fee_cents ? formatRand(r.fee_cents) : '', STATUS_LABEL[r.status], r.pay_reference, r.submitted_at?.slice(0, 10), r.paid_at?.slice(0, 10)])];
+    const lines = [
+      head,
+      ...rows.map((r) => [
+        r.number,
+        r.first_name,
+        r.last_name,
+        r.email,
+        r.phone,
+        r.gender === 'W' ? 'Women matching' : r.gender === 'M' ? 'Man matching' : '',
+        r.birth_year,
+        assoc.involvement.find((i) => i.key === r.involvement)?.label ?? r.involvement,
+        assoc.options.find((o) => o.key === r.option)?.label ?? '',
+        r.fee_cents ? formatRand(r.fee_cents) : '',
+        STATUS_LABEL[r.status],
+        r.pay_reference,
+        r.submitted_at?.slice(0, 10),
+        r.paid_at?.slice(0, 10),
+      ]),
+    ];
     const csv = lines.map((l) => l.map(esc).join(',')).join('\n');
     const name = `${assoc.short}-${season}-members.csv`;
     if (IS_WEB) return webShareFiles([{ src: `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`, name, mime: 'text/csv' }], name);
@@ -74,7 +92,10 @@ export default function Members() {
       const p = parseRosterCsv(text, assoc.numberPrefix);
       if (!p.rows.length) return Alert.alert('Nothing to upload', 'No rows with an email or member number. Is this the form’s CSV export (Google Forms → Responses → Download)?');
       const n = await uploadRoster(assoc, p.rows);
-      Alert.alert('Uploaded', `${n} members on the ${assoc.short} list (${p.skipped} rows skipped). Read: ${p.found.join(', ')}.\n\nWhen someone signs in with a matching email, their form fills itself in.`);
+      Alert.alert(
+        'Uploaded',
+        `${n} members on the ${assoc.short} list (${p.skipped} rows skipped). Read: ${p.found.join(', ')}.\n\nWhen someone signs in with a matching email, their form fills itself in.`,
+      );
     } catch (e) {
       Alert.alert('Upload failed', `${(e as Error).message}\n\nYou need signal and to be signed in as an admin.`);
     } finally {
@@ -110,13 +131,35 @@ export default function Members() {
           </Card>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.sm,
+            backgroundColor: colors.surface,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: space.md,
+          }}>
           <Icon name="magnify" color={colors.muted} />
-          <TextInput value={q} onChangeText={setQ} placeholder="Search name, number, email or reference" placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }} />
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder="Search name, number, email or reference"
+            placeholderTextColor={colors.faint}
+            style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }}
+          />
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           {(['all', 'unpaid', 'claimed', 'paid', 'social'] as Filter[]).map((f) => (
-            <Choice key={f} label={`${f === 'all' ? 'All' : f === 'claimed' ? 'Says paid' : f[0].toUpperCase() + f.slice(1)} · ${count(f)}`} selected={filter === f} onPress={() => setFilter(f)} style={{ minHeight: 36, paddingHorizontal: 12 }} />
+            <Choice
+              key={f}
+              label={`${f === 'all' ? 'All' : f === 'claimed' ? 'Says paid' : f[0].toUpperCase() + f.slice(1)} · ${count(f)}`}
+              selected={filter === f}
+              onPress={() => setFilter(f)}
+              style={{ minHeight: 36, paddingHorizontal: 12 }}
+            />
           ))}
         </View>
 
@@ -126,7 +169,14 @@ export default function Members() {
               <Row
                 key={r.id}
                 title={`${r.first_name} ${r.last_name}`.trim()}
-                subtitle={[r.number ?? 'No number yet', assoc.options.find((o) => o.key === r.option)?.label, r.fee_cents ? formatRand(r.fee_cents) : null, r.pay_reference && r.pay_reference !== r.number ? `ref ${r.pay_reference}` : null].filter(Boolean).join(' · ')}
+                subtitle={[
+                  r.number ?? 'No number yet',
+                  assoc.options.find((o) => o.key === r.option)?.label,
+                  r.fee_cents ? formatRand(r.fee_cents) : null,
+                  r.pay_reference && r.pay_reference !== r.number ? `ref ${r.pay_reference}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
                 right={<Chip label={STATUS_LABEL[r.status]} tone={r.status === 'paid' ? 'brand' : r.status === 'unpaid' || r.status === 'claimed' ? 'warn' : 'neutral'} />}
                 onPress={
                   r.fee_cents
@@ -174,7 +224,10 @@ export default function Members() {
         <Section title="Spreadsheet & past forms">
           <Button label="Export register (CSV)" icon="file-delimited-outline" onPress={exportCsv} />
           <Button label={busy ? 'Uploading…' : `Upload past & current ${assoc.short} forms (CSV)`} icon="file-upload-outline" disabled={busy} onPress={uploadForms} />
-          <T v="small">From Google Forms: Responses → Download responses (.csv). Upload every year’s file. The list stays on the server; each member only ever sees their own row, matched on their email, to fill in their form. Numbers carry on from the highest one on the list.</T>
+          <T v="small">
+            From Google Forms: Responses → Download responses (.csv). Upload every year’s file. The list stays on the server; each member only ever sees their own row, matched on their email, to fill
+            in their form. Numbers carry on from the highest one on the list.
+          </T>
         </Section>
       </Screen>
     </>

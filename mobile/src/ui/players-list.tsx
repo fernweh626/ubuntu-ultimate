@@ -46,7 +46,14 @@ export function PlayersList() {
       title={`${p.first_name} ${p.last_name}`.trim()}
       subtitle={[p.preferred_number ? `#${p.preferred_number}` : null, p.teams].filter(Boolean).join(' · ') || 'No team yet'}
       left={<Avatar uri={p.photo_uri} name={`${p.first_name} ${p.last_name}`} size={36} />}
-      right={<IconButton icon={followed.has(p.id) ? 'star' : 'star-outline'} color={followed.has(p.id) ? colors.warn : colors.muted} label={followed.has(p.id) ? 'Unfollow' : 'Follow'} onPress={() => setFollowing(db, 'player', p.id, !followed.has(p.id))} />}
+      right={
+        <IconButton
+          icon={followed.has(p.id) ? 'star' : 'star-outline'}
+          color={followed.has(p.id) ? colors.warn : colors.muted}
+          label={followed.has(p.id) ? 'Unfollow' : 'Follow'}
+          onPress={() => setFollowing(db, 'player', p.id, !followed.has(p.id))}
+        />
+      }
       onPress={() => router.push(`/player/${p.id}`)}
     />
   );
@@ -54,15 +61,35 @@ export function PlayersList() {
 
   return (
     <View style={{ paddingHorizontal: space.lg, gap: space.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.sm,
+          backgroundColor: colors.surface,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingHorizontal: space.md,
+        }}>
         <Icon name="magnify" color={colors.muted} />
-        <TextInput value={q} onChangeText={setQ} placeholder="Search players by name" placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }} />
+        <TextInput
+          value={q}
+          onChangeText={setQ}
+          placeholder="Search players by name"
+          placeholderTextColor={colors.faint}
+          style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }}
+        />
       </View>
       {s.length >= 2 ? <Section title={`Found · ${found.length}`}>{found.length ? group(found) : <T v="small">Nobody by that name.</T>}</Section> : null}
       {mine.length ? (
         <Section title="Following">{group(mine)}</Section>
       ) : s.length < 2 ? (
-        <EmptyState icon="star-outline" title="Follow a player" body="Search for your partner, a friend or a player you love watching, and tap the star. Their games show on Home under “For you”. They aren’t told who follows them." />
+        <EmptyState
+          icon="star-outline"
+          title="Follow a player"
+          body="Search for your partner, a friend or a player you love watching, and tap the star. Their games show on Home under “For you”. They aren’t told who follows them."
+        />
       ) : null}
     </View>
   );

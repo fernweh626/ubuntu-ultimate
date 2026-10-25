@@ -46,9 +46,7 @@ export function Availability({ gameId, teams }: { gameId: string; teams: { id: s
                 yesLabel="I can play"
                 noLabel="Can’t play"
                 value={me.status === 'available' ? 'yes' : me.status === 'late' ? 'late' : me.status === 'unavailable' ? 'no' : null}
-                onAnswer={(a, note) =>
-                  bundle.meId && setAvailability(db, gameId, team.id, bundle.meId, a === 'yes' ? 'available' : a === 'late' ? 'late' : a === 'no' ? 'unavailable' : null, note)
-                }
+                onAnswer={(a, note) => bundle.meId && setAvailability(db, gameId, team.id, bundle.meId, a === 'yes' ? 'available' : a === 'late' ? 'late' : a === 'no' ? 'unavailable' : null, note)}
               />
             ) : null}
             <View style={{ flexDirection: 'row', gap: space.md, flexWrap: 'wrap' }}>
@@ -60,7 +58,11 @@ export function Availability({ gameId, teams }: { gameId: string; teams: { id: s
             </View>
             {yes.length ? <T v="small">Available: {yes.map((p) => `${displayName(p)}${p.status === 'late' ? ` (late${staff && p.reason ? `, ${p.reason}` : ''})` : ''}`).join(', ')}</T> : null}
             {staff && no.length ? <T v="small">Can’t: {no.map((p) => `${displayName(p)}${p.reason ? ` (${p.reason})` : ''}`).join(', ')}</T> : null}
-            {staff && quiet.length ? <T v="small" style={{ color: colors.muted }}>Haven’t said: {quiet.map((p) => displayName(p)).join(', ')}</T> : null}
+            {staff && quiet.length ? (
+              <T v="small" style={{ color: colors.muted }}>
+                Haven’t said: {quiet.map((p) => displayName(p)).join(', ')}
+              </T>
+            ) : null}
           </Section>
         );
       })}

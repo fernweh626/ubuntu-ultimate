@@ -36,7 +36,11 @@ export default function Play() {
       ) : null}
       {feed?.competitions.length ? (
         <Section title="Your competitions">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingRight: space.lg }} style={{ marginHorizontal: -space.lg, paddingLeft: space.lg }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: space.sm, paddingRight: space.lg }}
+            style={{ marginHorizontal: -space.lg, paddingLeft: space.lg }}>
             {feed.competitions.map((c) => (
               <CompetitionCard key={c.key} c={c} />
             ))}
@@ -97,11 +101,13 @@ function Games() {
           ))}
         </Section>
       ) : null}
-      <Section title="Coming up">
-        {upcoming.length ? upcoming.slice(0, more ? 40 : 4).map((g) => <GameCard key={g.id} g={g} />) : <T v="small">No fixtures coming up.</T>}
-      </Section>
+      <Section title="Coming up">{upcoming.length ? upcoming.slice(0, more ? 40 : 4).map((g) => <GameCard key={g.id} g={g} />) : <T v="small">No fixtures coming up.</T>}</Section>
       <Section title="Results">
-        {done.length ? done.slice(0, more ? 40 : PAGE).map((g) => <GameCard key={g.id} g={g} />) : <EmptyState icon="flag-checkered" title="No finished games yet" body="Every finished game gets a full report you can share." />}
+        {done.length ? (
+          done.slice(0, more ? 40 : PAGE).map((g) => <GameCard key={g.id} g={g} />)
+        ) : (
+          <EmptyState icon="flag-checkered" title="No finished games yet" body="Every finished game gets a full report you can share." />
+        )}
         {!more && (done.length > PAGE || upcoming.length > 4) ? <Button label="Show more" kind="ghost" onPress={() => setMore(true)} /> : null}
       </Section>
     </>
@@ -139,9 +145,25 @@ function Events() {
   return (
     <>
       {access?.level === 'admin' || access?.level === 'coordinator' ? <Button label="New tournament or league" icon="trophy-outline" onPress={() => router.push('/event/edit')} /> : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.sm,
+          backgroundColor: colors.surface,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingHorizontal: space.md,
+        }}>
         <Icon name="magnify" color={colors.muted} />
-        <TextInput value={q} onChangeText={setQ} placeholder="Search leagues and tournaments" placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }} />
+        <TextInput
+          value={q}
+          onChangeText={setQ}
+          placeholder="Search leagues and tournaments"
+          placeholderTextColor={colors.faint}
+          style={{ flex: 1, minHeight: 48, fontFamily: font.regular, fontSize: 16, color: colors.ink }}
+        />
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
         <Choice label="All regions" selected={!region} onPress={() => setRegion(null)} style={CHIP} />

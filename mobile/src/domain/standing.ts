@@ -51,8 +51,14 @@ function toIsoDate(s: string) {
  * and, if present, a status/paid column and a paid-until/expiry column. Without a status column,
  * being on the list means good standing.
  */
-export function parseStandingCsv(text: string, today = new Date().toISOString().slice(0, 10)): { rows: StandingRow[]; skipped: number; columns: { number: string; status: string | null; until: string | null } } {
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim());
+export function parseStandingCsv(
+  text: string,
+  today = new Date().toISOString().slice(0, 10),
+): { rows: StandingRow[]; skipped: number; columns: { number: string; status: string | null; until: string | null } } {
+  const lines = text
+    .replace(/^﻿/, '')
+    .split(/\r?\n/)
+    .filter((l) => l.trim());
   if (!lines.length) throw new Error('The file is empty.');
   const sep = (lines[0].match(/;/g)?.length ?? 0) > (lines[0].match(/,/g)?.length ?? 0) ? ';' : lines[0].includes('\t') ? '\t' : ',';
   const head = splitLine(lines[0], sep).map((h) => h.toLowerCase());

@@ -46,7 +46,13 @@ export default function Links() {
                   </Card>
                 ))
               ) : (
-                <Button label="Add a link" icon="plus" kind="ghost" onPress={() => setEdit({ region_code: g.code, label: '', url: '' })} style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }} />
+                <Button
+                  label="Add a link"
+                  icon="plus"
+                  kind="ghost"
+                  onPress={() => setEdit({ region_code: g.code, label: '', url: '' })}
+                  style={{ alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: 0 }}
+                />
               )}
             </View>
           );
@@ -57,12 +63,24 @@ export default function Links() {
           <>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
               {groups.map((g) => (
-                <Choice key={g.code ?? 'safda'} label={g.name} selected={(edit.region_code ?? null) === g.code} onPress={() => setEdit({ ...edit, region_code: g.code })} style={{ minHeight: 40, paddingHorizontal: 12 }} />
+                <Choice
+                  key={g.code ?? 'safda'}
+                  label={g.name}
+                  selected={(edit.region_code ?? null) === g.code}
+                  onPress={() => setEdit({ ...edit, region_code: g.code })}
+                  style={{ minHeight: 40, paddingHorizontal: 12 }}
+                />
               ))}
             </ScrollView>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
               {LINK_KINDS.map((k) => (
-                <Choice key={k.kind} label={k.title} selected={(edit.kind ?? 'website') === k.kind} onPress={() => setEdit({ ...edit, kind: k.kind })} style={{ minHeight: 36, paddingHorizontal: 10 }} />
+                <Choice
+                  key={k.kind}
+                  label={k.title}
+                  selected={(edit.kind ?? 'website') === k.kind}
+                  onPress={() => setEdit({ ...edit, kind: k.kind })}
+                  style={{ minHeight: 36, paddingHorizontal: 10 }}
+                />
               ))}
             </View>
             <Field label="What is it?" value={edit.label ?? ''} onChangeText={(v) => setEdit({ ...edit, label: v })} placeholder="e.g. 2027 registration & fees" />

@@ -103,7 +103,10 @@ export function connections(games: LoadedGame[], teamId: string | null, gender: 
     byGender,
     setUpMostDifferent: tally('from', 'to').slice(0, 5),
     scoredOffMostDifferent: tally('to', 'from').slice(0, 5),
-    mostConnections: [...total.entries()].map(([id, s]) => ({ id, n: s.size })).sort((x, y) => y.n - x.n).slice(0, 5),
+    mostConnections: [...total.entries()]
+      .map(([id, s]) => ({ id, n: s.size }))
+      .sort((x, y) => y.n - x.n)
+      .slice(0, 5),
     assisted: pairs.reduce((a, p) => a + p.count, 0),
     twoWay: pairs.filter((p) => counts.has(`${p.to}>${p.from}`)).length / 2,
   };
@@ -169,7 +172,23 @@ export function squadTotals(games: LoadedGame[], teamId: string) {
 
 /** Team-level sums across games: holds, breaks, turnovers and their types. */
 export function teamTotals(games: LoadedGame[], teamId: string) {
-  const t = { oPoints: 0, dPoints: 0, holds: 0, cleanHolds: 0, breaks: 0, breakChances: 0, turnovers: 0, drops: 0, throwaways: 0, stalls: 0, intercepted: 0, intercepts: 0, callahans: 0, pullDelay: 0, pullCount: 0 };
+  const t = {
+    oPoints: 0,
+    dPoints: 0,
+    holds: 0,
+    cleanHolds: 0,
+    breaks: 0,
+    breakChances: 0,
+    turnovers: 0,
+    drops: 0,
+    throwaways: 0,
+    stalls: 0,
+    intercepted: 0,
+    intercepts: 0,
+    callahans: 0,
+    pullDelay: 0,
+    pullCount: 0,
+  };
   const o = { holds: 0, oPoints: 0, breaks: 0, dPoints: 0, turnovers: 0 };
   for (const g of games) {
     const s = g.stats.teams[teamId];

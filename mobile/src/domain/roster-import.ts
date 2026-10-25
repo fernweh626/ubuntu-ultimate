@@ -127,5 +127,12 @@ export function splitEmergency(v: string | null | undefined) {
   const s = (v ?? '').trim();
   const m = s.match(/(\+?[\d][\d\s-]{6,})/);
   if (!m) return { name: s || null, phone: null };
-  return { name: s.replace(m[0], '').replace(/[-–,:]+$/, '').trim() || null, phone: m[0].trim() };
+  return {
+    name:
+      s
+        .replace(m[0], '')
+        .replace(/[-–,:]+$/, '')
+        .trim() || null,
+    phone: m[0].trim(),
+  };
 }

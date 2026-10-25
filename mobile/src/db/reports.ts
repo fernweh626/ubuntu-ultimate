@@ -1,16 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { GameData } from '@/domain/engine';
-import {
-  addGameToAggregate,
-  addPlayerStats,
-  computeGameStats,
-  emptyAggregate,
-  emptyPlayer,
-  type GameStats,
-  type PlayerGameStats,
-  type TeamAggregate,
-} from '@/domain/stats';
+import { addGameToAggregate, addPlayerStats, computeGameStats, emptyAggregate, emptyPlayer, type GameStats, type PlayerGameStats, type TeamAggregate } from '@/domain/stats';
 
 import { loadGameData, personCols, type GameListItem } from './repo';
 import type { Person } from './types';
@@ -54,9 +45,6 @@ export function playerTotals(games: LoadedGame[], teamId?: string): Map<string, 
 
 export async function peopleById(db: SQLiteDatabase, ids: string[]) {
   if (ids.length === 0) return new Map<string, Person>();
-  const rows = await db.getAllAsync<Person>(
-    `SELECT ${personCols()} FROM person WHERE id IN (${ids.map(() => '?').join(',')})`,
-    ...ids,
-  );
+  const rows = await db.getAllAsync<Person>(`SELECT ${personCols()} FROM person WHERE id IN (${ids.map(() => '?').join(',')})`, ...ids);
   return new Map(rows.map((p) => [p.id, p]));
 }

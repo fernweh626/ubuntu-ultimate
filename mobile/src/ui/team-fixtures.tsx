@@ -24,10 +24,7 @@ export function TeamFixtures({ teamId, games, meId, onSquad }: { teamId: string;
     .filter((g) => g.status === 'scheduled' && (!g.scheduled_at || Date.parse(g.scheduled_at) >= opened))
     .sort((a, b) => (a.scheduled_at ?? '9999').localeCompare(b.scheduled_at ?? '9999'))
     .slice(0, 4);
-  const counts = useData(
-    async (d) => Object.fromEntries(await Promise.all(next.map(async (g) => [g.id, await gameAvailability(d, g.id, teamId)] as const))),
-    [teamId, next.map((g) => g.id).join()],
-  );
+  const counts = useData(async (d) => Object.fromEntries(await Promise.all(next.map(async (g) => [g.id, await gameAvailability(d, g.id, teamId)] as const))), [teamId, next.map((g) => g.id).join()]);
   if (!next.length) return null;
 
   return (

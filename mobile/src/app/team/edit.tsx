@@ -12,10 +12,7 @@ import { Button, Choice, Field, Footer, Icon, Screen, Section, T } from '@/ui/co
 import { PhoneField } from '@/ui/phone-field';
 import { colors, space } from '@/ui/theme';
 
-const PALETTE = [
-  '#BF0000', '#E0561B', '#E8A33D', '#C9A227', '#2E8B57', '#00562B', '#1F6B4A', '#0E7C86',
-  '#2F6FB2', '#1D3F8F', '#5B3FA8', '#61223B', '#C2185B', '#6D4C41', '#5A615C', '#14181A',
-];
+const PALETTE = ['#BF0000', '#E0561B', '#E8A33D', '#C9A227', '#2E8B57', '#00562B', '#1F6B4A', '#0E7C86', '#2F6FB2', '#1D3F8F', '#5B3FA8', '#61223B', '#C2185B', '#6D4C41', '#5A615C', '#14181A'];
 
 const KINDS = [
   { value: 'club', label: 'Club' },
@@ -36,7 +33,9 @@ export default function TeamEdit() {
     if (id) getTeam(db, id).then((t) => t && setF(t));
     else if (clubId) {
       // A new team in a club starts with the club's colours and region.
-      getClub(db, clubId).then((c) => c && setF((x) => ({ ...x, club_id: c.id, region: c.region ?? x.region, primary_color: c.primary_color ?? x.primary_color, city: c.city, name: x.name || `${c.name} ` })));
+      getClub(db, clubId).then(
+        (c) => c && setF((x) => ({ ...x, club_id: c.id, region: c.region ?? x.region, primary_color: c.primary_color ?? x.primary_color, city: c.city, name: x.name || `${c.name} ` })),
+      );
     }
   }, [db, id, clubId]);
 
@@ -127,7 +126,15 @@ export default function TeamEdit() {
           <Field label="Website" value={f.website ?? ''} onChangeText={opt('website')} autoCapitalize="none" />
           <Field label="Instagram or Facebook link" value={f.social ?? ''} onChangeText={opt('social')} autoCapitalize="none" />
         </Section>
-        <Field plain label="Banking details (optional)" value={f.banking_details ?? ''} onChangeText={opt('banking_details')} multiline placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + FEES'} hint="Shown on the team page with Copy and Share, for paying team fees." />
+        <Field
+          plain
+          label="Banking details (optional)"
+          value={f.banking_details ?? ''}
+          onChangeText={opt('banking_details')}
+          multiline
+          placeholder={'Bank: …\nAccount name: …\nAccount no: …\nBranch code: …\nReference: your name + FEES'}
+          hint="Shown on the team page with Copy and Share, for paying team fees."
+        />
         <Field label="About the team" value={f.about ?? ''} onChangeText={opt('about')} multiline placeholder="Training times, who can join, anything new players should know" />
       </Screen>
     </>

@@ -26,7 +26,18 @@ export type TeamAdvanced = {
   lines: Record<string, LineRecord>;
 };
 
-const emptyTeam = (teamId: string): TeamAdvanced => ({ teamId, possessions: 0, scoringPossessions: 0, afterTurn: 0, afterTurnScored: 0, completions: 0, passesInScoring: 0, longestChain: 0, pairs: {}, lines: {} });
+const emptyTeam = (teamId: string): TeamAdvanced => ({
+  teamId,
+  possessions: 0,
+  scoringPossessions: 0,
+  afterTurn: 0,
+  afterTurnScored: 0,
+  completions: 0,
+  passesInScoring: 0,
+  longestChain: 0,
+  pairs: {},
+  lines: {},
+});
 
 export function computeAdvanced(data: GameData): Record<string, TeamAdvanced> {
   const { game } = data;
@@ -37,7 +48,10 @@ export function computeAdvanced(data: GameData): Record<string, TeamAdvanced> {
     if (!p.pulled_at && !p.scored_at) continue;
     // Who was on, per side, and how the point went for that seven.
     for (const side of [game.team_a_id, game.team_b_id]) {
-      const ids = data.lines.filter((l) => l.point_id === p.id && l.team_id === side).map((l) => l.person_id).sort();
+      const ids = data.lines
+        .filter((l) => l.point_id === p.id && l.team_id === side)
+        .map((l) => l.person_id)
+        .sort();
       if (!ids.length || !p.scoring_team_id) continue;
       const key = ids.join(',');
       const rec = (teams[side].lines[key] ??= { ids, played: 0, scored: 0, conceded: 0 });

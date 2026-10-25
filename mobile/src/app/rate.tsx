@@ -50,7 +50,11 @@ export default function Rate() {
               {a.hint}
               {last ? ` Last time: ${last[a.key]}.` : ''}
             </T>
-            {values[a.key] ? <T v="smallStrong" style={{ color: colors.brandDark }}>{RATING_SCALE[values[a.key]! - 1]}</T> : null}
+            {values[a.key] ? (
+              <T v="smallStrong" style={{ color: colors.brandDark }}>
+                {RATING_SCALE[values[a.key]! - 1]}
+              </T>
+            ) : null}
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {RATING_SCALE.map((_, i) => i + 1).map((n) => {
                 const on = values[a.key] === n;

@@ -23,5 +23,7 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npx eslint src tests
+      - name: Formatting
+        run: npm run format:check
       - name: Tests
         run: npm test

@@ -13,7 +13,19 @@ export function PosTag({ position }: { position: string | null | undefined }) {
   const s = posShort(position);
   if (!s) return null;
   return (
-    <View accessibilityLabel={position ?? undefined} style={{ minWidth: 26, paddingHorizontal: 5, height: 20, borderRadius: 6, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface }}>
+    <View
+      accessibilityLabel={position ?? undefined}
+      style={{
+        minWidth: 26,
+        paddingHorizontal: 5,
+        height: 20,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.surface,
+      }}>
       <T style={{ fontFamily: font.bold, fontSize: 11, color: colors.muted }}>{s}</T>
     </View>
   );

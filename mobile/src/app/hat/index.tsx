@@ -39,7 +39,11 @@ export default function Hats() {
       <Screen edges={[]}>
         <RegionChips value={region.value} onChange={region.setValue} home={region.home} />
         <T v="small">Sign up on your own: say how good you are and whether you’d captain. Teams are drawn 48 hours before, balanced by skill and ratio.</T>
-        {upcoming.length ? <Section title="Coming up">{upcoming.map(card)}</Section> : <EmptyState icon="hat-fedora" title="No hats coming up" body={runs ? 'Tap + to set one up.' : 'Hats in your region show up here.'} />}
+        {upcoming.length ? (
+          <Section title="Coming up">{upcoming.map(card)}</Section>
+        ) : (
+          <EmptyState icon="hat-fedora" title="No hats coming up" body={runs ? 'Tap + to set one up.' : 'Hats in your region show up here.'} />
+        )}
         {past.length ? <Section title="Past">{past.map(card)}</Section> : null}
         {runs ? (
           <Button label="Set up a hat" icon="plus" kind="primary" onPress={() => router.push('/hat/edit')} />

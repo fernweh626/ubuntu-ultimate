@@ -427,11 +427,5 @@ export function addPlayerStats(into: PlayerGameStats, s: PlayerGameStats) {
 
 /** Standings order: wins, fewest losses, point difference, points scored. Head-to-head comes with brackets. */
 export function rankStandings(rows: TeamAggregate[]) {
-  return [...rows].sort(
-    (a, b) =>
-      b.wins - a.wins ||
-      a.losses - b.losses ||
-      b.pointsFor - b.pointsAgainst - (a.pointsFor - a.pointsAgainst) ||
-      b.pointsFor - a.pointsFor,
-  );
+  return [...rows].sort((a, b) => b.wins - a.wins || a.losses - b.losses || b.pointsFor - b.pointsAgainst - (a.pointsFor - a.pointsAgainst) || b.pointsFor - a.pointsFor);
 }

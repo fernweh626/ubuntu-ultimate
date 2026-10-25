@@ -20,7 +20,7 @@ import { colors, font, space } from '@/ui/theme';
 
 type PageEl = (ref: RefObject<ComponentRef<typeof View> | null>, index: number, total: number) => ReactElement;
 
-const ORD = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+const ORD = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`;
 
 export default function Report() {
   const { kind, teamId, eventId, gameId } = useLocalSearchParams<{ kind: 'team' | 'game' | 'event'; teamId?: string; eventId?: string; gameId?: string }>();
@@ -66,7 +66,10 @@ export default function Report() {
     try {
       if (IS_WEB) {
         const imgs = await capture('base64');
-        return await webShareFiles(imgs.map((b, i) => ({ src: b, name: `ubuntu-ultimate-report-${i + 1}.png`, mime: 'image/png' })), 'Report');
+        return await webShareFiles(
+          imgs.map((b, i) => ({ src: b, name: `ubuntu-ultimate-report-${i + 1}.png`, mime: 'image/png' })),
+          'Report',
+        );
       }
       // Loaded on tap, so a phone without these native bits still opens the report.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -113,7 +116,19 @@ export default function Report() {
         )}
       </ScrollView>
       {pages.length ? (
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: space.sm, padding: space.lg, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border }}>
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            flexDirection: 'row',
+            gap: space.sm,
+            padding: space.lg,
+            backgroundColor: colors.surface,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+          }}>
           {busy ? (
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, minHeight: 48 }}>
               <ActivityIndicator color={colors.brand} />
@@ -218,7 +233,10 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
     const wonFromAhead = aheadAtHalf.filter((x) => x.result === 'W').length;
     const comebacks = withHalves.filter((x) => x.half1!.for < x.half1!.against && x.result === 'W').length;
     const max = Math.max(...withHalves.flatMap((x) => [x.half1!.for, x.half1!.against, x.for - x.half1!.for, x.against - x.half1!.against]), 1);
-    const runs = b.games.map((g) => ({ g, run: biggestRun(g) })).filter((x) => x.run && x.run.teamId === teamId).sort((a, b2) => b2.run!.n - a.run!.n);
+    const runs = b.games
+      .map((g) => ({ g, run: biggestRun(g) }))
+      .filter((x) => x.run && x.run.teamId === teamId)
+      .sort((a, b2) => b2.run!.n - a.run!.n);
     pages.push((ref, i, n) => (
       <Page ref={ref} tone="dark" header={header} index={i} total={n}>
         <Kicker tone="dark">Halves</Kicker>
@@ -277,7 +295,9 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
       <Kicker tone="paper" teamColor={color}>
         Offence & defence
       </Kicker>
-      <Headline tone="paper">{totals.oPoints && totals.holds / totals.oPoints >= 0.7 ? 'Held serve' : totals.dPoints && totals.breaks / totals.dPoints >= 0.4 ? 'Broke them down' : 'Where the points were won'}</Headline>
+      <Headline tone="paper">
+        {totals.oPoints && totals.holds / totals.oPoints >= 0.7 ? 'Held serve' : totals.dPoints && totals.breaks / totals.dPoints >= 0.4 ? 'Broke them down' : 'Where the points were won'}
+      </Headline>
       <View style={{ flexDirection: 'row', gap: 6 }}>
         <Tile tone="paper" teamColor={color} value={pctText(totals.holds, totals.oPoints)} label={`Hold rate (${totals.holds}/${totals.oPoints})`} />
         <Tile tone="paper" teamColor={color} value={pctText(totals.breaks, totals.dPoints)} label={`Break rate (${totals.breaks}/${totals.dPoints})`} />
@@ -363,9 +383,7 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
             <Tile tone="dark" value={conn.byGender.ww} label="FMP to FMP" />
           </View>
         ) : null}
-        {mixed ? (
-          <Body tone="dark">FMP = female matching player · MMP = male matching player. Dashed lines start from an FMP.</Body>
-        ) : null}
+        {mixed ? <Body tone="dark">FMP = female matching player · MMP = male matching player. Dashed lines start from an FMP.</Body> : null}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {(
             [
@@ -387,7 +405,8 @@ function teamPages(b: Bundle, teamId: string, nm: (id: string) => string, full: 
           ))}
         </View>
         <Body tone="dark" style={{ color: palette('dark').ink }}>
-          Most repeated pairing: {full(top.from)} to {full(top.to)}, {top.count} time{top.count > 1 ? 's' : ''}.{conn.twoWay ? ` ${conn.twoWay} pair${conn.twoWay > 1 ? 's' : ''} connected both ways.` : ''}
+          Most repeated pairing: {full(top.from)} to {full(top.to)}, {top.count} time{top.count > 1 ? 's' : ''}.
+          {conn.twoWay ? ` ${conn.twoWay} pair${conn.twoWay > 1 ? 's' : ''} connected both ways.` : ''}
         </Body>
       </Page>
     ));
@@ -499,7 +518,9 @@ function gamePages(b: Bundle, nm: (id: string) => string, full: (id: string) => 
         ))}
       </View>
       <Body tone="team">
-        {[item.started_at ? `${shortDate(item.started_at)} ${timeOfDay(item.started_at)}` : null, item.venue_name, stats.durationSeconds ? `${Math.round(stats.durationSeconds / 60)} min` : null].filter(Boolean).join(' · ')}
+        {[item.started_at ? `${shortDate(item.started_at)} ${timeOfDay(item.started_at)}` : null, item.venue_name, stats.durationSeconds ? `${Math.round(stats.durationSeconds / 60)} min` : null]
+          .filter(Boolean)
+          .join(' · ')}
       </Body>
       {weather ? <Body tone="team">{weatherLine(weather)}</Body> : null}
       {run ? (
@@ -610,7 +631,11 @@ function eventPages(b: Bundle, nm: (id: string) => string, full: (id: string) =>
   const champ = placings[0];
   const header = ev?.name ?? 'Tournament';
   const totals = [...playerTotals(b.games).values()];
-  const leaders = (k: 'goals' | 'assists' | 'intercepts') => [...totals].filter((p) => p[k] > 0).sort((x, y) => y[k] - x[k]).slice(0, 5);
+  const leaders = (k: 'goals' | 'assists' | 'intercepts') =>
+    [...totals]
+      .filter((p) => p[k] > 0)
+      .sort((x, y) => y[k] - x[k])
+      .slice(0, 5);
   const spiritAvg = b.evTeams
     .map((t) => {
       const got = b.spirit.filter((s) => s.to_team_id === t.id);

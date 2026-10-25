@@ -24,7 +24,17 @@ export default function Guide() {
       <Stack.Screen options={{ title: 'Help & how-to' }} />
       <Screen edges={[]}>
         <T>Everything the app does, why it’s there, and how to use it. Tap a question to open it.</T>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.sm,
+            backgroundColor: colors.surface,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: space.md,
+          }}>
           <Icon name="magnify" color={colors.muted} />
           <TextInput
             value={q}
@@ -68,7 +78,11 @@ export default function Guide() {
 function Toggle({ a, open, onToggle }: { a: Article; open: boolean; onToggle: () => void }) {
   return (
     <View style={{ backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: open ? colors.brand : colors.border, overflow: 'hidden' }}>
-      <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, minHeight: 52 }}>
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, minHeight: 52 }}>
         <Icon name={open ? 'chevron-down' : 'chevron-right'} color={open ? colors.brand : colors.muted} size={22} />
         <T v="bodyStrong" style={{ flex: 1 }}>
           {a.title}

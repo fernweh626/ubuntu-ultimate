@@ -23,7 +23,17 @@ export default function Draw() {
   return <DrawForm key={bundle.signups.length} id={id} hat={bundle.hat} signups={bundle.signups} db={db} />;
 }
 
-function DrawForm({ id, hat, signups, db }: { id: string; hat: NonNullable<Awaited<ReturnType<typeof getHat>>>; signups: Awaited<ReturnType<typeof hatSignups>>; db: ReturnType<typeof useSQLiteContext> }) {
+function DrawForm({
+  id,
+  hat,
+  signups,
+  db,
+}: {
+  id: string;
+  hat: NonNullable<Awaited<ReturnType<typeof getHat>>>;
+  signups: Awaited<ReturnType<typeof hatSignups>>;
+  db: ReturnType<typeof useSQLiteContext>;
+}) {
   const rules = parseRules(hat.rules_json);
   const perSide = rules.playersPerSide ?? 7;
   const pool = drawPool(signups);
@@ -78,7 +88,8 @@ function DrawForm({ id, hat, signups, db }: { id: string; hat: NonNullable<Await
             {pool.length} paid players · {pool.filter((p) => p.gender === 'W').length} female matching · {pool.filter((p) => p.gender === 'M').length} male matching
           </T>
           <T v="small">
-            Only players who are coming and have paid are drawn.{unpaid ? ` ${unpaid} coming but not marked paid: confirm them on the hat page first if they have.` : ''} On-the-day players are added after, without moving anyone.
+            Only players who are coming and have paid are drawn.{unpaid ? ` ${unpaid} coming but not marked paid: confirm them on the hat page first if they have.` : ''} On-the-day players are added
+            after, without moving anyone.
           </T>
         </Card>
 
@@ -107,10 +118,20 @@ function DrawForm({ id, hat, signups, db }: { id: string; hat: NonNullable<Await
           <T v="small">Suggested from those willing: most experienced first, mixing female and male matching. Tap to change.</T>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
             {willing.map((p) => (
-              <Choice key={p.id} label={`${nameOf(p.id)} · ${p.skill.toFixed(1)}`} selected={captains.includes(p.id)} onPress={() => toggleCaptain(p.id)} style={{ minHeight: 40, paddingHorizontal: 12 }} />
+              <Choice
+                key={p.id}
+                label={`${nameOf(p.id)} · ${p.skill.toFixed(1)}`}
+                selected={captains.includes(p.id)}
+                onPress={() => toggleCaptain(p.id)}
+                style={{ minHeight: 40, paddingHorizontal: 12 }}
+              />
             ))}
           </View>
-          {willing.length < count ? <T v="small" style={{ color: colors.warnInk }}>Only {willing.length} willing captains: the other teams start without one; pick one later or on the day.</T> : null}
+          {willing.length < count ? (
+            <T v="small" style={{ color: colors.warnInk }}>
+              Only {willing.length} willing captains: the other teams start without one; pick one later or on the day.
+            </T>
+          ) : null}
         </Section>
 
         {teams ? (

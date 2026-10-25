@@ -75,13 +75,7 @@ export function orderTable(rows: TableRow[], results: Result[]): string[] {
     }
     const get = (id: string) => h2h.get(id) ?? { w: 0, d: 0 };
     tied
-      .sort(
-        (x, y) =>
-          get(y.teamId).w - get(x.teamId).w ||
-          get(y.teamId).d - get(x.teamId).d ||
-          y.pointsFor - y.pointsAgainst - (x.pointsFor - x.pointsAgainst) ||
-          y.pointsFor - x.pointsFor,
-      )
+      .sort((x, y) => get(y.teamId).w - get(x.teamId).w || get(y.teamId).d - get(x.teamId).d || y.pointsFor - y.pointsAgainst - (x.pointsFor - x.pointsAgainst) || y.pointsFor - x.pointsFor)
       .forEach((t) => out.push(t.teamId));
   }
   return out;
@@ -109,7 +103,7 @@ export type SlotTemplate = { key: string; name: string; group: string; round: nu
 
 export type SeedMode = 'standings' | 'pools' | 'seed';
 
-const ORD = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+const ORD = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`;
 
 /** Bracket order so 1 and 2 can only meet in the final: 8 → [1,8,4,5,2,7,3,6]. */
 function seedOrder(size: number): number[] {
@@ -164,11 +158,27 @@ export function buildBracket(teams: number, mode: SeedMode, full: boolean): Slot
       slots.push({ key: k, name: label, group, round, place: null, a, b });
       return k;
     });
-    build(games.map((g) => ({ type: 'winner', slot: g })), placeLo, round + 1, false);
-    if (full || m === 4) build(games.map((g) => ({ type: 'loser', slot: g })), placeLo + m / 2, round + 1, false);
+    build(
+      games.map((g) => ({ type: 'winner', slot: g })),
+      placeLo,
+      round + 1,
+      false,
+    );
+    if (full || m === 4)
+      build(
+        games.map((g) => ({ type: 'loser', slot: g })),
+        placeLo + m / 2,
+        round + 1,
+        false,
+      );
   };
 
-  build(Array.from({ length: size }, (_, i) => seedSource(i + 1)), 1, 1, true);
+  build(
+    Array.from({ length: size }, (_, i) => seedSource(i + 1)),
+    1,
+    1,
+    true,
+  );
   return slots;
 }
 

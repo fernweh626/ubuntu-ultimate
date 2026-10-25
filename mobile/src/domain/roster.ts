@@ -30,4 +30,3 @@ export function byMatching<P extends Matchable>(list: P[], keepOrder = false): M
     ] as MatchingGroup<P>[]
   ).filter((g) => g.items.length);
 }
-

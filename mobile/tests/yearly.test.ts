@@ -6,11 +6,16 @@ import { planNotifications } from '@/notify/plan';
 import { detectEvents } from '@/notify/events';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x));
 (async () => {
-  const db: any = open(); await migrate(db); await seedIfEmpty(db);
+  const db: any = open();
+  await migrate(db);
+  await seedIfEmpty(db);
   ok('v17', (await db.getFirstAsync('PRAGMA user_version')).user_version === 27);
   const now = new Date('2026-10-24T10:00:00');
   let plan = await planNotifications(db, now);
-  ok('fees reminder 1 Feb 2027 09:00 even without picking yourself', plan.some((p) => p.key === 'fees:2027' && p.at.getMonth() === 1 && p.at.getDate() === 1 && p.at.getHours() === 9));
+  ok(
+    'fees reminder 1 Feb 2027 09:00 even without picking yourself',
+    plan.some((p) => p.key === 'fees:2027' && p.at.getMonth() === 1 && p.at.getDate() === 1 && p.at.getHours() === 9),
+  );
   ok('no admin reminders for players', !plan.some((p) => p.kind === 'admin'));
   await repo.setTestLevel(db, 'coordinator');
   const lvl = (await repo.getAccess(db)).level;
@@ -20,10 +25,29 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
   ok('coordinator: send-by-20-Jan reminders from 1 Dec, Mondays, and 18 Jan', days === '12/1,12/7,12/14,12/21,12/28,1/4,1/11,1/18' && adm.every((p) => /20 January/.test(p.title)), [lvl, days]);
   await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('yearly_info_done:2027', '1')`);
   ok('marked as sent: no more reminders', !(await planNotifications(db, now)).some((p) => p.kind === 'admin'));
-  const mid = await repo.saveCalendarEntry(db, { name: 'SAFDA AGM 2026', kind: 'agm', level: 'national', region: null, location: 'Online', start_date: '2026-11-01', end_date: '2026-11-01', month_hint: null, status: 'confirmed', url: null, notes: 'Agenda', start_time: '19:00', end_time: '20:30', meeting_url: 'https://meet.google.com/abc' });
+  const mid = await repo.saveCalendarEntry(db, {
+    name: 'SAFDA AGM 2026',
+    kind: 'agm',
+    level: 'national',
+    region: null,
+    location: 'Online',
+    start_date: '2026-11-01',
+    end_date: '2026-11-01',
+    month_hint: null,
+    status: 'confirmed',
+    url: null,
+    notes: 'Agenda',
+    start_time: '19:00',
+    end_time: '20:30',
+    meeting_url: 'https://meet.google.com/abc',
+  });
   plan = await planNotifications(db, now);
   const m = plan.filter((p) => p.kind === 'meetings');
-  ok('meeting: evening before 18:00 and 15 min before (18:45)', m.length === 2 && m[0].at.getDate() === 31 && m[0].at.getHours() === 18 && m[1].at.getHours() === 18 && m[1].at.getMinutes() === 45 && m[1].url === `/hub/meeting/${mid}`, m.map((x) => x.at.toString()));
+  ok(
+    'meeting: evening before 18:00 and 15 min before (18:45)',
+    m.length === 2 && m[0].at.getDate() === 31 && m[0].at.getHours() === 18 && m[1].at.getHours() === 18 && m[1].at.getMinutes() === 45 && m[1].url === `/hub/meeting/${mid}`,
+    m.map((x) => x.at.toString()),
+  );
   const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'B', gender: 'W' }, { teamId: (await repo.listTeams(db))[0].id });
   await repo.setMeId(db, me);
   await repo.setMeetingRsvp(db, mid, me, 'not_going', 'Away');
@@ -31,6 +55,13 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
   await detectEvents(db);
   await repo.saveAnnouncement(db, { region_code: null, title: 'Mixed Nationals 2027 dates', body: '3–5 Dec', link_url: null, link_label: null, pinned: 1, created_by_id: me });
   const ev = await detectEvents(db);
-  ok('announcement notification', ev.some((e) => e.title.includes('Mixed Nationals 2027')), ev);
-  ok('outbox has announcement + rsvp', !!(await db.getFirstAsync(`SELECT 1 FROM sync_outbox WHERE tbl = 'announcement'`)) && !!(await db.getFirstAsync(`SELECT 1 FROM sync_outbox WHERE tbl = 'meeting_rsvp'`)));
+  ok(
+    'announcement notification',
+    ev.some((e) => e.title.includes('Mixed Nationals 2027')),
+    ev,
+  );
+  ok(
+    'outbox has announcement + rsvp',
+    !!(await db.getFirstAsync(`SELECT 1 FROM sync_outbox WHERE tbl = 'announcement'`)) && !!(await db.getFirstAsync(`SELECT 1 FROM sync_outbox WHERE tbl = 'meeting_rsvp'`)),
+  );
 })();

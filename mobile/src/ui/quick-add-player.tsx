@@ -9,19 +9,7 @@ import { Button, Field, Segmented, Sheet, T } from './components';
 import { space } from './theme';
 
 /** Add someone on the spot (late arrival, borrowed player, pickup regular) without leaving the screen. */
-export function QuickAddPlayer({
-  visible,
-  teamId,
-  teamName,
-  onClose,
-  onAdded,
-}: {
-  visible: boolean;
-  teamId: string;
-  teamName: string;
-  onClose: () => void;
-  onAdded: (personId: string) => void;
-}) {
+export function QuickAddPlayer({ visible, teamId, teamName, onClose, onAdded }: { visible: boolean; teamId: string; teamName: string; onClose: () => void; onAdded: (personId: string) => void }) {
   const db = useSQLiteContext();
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
@@ -31,11 +19,7 @@ export function QuickAddPlayer({
 
   async function add() {
     if (!first.trim()) return Alert.alert('Add a first name');
-    const id = await savePerson(
-      db,
-      { first_name: first, last_name: last, gender, preferred_number: number || null },
-      { teamId, kind, jersey: number || null },
-    );
+    const id = await savePerson(db, { first_name: first, last_name: last, gender, preferred_number: number || null }, { teamId, kind, jersey: number || null });
     setFirst('');
     setLast('');
     setNumber('');

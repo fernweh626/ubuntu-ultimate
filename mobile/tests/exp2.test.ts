@@ -6,12 +6,17 @@ import * as dev from '@/db/development';
 import { fitnessCsv, ratingsCsv, readinessCsv } from '@/domain/export';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x));
 (async () => {
-  const db: any = open(); await migrate(db); await seedIfEmpty(db);
+  const db: any = open();
+  await migrate(db);
+  await seedIfEmpty(db);
   const chilli = (await repo.listTeams(db)).find((t) => t.name === 'Chilli Legends')!;
   const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'B', gender: 'W' }, { teamId: chilli.id });
   const kid = await repo.savePerson(db, { first_name: 'Zoë', last_name: 'Young', gender: 'W', birth_date: '2012-05-05' } as any, { teamId: chilli.id });
   await dev.addSelfRating(db, me, { experience: 3, throwing: 4, receiving: 3, defence: 2, athleticism: 5, notes: 'forehand, hucks' });
-  await dev.addFitnessResults(db, [{ personId: me, kind: 'beep', value: 10.05, testedOn: '2026-10-01', recordedById: me }, { personId: kid, kind: 'sprint_40', value: 5.6, testedOn: '2026-10-01', recordedById: me }]);
+  await dev.addFitnessResults(db, [
+    { personId: me, kind: 'beep', value: 10.05, testedOn: '2026-10-01', recordedById: me },
+    { personId: kid, kind: 'sprint_40', value: 5.6, testedOn: '2026-10-01', recordedById: me },
+  ]);
   await dev.saveAccreditation(db, me, { level: 'advanced', expiresOn: '2027-12-31', photoUri: null });
   await dev.saveRegistration(db, me, { safda_number: 'SA1', region_code: 'western', region_number: 'C1', phone: '0821234567' });
   const ready = await dev.readiness(db, chilli.id);

@@ -10,5 +10,7 @@ ok('local SA number → +27', internationalDigits('082 123 4567') === '278212345
 ok('international numbers kept', internationalDigits('+263 77 123 4567') === '263771234567' && internationalDigits('0044 7700 900123') === '447700900123');
 ok('WhatsApp link for a Zimbabwe number', whatsappLink('+263 77 123 4567') === 'https://wa.me/263771234567');
 ok('stored form', joinPhone('27', '082 123 4567') === '+27 82 123 4567' && joinPhone('263', '77 123 4567') === '+263 77 123 4567' && joinPhone('27', '') === '');
-const s1 = splitPhone('+263 77 123 4567'), s2 = splitPhone('082 123 4567'), s3 = splitPhone('+1 555 0100');
+const s1 = splitPhone('+263 77 123 4567'),
+  s2 = splitPhone('082 123 4567'),
+  s3 = splitPhone('+1 555 0100');
 ok('split: Zimbabwe, old local SA, US', s1.dial === '263' && s1.local === '77 123 4567' && s2.dial === '27' && s2.local === '082 123 4567' && s3.dial === '1' && s3.local === '555 0100', [s1, s2, s3]);

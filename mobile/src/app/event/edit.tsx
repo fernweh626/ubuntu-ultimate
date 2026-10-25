@@ -34,8 +34,7 @@ export default function EventEdit() {
 
   const set = <K extends keyof EventInput>(k: K, v: EventInput[K]) => setF((x) => ({ ...x, [k]: v }));
   const selected = (tid: string) => f.teams.find((t) => t.teamId === tid);
-  const toggleTeam = (tid: string) =>
-    set('teams', selected(tid) ? f.teams.filter((t) => t.teamId !== tid) : [...f.teams, { teamId: tid, pool: usePools ? 'A' : null }]);
+  const toggleTeam = (tid: string) => set('teams', selected(tid) ? f.teams.filter((t) => t.teamId !== tid) : [...f.teams, { teamId: tid, pool: usePools ? 'A' : null }]);
   const move = (i: number, d: number) => {
     const j = i + d;
     if (j < 0 || j >= f.teams.length) return;
@@ -103,7 +102,13 @@ export default function EventEdit() {
         <Section title="Division">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
             {(['mixed', 'open', 'women', 'beach', 'u17', 'u20', 'u24', 'masters'] as const).map((d) => (
-              <Choice key={d} label={d.toUpperCase().startsWith('U') ? d.toUpperCase() : d[0].toUpperCase() + d.slice(1)} selected={f.division === d} onPress={() => set('division', d)} style={{ paddingHorizontal: 14 }} />
+              <Choice
+                key={d}
+                label={d.toUpperCase().startsWith('U') ? d.toUpperCase() : d[0].toUpperCase() + d.slice(1)}
+                selected={f.division === d}
+                onPress={() => set('division', d)}
+                style={{ paddingHorizontal: 14 }}
+              />
             ))}
           </View>
         </Section>
@@ -125,7 +130,9 @@ export default function EventEdit() {
           </View>
         </View>
 
-        <Section title={`Teams · ${f.teams.length}`} action={<Button label={usePools ? 'Pools on' : 'Use pools'} kind="ghost" onPress={() => setUsePools(!usePools)} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
+        <Section
+          title={`Teams · ${f.teams.length}`}
+          action={<Button label={usePools ? 'Pools on' : 'Use pools'} kind="ghost" onPress={() => setUsePools(!usePools)} style={{ minHeight: 32, paddingHorizontal: 0 }} />}>
           {usePools ? <T v="small">Tap the pool letter next to a team to change its pool.</T> : null}
           <View style={{ gap: space.sm }}>
             {teams.map((t) => {
@@ -147,7 +154,9 @@ export default function EventEdit() {
               {f.teams.map((t, i) => {
                 const team = teams.find((x) => x.id === t.teamId);
                 return (
-                  <View key={t.teamId} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingLeft: space.md, minHeight: 48, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
+                  <View
+                    key={t.teamId}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingLeft: space.md, minHeight: 48, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
                     <T v="bodyStrong" style={{ width: 24 }}>
                       {i + 1}
                     </T>

@@ -14,8 +14,7 @@ import { colors, DEFAULT_TEAM_COLOR, font } from './theme';
  * copy lives in a cache that Android may clear). Returns the stored file's uri, or null if cancelled.
  */
 export async function pickPhoto(source: 'camera' | 'library', name: string): Promise<string | null> {
-  const permission =
-    source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const permission = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     Alert.alert('Permission needed', source === 'camera' ? 'Allow camera access to take a photo.' : 'Allow photo access to choose a picture.');
     return null;
@@ -70,17 +69,7 @@ export function deletePhoto(uri: string | null | undefined) {
   }
 }
 
-export function Avatar({
-  uri,
-  name,
-  size = 44,
-  tone = 'brand',
-}: {
-  uri: string | null | undefined;
-  name: string;
-  size?: number;
-  tone?: 'brand' | 'tint';
-}) {
+export function Avatar({ uri, name, size = 44, tone = 'brand' }: { uri: string | null | undefined; name: string; size?: number; tone?: 'brand' | 'tint' }) {
   if (uri) {
     return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.neutralTint }} contentFit="cover" accessibilityLabel={name} />;
   }

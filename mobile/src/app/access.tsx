@@ -23,7 +23,11 @@ const STAFF: MyRole['role'][] = ['captain', 'coach', 'spirit_captain', 'manager'
 const LEVELS = [
   { key: 'admin', title: 'Admin', body: 'Everything. Can make people coordinators, team staff or scorekeepers.' },
   { key: 'coordinator', title: 'Coordinator', body: 'Runs leagues, regionals and nationals. Can make people team staff or scorekeepers.' },
-  { key: 'staff', title: 'Team staff', body: 'Captains, coaches, spirit captains, managers: roster, lines, contacts, spirit, confirming who played. Can give staff roles and scorekeeper within their team.' },
+  {
+    key: 'staff',
+    title: 'Team staff',
+    body: 'Captains, coaches, spirit captains, managers: roster, lines, contacts, spirit, confirming who played. Can give staff roles and scorekeeper within their team.',
+  },
   { key: 'scorekeeper', title: 'Scorekeeper', body: 'Starts and scores any game and adds players. Can’t give access to anyone.' },
   { key: 'player', title: 'Player', body: 'Starts friendly games, edits their own details, joins teams. Can’t give access to anyone.' },
 ] as const;
@@ -79,39 +83,39 @@ export default function Access() {
           </View>
           {!access?.signedIn ? (
             <>
-          <T v="label">Try a level on this phone</T>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            {(['player', 'scorekeeper', 'staff', 'coordinator', 'admin'] as const).map((l) => (
-              <Choice
-                key={l}
-                label={LEVEL_LABEL[l]}
-                selected={level === l}
-                onPress={async () => {
-                  if (l === 'staff') return setStaffPicker(true);
-                  // Player and scorekeeper rank below team staff, so drop any staff roles to really be them.
-                  if (l === 'player' || l === 'scorekeeper') {
-                    for (const r of staffOn) await setMembershipRole(db, me.id, r.team_id, 'player');
-                  }
-                  await setTestLevel(db, l);
-                }}
-                style={{ paddingHorizontal: 14 }}
-              />
-            ))}
-          </View>
-          <T v="small">Team staff makes you captain of a team you pick. In real use, staff roles are given by that team’s staff, a coordinator or an admin.</T>
+              <T v="label">Try a level on this phone</T>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+                {(['player', 'scorekeeper', 'staff', 'coordinator', 'admin'] as const).map((l) => (
+                  <Choice
+                    key={l}
+                    label={LEVEL_LABEL[l]}
+                    selected={level === l}
+                    onPress={async () => {
+                      if (l === 'staff') return setStaffPicker(true);
+                      // Player and scorekeeper rank below team staff, so drop any staff roles to really be them.
+                      if (l === 'player' || l === 'scorekeeper') {
+                        for (const r of staffOn) await setMembershipRole(db, me.id, r.team_id, 'player');
+                      }
+                      await setTestLevel(db, l);
+                    }}
+                    style={{ paddingHorizontal: 14 }}
+                  />
+                ))}
+              </View>
+              <T v="small">Team staff makes you captain of a team you pick. In real use, staff roles are given by that team’s staff, a coordinator or an admin.</T>
             </>
           ) : (
             <T v="small">Your level comes from your account. Admins and coordinators give levels from a player’s profile; team staff give team roles from the team page.</T>
           )}
           {!access?.signedIn ? (
-          <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
-            <T v="smallStrong" style={{ color: colors.warnInk }}>
-              Not enforced yet
-            </T>
-            <T v="small" style={{ color: colors.warnInk }}>
-              This app version has no sign-in, so anyone holding this phone can edit anything. When accounts arrive, the server will check these levels on every change, and admins will assign them.
-            </T>
-          </Card>
+            <Card style={{ backgroundColor: colors.warnTint, borderColor: colors.warnTint }}>
+              <T v="smallStrong" style={{ color: colors.warnInk }}>
+                Not enforced yet
+              </T>
+              <T v="small" style={{ color: colors.warnInk }}>
+                This app version has no sign-in, so anyone holding this phone can edit anything. When accounts arrive, the server will check these levels on every change, and admins will assign them.
+              </T>
+            </Card>
           ) : null}
         </Section>
         <RequestAccess level={level} meName={displayName(me)} meId={me.id} />
@@ -158,7 +162,10 @@ function RequestAccess({ level, meName, meId }: { level: string; meName: string;
     const a = ASKS.find((x) => x.key === ask)!;
     const sent = await sendRequest(db, `[Access] ${meName} asks to be ${a.label.toLowerCase()}`, why.trim(), meId);
     setWhy('');
-    Alert.alert('Request sent', `${sent ? 'The admins will' : 'It sends when you have signal, then the admins will'} look at it and reply. You need to be signed in (Me → Go online) for a level to stick.`);
+    Alert.alert(
+      'Request sent',
+      `${sent ? 'The admins will' : 'It sends when you have signal, then the admins will'} look at it and reply. You need to be signed in (Me → Go online) for a level to stick.`,
+    );
   }
   return (
     <Section title="Need more access?">

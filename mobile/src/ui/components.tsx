@@ -72,9 +72,7 @@ export function Screen({
   edges?: ('top' | 'bottom')[];
 }) {
   const body = scroll ? (
-    <ScrollView
-      contentContainerStyle={[padded && styles.padded, { gap: space.lg, paddingBottom: space.xxl * 2 }]}
-      keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={[padded && styles.padded, { gap: space.lg, paddingBottom: space.xxl * 2 }]} keyboardShouldPersistTaps="handled">
       {children}
     </ScrollView>
   ) : (
@@ -109,9 +107,7 @@ export function PageTitle({ title, subtitle, right }: { title: string; subtitle?
 export function Card({ children, style, onPress }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void }) {
   if (onPress) {
     return (
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [styles.card, pressed && { backgroundColor: colors.neutralTint }, style]}>
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { backgroundColor: colors.neutralTint }, style]}>
         {children}
       </Pressable>
     );
@@ -167,55 +163,22 @@ export function Button({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        { backgroundColor: p.bg, borderColor: p.border, minHeight: big ? 64 : TOUCH },
-        pressed && { opacity: 0.75 },
-        disabled && { opacity: 0.4 },
-        style,
-      ]}>
+      style={({ pressed }) => [styles.button, { backgroundColor: p.bg, borderColor: p.border, minHeight: big ? 64 : TOUCH }, pressed && { opacity: 0.75 }, disabled && { opacity: 0.4 }, style]}>
       {icon ? <Icon name={icon} size={big ? 24 : 20} color={p.fg} /> : null}
-      {label ? (
-        <RNText style={{ fontFamily: font.semibold, fontSize: big ? 20 : 16, color: p.fg, letterSpacing: big ? 0.5 : 0 }}>
-          {label}
-        </RNText>
-      ) : null}
+      {label ? <RNText style={{ fontFamily: font.semibold, fontSize: big ? 20 : 16, color: p.fg, letterSpacing: big ? 0.5 : 0 }}>{label}</RNText> : null}
     </Pressable>
   );
 }
 
-export function IconButton({
-  icon,
-  onPress,
-  label,
-  color = colors.ink,
-}: {
-  icon: IconName;
-  onPress: () => void;
-  label: string;
-  color?: string;
-}) {
+export function IconButton({ icon, onPress, label, color = colors.ink }: { icon: IconName; onPress: () => void; label: string; color?: string }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      hitSlop={6}
-      style={({ pressed }) => [styles.iconButton, pressed && { backgroundColor: colors.neutralTint }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={6} style={({ pressed }) => [styles.iconButton, pressed && { backgroundColor: colors.neutralTint }]}>
       <Icon name={icon} color={color} />
     </Pressable>
   );
 }
 
-export function Chip({
-  label,
-  tone = 'brand',
-  icon,
-}: {
-  label: string;
-  tone?: 'brand' | 'neutral' | 'warn' | 'danger' | 'dark';
-  icon?: IconName;
-}) {
+export function Chip({ label, tone = 'brand', icon }: { label: string; tone?: 'brand' | 'neutral' | 'warn' | 'danger' | 'dark'; icon?: IconName }) {
   const tones = {
     brand: [colors.brandTint, colors.brandDark],
     neutral: [colors.neutralTint, colors.ink],
@@ -246,10 +209,7 @@ export function RatioBadge({ ratio, point, compact, onDark }: { ratio: string | 
   return (
     <View
       accessibilityLabel={`${code}: ${women ? 'female' : 'male'} point ${slot}, ${women ? 'four female matching and three male matching players' : 'four male matching and three female matching players'}`}
-      style={[
-        styles.chip,
-        { backgroundColor: onDark ? fg : bg, gap: 6, paddingVertical: compact ? 2 : 6, paddingHorizontal: compact ? 8 : 12 },
-      ]}>
+      style={[styles.chip, { backgroundColor: onDark ? fg : bg, gap: 6, paddingVertical: compact ? 2 : 6, paddingHorizontal: compact ? 8 : 12 }]}>
       <Icon name={women ? 'gender-female' : 'gender-male'} size={compact ? 14 : 20} color={onDark ? '#fff' : fg} />
       <RNText style={{ fontFamily: font.bold, fontSize: compact ? 12 : 15, color: onDark ? '#fff' : fg }}>
         {compact ? code : `${code} · ${women ? 'female' : 'male'} point ${slot}${slot === 2 ? ' · switches next' : ''}`}
@@ -293,9 +253,7 @@ export function Choice({
       ]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         {dot ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: dot }} /> : null}
-        <RNText
-          numberOfLines={1}
-          style={{ fontFamily: font.semibold, fontSize: tall ? 17 : 15, color: selected ? colors.brandDark : colors.ink }}>
+        <RNText numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: tall ? 17 : 15, color: selected ? colors.brandDark : colors.ink }}>
           {label}
         </RNText>
       </View>
@@ -308,15 +266,7 @@ export function Choice({
   );
 }
 
-export function Segmented<V extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: V; label: string }[];
-  value: V;
-  onChange: (v: V) => void;
-}) {
+export function Segmented<V extends string>({ options, value, onChange }: { options: { value: V; label: string }[]; value: V; onChange: (v: V) => void }) {
   return (
     <View style={{ flexDirection: 'row', gap: space.sm }}>
       {options.map((o) => (
@@ -426,12 +376,7 @@ export function TeamSwatch({ color, size = 'md' }: { color?: string | null; size
  * Text box. Multi-line ones get a small formatting bar (bold, italic, bullets, link) unless `plain`
  * (e.g. pasted CSV or bank details); show the result with <RichText>.
  */
-export function Field({
-  label,
-  hint,
-  plain,
-  ...input
-}: TextInputProps & { label: string; hint?: string; plain?: boolean }) {
+export function Field({ label, hint, plain, ...input }: TextInputProps & { label: string; hint?: string; plain?: boolean }) {
   const [sel, setSel] = useState({ start: 0, end: 0 });
   const [force, setForce] = useState<{ start: number; end: number } | undefined>(undefined);
   const rich = input.multiline && !plain && !!input.onChangeText;
@@ -466,7 +411,13 @@ export function Field({
                 ['link', 'link-variant', 'Add a link'],
               ] as const
             ).map(([k, icon, a11y]) => (
-              <Pressable key={k} onPress={() => format(k)} accessibilityRole="button" accessibilityLabel={a11y} hitSlop={6} style={({ pressed }) => [styles.formatBtn, pressed && { backgroundColor: colors.neutralTint }]}>
+              <Pressable
+                key={k}
+                onPress={() => format(k)}
+                accessibilityRole="button"
+                accessibilityLabel={a11y}
+                hitSlop={6}
+                style={({ pressed }) => [styles.formatBtn, pressed && { backgroundColor: colors.neutralTint }]}>
                 <Icon name={icon} size={20} color={colors.muted} />
               </Pressable>
             ))}
@@ -486,7 +437,11 @@ export function RichText({ children, v = 'body', style }: { children: string | n
     <View style={{ gap: 2 }}>
       {blocks.map((b, i) => (
         <View key={i} style={b.bullet ? { flexDirection: 'row', gap: 6, paddingLeft: 4 } : undefined}>
-          {b.bullet ? <T v={v} style={style}>•</T> : null}
+          {b.bullet ? (
+            <T v={v} style={style}>
+              •
+            </T>
+          ) : null}
           <T v={v} style={[style, b.bullet && { flex: 1 }]}>
             {b.spans.length
               ? b.spans.map((sp, j) => (
@@ -521,31 +476,11 @@ export function DateField({
   hint?: string;
   placeholder?: string;
 }) {
-  return (
-    <Field
-      label={label}
-      value={value}
-      onChangeText={(t) => onChangeText(maskDmy(t))}
-      placeholder={placeholder}
-      keyboardType="number-pad"
-      maxLength={10}
-      hint={hint}
-    />
-  );
+  return <Field label={label} value={value} onChangeText={(t) => onChangeText(maskDmy(t))} placeholder={placeholder} keyboardType="number-pad" maxLength={10} hint={hint} />;
 }
 
 /** Bottom sheet built on Modal: used for quick pickers mid-game so the scoring screen never navigates away. */
-export function Sheet({
-  visible,
-  onClose,
-  title,
-  children,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  title: string;
-  children: ReactNode;
-}) {
+export function Sheet({ visible, onClose, title, children }: { visible: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -572,7 +507,18 @@ export function Divider() {
 }
 
 const styles = StyleSheet.create({
-  formatBar: { flexDirection: 'row', gap: 4, paddingHorizontal: 6, paddingVertical: 4, borderWidth: 1, borderTopWidth: 0, borderColor: '#C9CDC5', borderBottomLeftRadius: 10, borderBottomRightRadius: 10, backgroundColor: colors.surface },
+  formatBar: {
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: '#C9CDC5',
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    backgroundColor: colors.surface,
+  },
   formatBtn: { width: 36, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 6 },
   screen: { flex: 1, backgroundColor: colors.bg },
   padded: { paddingHorizontal: space.lg, paddingTop: space.lg },

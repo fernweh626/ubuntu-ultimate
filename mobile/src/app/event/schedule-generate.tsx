@@ -14,10 +14,7 @@ import { space } from '@/ui/theme';
 export default function ScheduleGenerate() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const db = useSQLiteContext();
-  const bundle = useData(
-    async (d) => ({ event: await getEvent(d, eventId), teams: await eventTeams(d, eventId), venues: await listVenues(d) }),
-    [eventId],
-  );
+  const bundle = useData(async (d) => ({ event: await getEvent(d, eventId), teams: await eventTeams(d, eventId), venues: await listVenues(d) }), [eventId]);
   const [excluded, setExcluded] = useState<string[]>([]);
   const [firstDate, setFirstDate] = useState('');
   const [every, setEvery] = useState('7');
@@ -42,7 +39,12 @@ export default function ScheduleGenerate() {
     if (!startIso) return [];
     const groups = usePools ? pools.map((p) => teams.filter((t) => (t.pool ?? '') === p)) : [teams];
     // Pools share the same match days, so merge their rounds before handing out slots.
-    const pairings = groups.flatMap((g) => roundRobin(g.map((t) => t.id), Number(cycles)));
+    const pairings = groups.flatMap((g) =>
+      roundRobin(
+        g.map((t) => t.id),
+        Number(cycles),
+      ),
+    );
     return assignSlots(pairings, startIso, Math.max(1, Number(every) || 7), slots);
   }, [startIso, usePools, pools, teams, cycles, every, slots]);
 
@@ -120,11 +122,7 @@ export default function ScheduleGenerate() {
               />
             ))}
           </View>
-          <T v="small">
-            {slots.length
-              ? `${slots.length} game slot${slots.length > 1 ? 's' : ''} per match day. Extra games roll onto the next day.`
-              : 'Pick fields and times to see slots.'}
-          </T>
+          <T v="small">{slots.length ? `${slots.length} game slot${slots.length > 1 ? 's' : ''} per match day. Extra games roll onto the next day.` : 'Pick fields and times to see slots.'}</T>
         </Section>
         {fixtures.length ? (
           <Section title="Preview · first two rounds">

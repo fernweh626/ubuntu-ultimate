@@ -18,7 +18,10 @@ export default function Debrief() {
       const access = await getAccess(d);
       const team = await getTeam(d, teamId);
       const rows = await reflectionsFor(d, gameId ? { gameId } : { sessionId }, teamId);
-      const people = await peopleById(d, rows.map((r) => r.person_id));
+      const people = await peopleById(
+        d,
+        rows.map((r) => r.person_id),
+      );
       let title = team?.name ?? 'Team';
       let squad = 0;
       if (gameId) {
@@ -47,17 +50,7 @@ export default function Debrief() {
   return <DebriefBody {...bundle} />;
 }
 
-function DebriefBody({
-  rows,
-  people,
-  title,
-  squad,
-}: {
-  rows: Awaited<ReturnType<typeof reflectionsFor>>;
-  people: Map<string, Parameters<typeof displayName>[0]>;
-  title: string;
-  squad: number;
-}) {
+function DebriefBody({ rows, people, title, squad }: { rows: Awaited<ReturnType<typeof reflectionsFor>>; people: Map<string, Parameters<typeof displayName>[0]>; title: string; squad: number }) {
   const name = (id: string) => (people.get(id) ? displayName(people.get(id)!) : 'Someone');
   const s = summarise(rows, name);
   const [text, setText] = useState(() => debriefText(title, s, squad));

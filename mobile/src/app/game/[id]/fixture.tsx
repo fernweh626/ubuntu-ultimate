@@ -4,17 +4,7 @@ import { useState } from 'react';
 import { Alert, Linking, View } from 'react-native';
 
 import { useData } from '@/db/live';
-import {
-  deleteGame,
-  forfeitGame,
-  getAccess,
-  getEvent,
-  getGameListItem,
-  getVenue,
-  postponeGame,
-  statusLog,
-  updateFixture,
-} from '@/db/repo';
+import { deleteGame, forfeitGame, getAccess, getEvent, getGameListItem, getVenue, postponeGame, statusLog, updateFixture } from '@/db/repo';
 import { canPostpone, postponeRuleText, STATUS_REASONS, type StatusReason } from '@/domain/fixtures';
 import { dmyTimeToIso as toIso, localDmy, shortDate, timeOfDay } from '@/domain/format';
 import { Button, Card, Chip, Choice, DateField, Field, Icon, IconButton, Screen, Section, Sheet, T, TeamSwatch } from '@/ui/components';
@@ -76,11 +66,7 @@ export default function Fixture() {
                 label="Map"
                 icon="map-marker"
                 kind="ghost"
-                onPress={() =>
-                  Linking.openURL(
-                    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.latitude != null ? `${venue.latitude},${venue.longitude}` : venue.name)}`,
-                  )
-                }
+                onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.latitude != null ? `${venue.latitude},${venue.longitude}` : venue.name)}`)}
               />
             </View>
           ) : (
@@ -110,7 +96,13 @@ export default function Fixture() {
           <T v="small">A scorekeeper or team staff starts this game on the day.</T>
         )}
 
-        <Availability gameId={g.id} teams={[{ id: homeId, name: name(homeId) }, { id: awayId, name: name(awayId) }]} />
+        <Availability
+          gameId={g.id}
+          teams={[
+            { id: homeId, name: name(homeId) },
+            { id: awayId, name: name(awayId) },
+          ]}
+        />
 
         {actsFor.length ? (
           <Section title="Can’t make it?">

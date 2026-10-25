@@ -115,7 +115,20 @@ export function deleteFitnessResult(db: SQLiteDatabase, id: string) {
 
 /** Staff view: everyone on the squad with accreditation, latest self-rating and test results. */
 export async function squadDevelopment(db: SQLiteDatabase, teamId: string) {
-  const people = await db.getAllAsync<{ id: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; photo_uri: string | null; level: AccreditationLevel | null; expires_on: string | null; acc_status: CheckStatus | null; acc_file: string | null; acc_note: string | null; role: string | null }>(
+  const people = await db.getAllAsync<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string | null;
+    gender: Gender | null;
+    photo_uri: string | null;
+    level: AccreditationLevel | null;
+    expires_on: string | null;
+    acc_status: CheckStatus | null;
+    acc_file: string | null;
+    acc_note: string | null;
+    role: string | null;
+  }>(
     `SELECT p.id, p.first_name, p.last_name, p.birth_date, p.gender, p.photo_uri, a.level, a.expires_on, a.status AS acc_status, a.file_path AS acc_file, a.check_note AS acc_note, MAX(m.role) AS role
        FROM membership m JOIN person p ON p.id = m.person_id LEFT JOIN accreditation a ON a.person_id = p.id
       WHERE m.team_id = ? AND m.end_date IS NULL AND m.deleted_at IS NULL AND p.deleted_at IS NULL
@@ -159,7 +172,16 @@ export function setAvailability(db: SQLiteDatabase, gameId: string, teamId: stri
 
 /** The squad of `teamId` with their answer for a game (null = not answered). */
 export function gameAvailability(db: SQLiteDatabase, gameId: string, teamId: string) {
-  return db.getAllAsync<{ personId: string; first_name: string; last_name: string; birth_date: string | null; gender: Gender | null; photo_uri: string | null; status: AvailabilityStatus | null; reason: string | null }>(
+  return db.getAllAsync<{
+    personId: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string | null;
+    gender: Gender | null;
+    photo_uri: string | null;
+    status: AvailabilityStatus | null;
+    reason: string | null;
+  }>(
     `SELECT p.id AS personId, p.first_name, p.last_name, p.birth_date, p.gender, p.photo_uri, a.status, a.reason
        FROM membership m JOIN person p ON p.id = m.person_id
        LEFT JOIN game_availability a ON a.game_id = ? AND a.person_id = p.id
@@ -231,7 +253,10 @@ export async function attendanceRanking(db: SQLiteDatabase, teamId: string, sinc
   );
   const pq = practices.map((p) => '?').join(',') || "''";
   const pids = practices.map((p) => p.id);
-  const marks = await db.getAllAsync<{ session_id: string; person_id: string; attended: number }>(`SELECT session_id, person_id, attended FROM practice_attendance WHERE session_id IN (${pq})`, ...pids);
+  const marks = await db.getAllAsync<{ session_id: string; person_id: string; attended: number }>(
+    `SELECT session_id, person_id, attended FROM practice_attendance WHERE session_id IN (${pq})`,
+    ...pids,
+  );
   const rsvps = await db.getAllAsync<{ session_id: string; person_id: string; status: string }>(`SELECT session_id, person_id, status FROM practice_rsvp WHERE session_id IN (${pq})`, ...pids);
   const games = await db.getAllAsync<{ id: string }>(
     `SELECT id FROM game WHERE deleted_at IS NULL AND status = 'final' AND forfeit_team_id IS NULL AND (team_a_id = ? OR team_b_id = ?)
@@ -281,7 +306,20 @@ export async function attendanceRanking(db: SQLiteDatabase, teamId: string, sinc
 /* ---------------- Feedback ---------------- */
 
 export type FeedbackKind = 'bug' | 'feature' | 'enhancement' | 'other';
-export type FeedbackRow = { id: string; kind: FeedbackKind; title: string; body: string | null; screen: string | null; app_version: string | null; device: string | null; contact_ok: number; person_id: string | null; created_at: string; sent_at: string | null; images_json?: string | null };
+export type FeedbackRow = {
+  id: string;
+  kind: FeedbackKind;
+  title: string;
+  body: string | null;
+  screen: string | null;
+  app_version: string | null;
+  device: string | null;
+  contact_ok: number;
+  person_id: string | null;
+  created_at: string;
+  sent_at: string | null;
+  images_json?: string | null;
+};
 
 export function saveFeedback(db: SQLiteDatabase, f: Omit<FeedbackRow, 'id' | 'created_at' | 'sent_at'>) {
   return write(db, async () => {
@@ -318,7 +356,16 @@ export function markFeedbackSent(db: SQLiteDatabase, id: string) {
 
 /* ---------------- Registration numbers, good standing, form links ---------------- */
 
-export type Registration = { id: string; person_id: string; safda_number: string | null; region_code: string | null; region_number: string | null; phone: string | null; emergency_name: string | null; emergency_phone: string | null };
+export type Registration = {
+  id: string;
+  person_id: string;
+  safda_number: string | null;
+  region_code: string | null;
+  region_number: string | null;
+  phone: string | null;
+  emergency_name: string | null;
+  emergency_phone: string | null;
+};
 
 export function getRegistration(db: SQLiteDatabase, personId: string) {
   return db.getFirstAsync<Registration>(`SELECT * FROM registration WHERE person_id = ?`, personId);
@@ -354,9 +401,7 @@ export async function standingFor(db: SQLiteDatabase, association: string, numbe
 
 /** Which association lists exist on this phone, and when each was last uploaded. */
 export async function standingLists(db: SQLiteDatabase) {
-  return db.getAllAsync<{ association: string; n: number; uploaded_at: string }>(
-    `SELECT association, COUNT(*) AS n, MAX(uploaded_at) AS uploaded_at FROM association_standing GROUP BY association`,
-  );
+  return db.getAllAsync<{ association: string; n: number; uploaded_at: string }>(`SELECT association, COUNT(*) AS n, MAX(uploaded_at) AS uploaded_at FROM association_standing GROUP BY association`);
 }
 
 /** Staff: who's ready to play: accreditation, SAFDA and region standing, plus a phone to follow up. */
@@ -388,7 +433,16 @@ export function saveOrgLink(db: SQLiteDatabase, l: { id?: string; region_code: s
     if (l.id) {
       await db.runAsync(`UPDATE org_link SET region_code = ?, kind = ?, label = ?, url = ?, updated_at = ? WHERE id = ?`, l.region_code, l.kind, l.label, l.url, ts, l.id);
     } else {
-      await db.runAsync(`INSERT INTO org_link (id, region_code, kind, label, url, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1000, ?, ?)`, uuid(), l.region_code, l.kind, l.label, l.url, ts, ts);
+      await db.runAsync(
+        `INSERT INTO org_link (id, region_code, kind, label, url, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1000, ?, ?)`,
+        uuid(),
+        l.region_code,
+        l.kind,
+        l.label,
+        l.url,
+        ts,
+        ts,
+      );
     }
   });
 }

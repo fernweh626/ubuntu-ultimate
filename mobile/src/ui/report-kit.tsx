@@ -77,7 +77,25 @@ export function Tile({ tone, value, label, teamColor }: { tone: Tone; value: str
 }
 
 /** Two-part horizontal bar (e.g. goals + assists), scaled to `max`. */
-export function SplitBar({ tone, label, a, b, max, aColor, bColor, teamColor }: { tone: Tone; label: string; a: number; b: number; max: number; aColor: string; bColor: string; teamColor?: string | null }) {
+export function SplitBar({
+  tone,
+  label,
+  a,
+  b,
+  max,
+  aColor,
+  bColor,
+  teamColor,
+}: {
+  tone: Tone;
+  label: string;
+  a: number;
+  b: number;
+  max: number;
+  aColor: string;
+  bColor: string;
+  teamColor?: string | null;
+}) {
   const p = palette(tone, teamColor);
   const w = 200;
   return (
@@ -160,10 +178,12 @@ export function ConnectionWeb({
   });
   // Men then women around the circle, busiest first, so the shape reads at a glance.
   ids.sort((a, b) => Number(isWoman(a)) - Number(isWoman(b)) || (weight.get(b) ?? 0) - (weight.get(a) ?? 0));
-  const pos = new Map(ids.map((id, i) => {
-    const ang = (i / Math.max(1, ids.length)) * Math.PI * 2 - Math.PI / 2;
-    return [id, { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang), ang }];
-  }));
+  const pos = new Map(
+    ids.map((id, i) => {
+      const ang = (i / Math.max(1, ids.length)) * Math.PI * 2 - Math.PI / 2;
+      return [id, { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang), ang }];
+    }),
+  );
   const maxW = Math.max(1, ...weight.values());
   const woman = tone === 'paper' ? p.accent : ACCENT;
   return (

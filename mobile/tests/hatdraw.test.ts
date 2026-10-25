@@ -1,18 +1,29 @@
 import { bestTeamIndex, drawTeams, hatSlots, recommendCaptains, suggestTeamCount, teamSummary, type HatPlayer } from '@/domain/hat';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x));
-const players: HatPlayer[] = Array.from({ length: 44 }, (_, i) => ({ id: `p${i}`, gender: i % 5 < 2 ? 'W' : 'M', skill: 1 + (i * 7) % 5, wantsCaptain: i % 6 === 0 }));
+const players: HatPlayer[] = Array.from({ length: 44 }, (_, i) => ({ id: `p${i}`, gender: i % 5 < 2 ? 'W' : 'M', skill: 1 + ((i * 7) % 5), wantsCaptain: i % 6 === 0 }));
 const n = suggestTeamCount(players.length, 7);
 ok('44 players, 7v7 → 4 teams', n === 4, n);
 const caps = recommendCaptains(players, n);
-ok('4 captains, all willing, mix of genders', caps.length === 4 && caps.every((c) => players.find((p) => p.id === c)!.wantsCaptain) && new Set(caps.map((c) => players.find((p) => p.id === c)!.gender)).size === 2, caps);
+ok(
+  '4 captains, all willing, mix of genders',
+  caps.length === 4 && caps.every((c) => players.find((p) => p.id === c)!.wantsCaptain) && new Set(caps.map((c) => players.find((p) => p.id === c)!.gender)).size === 2,
+  caps,
+);
 const teams = drawTeams(players, n, caps);
 const byId = new Map(players.map((p) => [p.id, p]));
 const sums = teams.map((t) => teamSummary(t, byId));
 ok('everyone placed exactly once', teams.flatMap((t) => t.playerIds).length === 44 && new Set(teams.flatMap((t) => t.playerIds)).size === 44);
 ok('sizes within 1', Math.max(...sums.map((s) => s.size)) - Math.min(...sums.map((s) => s.size)) <= 1, sums);
 ok('women within 1', Math.max(...sums.map((s) => s.women)) - Math.min(...sums.map((s) => s.women)) <= 1, sums);
-ok('average skill within 0.5', Math.max(...sums.map((s) => s.skill)) - Math.min(...sums.map((s) => s.skill)) <= 0.5, sums.map((s) => s.skill.toFixed(2)));
-ok('captains lead their teams', teams.every((t, i) => t.captainId === caps[i] && t.playerIds[0] === caps[i]));
+ok(
+  'average skill within 0.5',
+  Math.max(...sums.map((s) => s.skill)) - Math.min(...sums.map((s) => s.skill)) <= 0.5,
+  sums.map((s) => s.skill.toFixed(2)),
+);
+ok(
+  'captains lead their teams',
+  teams.every((t, i) => t.captainId === caps[i] && t.playerIds[0] === caps[i]),
+);
 ok('shirt names', teams.map((t) => t.name).join() === 'Light,Dark,Red,Blue');
 // on-the-day: a woman joins → goes to a team with fewest women, nobody moves
 const before = JSON.stringify(teams.map((t) => t.playerIds));

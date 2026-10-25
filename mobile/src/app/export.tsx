@@ -16,7 +16,18 @@ import { IS_WEB, webShareFiles } from '@/lib/web';
 import { colors, space } from '@/ui/theme';
 
 async function attendanceRows(db: SQLiteDatabase, teamId: string) {
-  return db.getAllAsync<{ date: string; title: string | null; cancelled: boolean; personId: string; first_name: string; last_name: string; birth_date: string | null; gender: string | null; rsvp: string | null; attended: number | null }>(
+  return db.getAllAsync<{
+    date: string;
+    title: string | null;
+    cancelled: boolean;
+    personId: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string | null;
+    gender: string | null;
+    rsvp: string | null;
+    attended: number | null;
+  }>(
     `SELECT substr(s.started_at, 1, 10) AS date, s.title, s.cancelled_at IS NOT NULL AS cancelled, p.id AS personId, p.first_name, p.last_name, p.birth_date, p.gender,
             r.status AS rsvp, a.attended
        FROM session s
@@ -56,7 +67,10 @@ export default function Export() {
   const [busy, setBusy] = useState<string | null>(null);
   if (!bundle) return <Screen edges={[]}>{null}</Screen>;
   const { games, people, label, attendance, ready, ratings, tests } = bundle;
-  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const slug = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
   const stamp = new Date().toISOString().slice(0, 10);
 
   async function share(name: string, make: () => string) {
@@ -77,7 +91,13 @@ export default function Export() {
 
   const files: { name: string; title: string; body: string; make: () => string; show: boolean }[] = [
     { name: 'games', title: 'Games', body: 'One row per game: score, holds, breaks, turnovers for both teams.', make: () => gamesCsv(games), show: true },
-    { name: 'player-games', title: 'Player stats per game', body: 'One row per player per game: points, goals, assists, Ds, turnovers, +/−.', make: () => playerGamesCsv(games, people, teamId), show: true },
+    {
+      name: 'player-games',
+      title: 'Player stats per game',
+      body: 'One row per player per game: points, goals, assists, Ds, turnovers, +/−.',
+      make: () => playerGamesCsv(games, people, teamId),
+      show: true,
+    },
     { name: 'points', title: 'Points', body: 'One row per point: who was on, ratio, hold/break, length, scorer.', make: () => pointsCsv(games, people), show: true },
     { name: 'events', title: 'Every action', body: 'The raw play-by-play: passes, turnovers, goals, timeouts, subs, with timestamps.', make: () => eventsCsv(games, people), show: true },
     {
@@ -87,8 +107,20 @@ export default function Export() {
       make: () => attendanceCsv(attendance.map((r) => ({ ...r, name: displayName(r) }))),
       show: !!teamId,
     },
-    { name: 'self-ratings', title: 'Self-ratings', body: `Every check-in, 1–5 in five areas, with each player’s history (${ratings.length} ratings).`, make: () => ratingsCsv(ready, ratings), show: !!teamId },
-    { name: 'fitness-tests', title: 'Fitness benchmarks', body: `Beep test, 5-10-5, 40 m and 60 m results with dates (${tests.length} results).`, make: () => fitnessCsv(ready, tests), show: !!teamId },
+    {
+      name: 'self-ratings',
+      title: 'Self-ratings',
+      body: `Every check-in, 1–5 in five areas, with each player’s history (${ratings.length} ratings).`,
+      make: () => ratingsCsv(ready, ratings),
+      show: !!teamId,
+    },
+    {
+      name: 'fitness-tests',
+      title: 'Fitness benchmarks',
+      body: `Beep test, 5-10-5, 40 m and 60 m results with dates (${tests.length} results).`,
+      make: () => fitnessCsv(ready, tests),
+      show: !!teamId,
+    },
     { name: 'readiness', title: 'Ready to play', body: 'Accreditation level and expiry, SAFDA and region numbers and standing. No phone numbers.', make: () => readinessCsv(ready), show: !!teamId },
   ];
 
@@ -99,7 +131,9 @@ export default function Export() {
         <Card>
           <T v="bodyStrong">{label}</T>
           <T v="small">
-            {games.length} finished game{games.length === 1 ? '' : 's'}{teamId ? `, ${ready.length} players` : ''}. CSV files open in Excel, Google Sheets, pandas or R; they join on game_id and person_id. No emails or birth dates are included, and under-18s show as first name + initial.
+            {games.length} finished game{games.length === 1 ? '' : 's'}
+            {teamId ? `, ${ready.length} players` : ''}. CSV files open in Excel, Google Sheets, pandas or R; they join on game_id and person_id. No emails or birth dates are included, and under-18s
+            show as first name + initial.
           </T>
         </Card>
         {files
@@ -111,7 +145,16 @@ export default function Export() {
                   <T v="bodyStrong">{f.title}</T>
                   <T v="small">{f.body}</T>
                 </View>
-                {busy === f.name ? <ActivityIndicator color={colors.brand} /> : <Button label="Share" icon="file-delimited-outline" onPress={() => share(f.name, f.make)} disabled={!!busy || (!games.length && ['games', 'player-games', 'points', 'events'].includes(f.name))} />}
+                {busy === f.name ? (
+                  <ActivityIndicator color={colors.brand} />
+                ) : (
+                  <Button
+                    label="Share"
+                    icon="file-delimited-outline"
+                    onPress={() => share(f.name, f.make)}
+                    disabled={!!busy || (!games.length && ['games', 'player-games', 'points', 'events'].includes(f.name))}
+                  />
+                )}
               </View>
             </Card>
           ))}

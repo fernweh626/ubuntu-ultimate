@@ -7,14 +7,38 @@ import { mySchedule } from '@/db/schedule';
 import { homeFeed } from '@/db/home';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 400));
 (async () => {
-  const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
+  const db: any = open();
+  await migrate(db);
+  await seedIfEmpty(db);
+  await ensureStarterContent(db);
+  await ensureDemoContent(db);
   ok('v19', (await db.getFirstAsync('PRAGMA user_version')).user_version === 27);
-  ok('AGM announcement loaded', (await repo.listAnnouncements(db)).some((a: any) => a.title.startsWith('SAFDA AGM') && a.link_url?.startsWith('/hub/meeting/')));
+  ok(
+    'AGM announcement loaded',
+    (await repo.listAnnouncements(db)).some((a: any) => a.title.startsWith('SAFDA AGM') && a.link_url?.startsWith('/hub/meeting/')),
+  );
   const me = await repo.savePerson(db, { first_name: 'Sched', last_name: 'Tester', gender: 'M' });
   await repo.setMeId(db, me);
   const now = new Date('2026-10-26T08:00:00');
   // No team at all: personal sign-ups still show.
-  const hatId = await hats.saveHat(db, { name: 'Test Hat', region: 'western', location: 'Woolsack', startDate: '2026-10-31', endDate: null, startTime: '09:00', venueId: null, cost: null, paymentUrl: null, eftDetails: null, popContact: null, details: null, perSide: 5, gameMinutes: 30, pointTarget: 9, teamCount: null });
+  const hatId = await hats.saveHat(db, {
+    name: 'Test Hat',
+    region: 'western',
+    location: 'Woolsack',
+    startDate: '2026-10-31',
+    endDate: null,
+    startTime: '09:00',
+    venueId: null,
+    cost: null,
+    paymentUrl: null,
+    eftDetails: null,
+    popContact: null,
+    details: null,
+    perSide: 5,
+    gameMinutes: 30,
+    pointTarget: 9,
+    teamCount: null,
+  });
   await hats.saveSignup(db, hatId, me, { attending: 'yes', wantsCaptain: false, skill: 3, paid: false });
   const agm = (await db.getFirstAsync(`SELECT id FROM calendar_entry WHERE kind = 'agm'`)).id;
   await repo.setMeetingRsvp(db, agm, me, 'going');
@@ -22,7 +46,11 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
   await repo.setFollowing(db, 'pickup', pickups[0].id, true);
   let s = await mySchedule(db, now);
   const kinds = new Set(s.items.map((i: any) => i.kind));
-  ok('hat in schedule', kinds.has('hat'), s.items.map((i: any) => i.kind));
+  ok(
+    'hat in schedule',
+    kinds.has('hat'),
+    s.items.map((i: any) => i.kind),
+  );
   ok('meeting in schedule', kinds.has('meeting'));
   const pk = s.items.filter((i: any) => i.kind === 'pickup');
   ok('followed pickup every week (4 weeks)', pk.length >= 4 && pk.every((i: any) => i.id === pickups[0].id), pk.length);
@@ -36,7 +64,15 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
   await repo.setFollowing(db, 'pickup', pickups[0].id, false);
   s = await mySchedule(db, now);
   const left = s.items.filter((i: any) => i.kind === 'pickup' && i.id === pickups[0].id);
-  ok('unfollowed: only the day you said yes to', left.length === 1 && left[0].status === 'going', left.map((i: any) => i.status));
+  ok(
+    'unfollowed: only the day you said yes to',
+    left.length === 1 && left[0].status === 'going',
+    left.map((i: any) => i.status),
+  );
   const feed: any = await homeFeed(db, now);
-  ok('Home week has the hat and AGM', feed.timeline.some((t: any) => t.kind === 'hat') && feed.timeline.some((t: any) => t.kind === 'meeting'), feed.timeline.map((t: any) => t.kind));
+  ok(
+    'Home week has the hat and AGM',
+    feed.timeline.some((t: any) => t.kind === 'hat') && feed.timeline.some((t: any) => t.kind === 'meeting'),
+    feed.timeline.map((t: any) => t.kind),
+  );
 })();

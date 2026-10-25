@@ -29,7 +29,11 @@ export default function Announcements() {
       <Screen edges={[]}>
         <RegionChips value={region.value} onChange={region.setValue} home={region.home} />
         {shown.length === 0 ? (
-          <EmptyState icon="bullhorn-outline" title="No announcements yet" body={runs ? 'Tap + to post one, e.g. Nationals dates or an AGM notice.' : 'News from SAFDA and your region will show up here.'} />
+          <EmptyState
+            icon="bullhorn-outline"
+            title="No announcements yet"
+            body={runs ? 'Tap + to post one, e.g. Nationals dates or an AGM notice.' : 'News from SAFDA and your region will show up here.'}
+          />
         ) : (
           shown.map((a) => (
             <Card key={a.id} onPress={runs ? () => router.push({ pathname: '/hub/announcement-edit', params: { id: a.id } }) : undefined}>
@@ -41,7 +45,12 @@ export default function Announcements() {
               <T v="title">{a.title}</T>
               {a.body ? <RichText>{a.body}</RichText> : null}
               {a.link_url ? (
-                <Button label={a.link_label || 'Open link'} icon="open-in-new" onPress={() => (a.link_url!.startsWith('/') ? router.push(a.link_url as never) : Linking.openURL(a.link_url!))} style={{ alignSelf: 'flex-start' }} />
+                <Button
+                  label={a.link_label || 'Open link'}
+                  icon="open-in-new"
+                  onPress={() => (a.link_url!.startsWith('/') ? router.push(a.link_url as never) : Linking.openURL(a.link_url!))}
+                  style={{ alignSelf: 'flex-start' }}
+                />
               ) : null}
             </Card>
           ))

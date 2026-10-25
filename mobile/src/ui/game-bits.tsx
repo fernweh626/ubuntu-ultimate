@@ -33,9 +33,7 @@ export function GameCard({ g }: { g: GameListItem }) {
   const bWon = g.status === 'final' && g.score_b > g.score_a;
   const forfeitBy = g.forfeit_team_id ? (g.forfeit_team_id === g.team_a_id ? g.a_name : g.b_name) : null;
   return (
-    <Card
-      onPress={() => router.push(live ? `/game/${g.id}` : `/game/${g.id}/report`)}
-      style={live ? { borderColor: colors.brand, borderWidth: 2 } : undefined}>
+    <Card onPress={() => router.push(live ? `/game/${g.id}` : `/game/${g.id}/report`)} style={live ? { borderColor: colors.brand, borderWidth: 2 } : undefined}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         {live ? <Chip label="LIVE" tone="danger" icon="circle" /> : forfeitBy ? <Chip label={`Forfeit · ${forfeitBy}`} tone="warn" /> : <Chip label="Final" tone="neutral" />}
         <T v="small" numberOfLines={1} style={{ flex: 1, textAlign: 'right', marginLeft: space.sm }}>

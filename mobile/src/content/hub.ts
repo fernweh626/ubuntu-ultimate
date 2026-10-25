@@ -74,8 +74,7 @@ export const WHAT_IS_ULTIMATE: { title: string; body: string }[] = [
   },
   {
     title: 'Divisions',
-    body:
-      'Most South African play is mixed (female and male matching players on the field together, with a set gender ratio on each point). There are also open and women’s divisions, and age divisions such as U17, U20, U24 and masters.',
+    body: 'Most South African play is mixed (female and male matching players on the field together, with a set gender ratio on each point). There are also open and women’s divisions, and age divisions such as U17, U20, U24 and masters.',
   },
   {
     title: 'How to start',
@@ -85,8 +84,7 @@ export const WHAT_IS_ULTIMATE: { title: string; body: string }[] = [
   },
   {
     title: 'Competing',
-    body:
-      'League and tournament play needs annual club membership through your regional body. Regional tournaments feed into Nationals, and national teams are selected from there.',
+    body: 'League and tournament play needs annual club membership through your regional body. Regional tournaments feed into Nationals, and national teams are selected from there.',
   },
 ];
 
@@ -182,8 +180,7 @@ export const ADMIN_EMAIL = 'admin@ubuntuultimate.example';
 export const WEB_URL = 'https://ubuntu-ultimate--preview.expo.app';
 
 /** Made-up banking details shown on demo teams until clubs add their real ones. */
-export const demoBanking = (teamName: string) =>
-  `Bank: Demo Bank (made-up details)\nAccount name: ${teamName}\nAccount number: 0000 0000 00\nBranch code: 000000\nReference: your name + FEES`;
+export const demoBanking = (teamName: string) => `Bank: Demo Bank (made-up details)\nAccount name: ${teamName}\nAccount number: 0000 0000 00\nBranch code: 000000\nReference: your name + FEES`;
 
 /*
  * Real starting content from the associations' own sites (checked Oct 2026):
@@ -247,12 +244,50 @@ const CT_PICKUP_GROUP = 'https://chat.whatsapp.com/H9zDUGxsezM8nDM2IBzlOI';
  * The WhatsApp link is the CTFDA pickup community until each game's own group link is added.
  */
 export const STARTER_PICKUPS: { name: string; day: number; start: string; venue: string; area: string; notes: string; whatsapp: string; city: string; contact?: string }[] = [
-  { name: 'Herzlia pickup', day: 3, start: '17:00', venue: 'Herzlia fields', area: '', notes: 'Wear tekkies: no cleats. Bring your own water.', contact: 'Tev', whatsapp: CT_PICKUP_GROUP, city: 'Cape Town' },
-  { name: 'Clifton beach pickup', day: 6, start: '08:30', venue: 'Clifton 1st beach', area: 'Clifton', notes: '8:30 for a 9:00 start. Barefoot on the beach. Bring water.', whatsapp: CT_PICKUP_GROUP, city: 'Cape Town' },
-  { name: 'Rondebosch Sunday pickup', day: 6, start: '16:00', venue: 'Rondebosch Boys’ High sports fields, Oakhurst Ave', area: 'Rondebosch', notes: 'Cleats welcome.', whatsapp: CT_PICKUP_GROUP, city: 'Cape Town' },
+  {
+    name: 'Herzlia pickup',
+    day: 3,
+    start: '17:00',
+    venue: 'Herzlia fields',
+    area: '',
+    notes: 'Wear tekkies: no cleats. Bring your own water.',
+    contact: 'Tev',
+    whatsapp: CT_PICKUP_GROUP,
+    city: 'Cape Town',
+  },
+  {
+    name: 'Clifton beach pickup',
+    day: 6,
+    start: '08:30',
+    venue: 'Clifton 1st beach',
+    area: 'Clifton',
+    notes: '8:30 for a 9:00 start. Barefoot on the beach. Bring water.',
+    whatsapp: CT_PICKUP_GROUP,
+    city: 'Cape Town',
+  },
+  {
+    name: 'Rondebosch Sunday pickup',
+    day: 6,
+    start: '16:00',
+    venue: 'Rondebosch Boys’ High sports fields, Oakhurst Ave',
+    area: 'Rondebosch',
+    notes: 'Cleats welcome.',
+    whatsapp: CT_PICKUP_GROUP,
+    city: 'Cape Town',
+  },
 ];
 
 /** Pickups from the CTFDA website that the community says aren't running now (removed in content v2). */
-export const RETIRED_PICKUP_KEYS = ['Rondebosch pickup|0', 'Rondebosch pickup|6', 'Pinelands pickup|3', 'Maties pickup|2', 'Maties pickup|6', 'UCT social|4', 'Clifton beach pickup|6', 'Muizenberg beach pickup|5', 'Muizenberg beach pickup|6'];
+export const RETIRED_PICKUP_KEYS = [
+  'Rondebosch pickup|0',
+  'Rondebosch pickup|6',
+  'Pinelands pickup|3',
+  'Maties pickup|2',
+  'Maties pickup|6',
+  'UCT social|4',
+  'Clifton beach pickup|6',
+  'Muizenberg beach pickup|5',
+  'Muizenberg beach pickup|6',
+];
 
 export const pickupSeedKey = (p: { name: string; day: number }) => `${p.name}|${p.day}`;

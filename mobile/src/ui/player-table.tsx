@@ -20,8 +20,7 @@ const COLS: Col[] = [
   { key: 'plusMinus', label: '+/−', title: 'Plus/minus' },
 ];
 
-const value = (s: PlayerGameStats, k: Col['key']) =>
-  k === 'turnovers' ? s.drops + s.throwaways + s.stalls : (s[k] as number);
+const value = (s: PlayerGameStats, k: Col['key']) => (k === 'turnovers' ? s.drops + s.throwaways + s.stalls : (s[k] as number));
 
 export function PlayerTable({
   rows,

@@ -73,19 +73,128 @@ const CALENDAR: {
   status: 'confirmed' | 'tbc';
   notes: string;
 }[] = [
-  { name: 'Mixed Western Regionals 2026', kind: 'tournament', level: 'regional', region: 'western', location: 'Cape Town', start: '2026-10-02', end: '2026-10-04', month: null, status: 'confirmed', notes: 'Qualifier for Mixed Nationals.' },
-  { name: 'Cape Town Mixed League 2026', kind: 'league', level: 'league', region: 'western', location: 'Cape Town', start: '2026-08-22', end: '2026-11-02', month: null, status: 'confirmed', notes: '' },
+  {
+    name: 'Mixed Western Regionals 2026',
+    kind: 'tournament',
+    level: 'regional',
+    region: 'western',
+    location: 'Cape Town',
+    start: '2026-10-02',
+    end: '2026-10-04',
+    month: null,
+    status: 'confirmed',
+    notes: 'Qualifier for Mixed Nationals.',
+  },
+  {
+    name: 'Cape Town Mixed League 2026',
+    kind: 'league',
+    level: 'league',
+    region: 'western',
+    location: 'Cape Town',
+    start: '2026-08-22',
+    end: '2026-11-02',
+    month: null,
+    status: 'confirmed',
+    notes: '',
+  },
   { name: 'Gauteng Mixed League 2026', kind: 'league', level: 'league', region: 'northern', location: 'Gauteng', start: '2026-08-31', end: '2026-11-29', month: null, status: 'confirmed', notes: '' },
-  { name: 'Mixed Nationals 2026', kind: 'tournament', level: 'national', region: 'kzn', location: 'KwaZulu-Natal', start: '2026-12-04', end: '2026-12-06', month: null, status: 'confirmed', notes: 'The flagship mixed-division championship.' },
-  { name: 'Rocktober', kind: 'tournament', level: 'social', region: 'northern', location: 'Gauteng', start: null, end: null, month: 'October', status: 'tbc', notes: 'Often the biggest tournament of the year — high-intensity but social, and a draw for international teams.' },
-  { name: 'Swinburne Hat', kind: 'tournament', level: 'social', region: null, location: 'Near Harrismith', start: null, end: null, month: 'February', status: 'tbc', notes: 'A relaxed hat weekend where you are drafted onto a random team. A great first tournament.' },
-  { name: 'Regionals (all regions)', kind: 'tournament', level: 'regional', region: null, location: null, start: null, end: null, month: 'Before Nationals', status: 'tbc', notes: 'Northern, Western, KZN and Eastern Cape qualifiers.' },
-  { name: 'Open & Women’s Nationals', kind: 'tournament', level: 'national', region: null, location: null, start: null, end: null, month: 'Second half of the year', status: 'tbc', notes: 'Single-gender national championships.' },
-  { name: 'Inter-University Tournament', kind: 'tournament', level: 'national', region: null, location: null, start: null, end: null, month: 'TBC', status: 'tbc', notes: 'Student-only competition for university teams.' },
-  { name: 'U24 Inter-Regional Tournament', kind: 'tournament', level: 'national', region: null, location: null, start: null, end: null, month: 'TBC', status: 'tbc', notes: 'Regional sides compete to shape national-team selection.' },
-  { name: 'All-Africa Club Championships', kind: 'tournament', level: 'international', region: null, location: null, start: null, end: null, month: 'TBC', status: 'tbc', notes: 'The WFDF-sanctioned continental club event.' },
+  {
+    name: 'Mixed Nationals 2026',
+    kind: 'tournament',
+    level: 'national',
+    region: 'kzn',
+    location: 'KwaZulu-Natal',
+    start: '2026-12-04',
+    end: '2026-12-06',
+    month: null,
+    status: 'confirmed',
+    notes: 'The flagship mixed-division championship.',
+  },
+  {
+    name: 'Rocktober',
+    kind: 'tournament',
+    level: 'social',
+    region: 'northern',
+    location: 'Gauteng',
+    start: null,
+    end: null,
+    month: 'October',
+    status: 'tbc',
+    notes: 'Often the biggest tournament of the year — high-intensity but social, and a draw for international teams.',
+  },
+  {
+    name: 'Swinburne Hat',
+    kind: 'tournament',
+    level: 'social',
+    region: null,
+    location: 'Near Harrismith',
+    start: null,
+    end: null,
+    month: 'February',
+    status: 'tbc',
+    notes: 'A relaxed hat weekend where you are drafted onto a random team. A great first tournament.',
+  },
+  {
+    name: 'Regionals (all regions)',
+    kind: 'tournament',
+    level: 'regional',
+    region: null,
+    location: null,
+    start: null,
+    end: null,
+    month: 'Before Nationals',
+    status: 'tbc',
+    notes: 'Northern, Western, KZN and Eastern Cape qualifiers.',
+  },
+  {
+    name: 'Open & Women’s Nationals',
+    kind: 'tournament',
+    level: 'national',
+    region: null,
+    location: null,
+    start: null,
+    end: null,
+    month: 'Second half of the year',
+    status: 'tbc',
+    notes: 'Single-gender national championships.',
+  },
+  {
+    name: 'Inter-University Tournament',
+    kind: 'tournament',
+    level: 'national',
+    region: null,
+    location: null,
+    start: null,
+    end: null,
+    month: 'TBC',
+    status: 'tbc',
+    notes: 'Student-only competition for university teams.',
+  },
+  {
+    name: 'U24 Inter-Regional Tournament',
+    kind: 'tournament',
+    level: 'national',
+    region: null,
+    location: null,
+    start: null,
+    end: null,
+    month: 'TBC',
+    status: 'tbc',
+    notes: 'Regional sides compete to shape national-team selection.',
+  },
+  {
+    name: 'All-Africa Club Championships',
+    kind: 'tournament',
+    level: 'international',
+    region: null,
+    location: null,
+    start: null,
+    end: null,
+    month: 'TBC',
+    status: 'tbc',
+    notes: 'The WFDF-sanctioned continental club event.',
+  },
 ];
-
 
 export async function seedIfEmpty(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM team`);
@@ -150,16 +259,7 @@ export async function seedIfEmpty(db: SQLiteDatabase) {
       }
     }
     for (const [name, city, lat, lng] of VENUES) {
-      await db.runAsync(
-        `INSERT INTO venue (id, name, city, latitude, longitude, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        await seedId('venue', name),
-        name,
-        city,
-        lat,
-        lng,
-        ts,
-        ts,
-      );
+      await db.runAsync(`INSERT INTO venue (id, name, city, latitude, longitude, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, await seedId('venue', name), name, city, lat, lng, ts, ts);
     }
     for (const c of CALENDAR) {
       await db.runAsync(
@@ -273,10 +373,7 @@ export async function ensureDemoContent(db: SQLiteDatabase) {
         const per = Math.max(1, Math.floor(900 / cols.length));
         for (let i = 0; i < rows.length; i += per) {
           const chunk = rows.slice(i, i + per);
-          await db.runAsync(
-            `INSERT OR IGNORE INTO ${table} (${cols.join(', ')}) VALUES ${chunk.map(() => `(${cols.map(() => '?').join(', ')})`).join(', ')}`,
-            ...chunk.flat(),
-          );
+          await db.runAsync(`INSERT OR IGNORE INTO ${table} (${cols.join(', ')}) VALUES ${chunk.map(() => `(${cols.map(() => '?').join(', ')})`).join(', ')}`, ...chunk.flat());
         }
       }
       for (const u of demo.teamUpdates) {
@@ -319,7 +416,9 @@ export async function ensureDemoBanking(db: SQLiteDatabase) {
   if (await db.getFirstAsync(`SELECT 1 FROM app_meta WHERE key = 'demo_banking'`)) return;
   await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sync_pulling', '1')`);
   try {
-    const teams = await db.getAllAsync<{ id: string; name: string }>(`SELECT id, name FROM team WHERE banking_details IS NULL AND deleted_at IS NULL AND kind IN ('club','university','school','regional','national')`);
+    const teams = await db.getAllAsync<{ id: string; name: string }>(
+      `SELECT id, name FROM team WHERE banking_details IS NULL AND deleted_at IS NULL AND kind IN ('club','university','school','regional','national')`,
+    );
     for (const t of teams) await db.runAsync(`UPDATE team SET banking_details = ? WHERE id = ?`, demoBanking(t.name), t.id);
     await db.runAsync(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('demo_banking', '1')`);
   } finally {

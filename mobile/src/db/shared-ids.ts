@@ -85,4 +85,3 @@ export async function adoptSharedIds(db: SQLiteDatabase) {
     await db.execAsync('PRAGMA foreign_keys = ON');
   }
 }
-

@@ -16,10 +16,7 @@ import { colors, space } from '@/ui/theme';
 export default function ScheduleImport() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const db = useSQLiteContext();
-  const bundle = useData(
-    async (d) => ({ event: await getEvent(d, eventId), teams: await listTeams(d), venues: await listVenues(d), entered: await eventTeams(d, eventId) }),
-    [eventId],
-  );
+  const bundle = useData(async (d) => ({ event: await getEvent(d, eventId), teams: await listTeams(d), venues: await listVenues(d), entered: await eventTeams(d, eventId) }), [eventId]);
   const [text, setText] = useState('');
 
   if (!bundle?.event) return <Screen edges={[]}>{null}</Screen>;
@@ -66,7 +63,7 @@ export default function ScheduleImport() {
         homeId: r.homeId!,
         awayId: r.awayId!,
         scheduledAt: r.scheduledAt,
-        venueId: r.venueName ? venueIds.get(r.venueName.trim().toLowerCase()) ?? null : null,
+        venueId: r.venueName ? (venueIds.get(r.venueName.trim().toLowerCase()) ?? null) : null,
         rules,
       })),
     );
@@ -92,7 +89,9 @@ export default function ScheduleImport() {
         }>
         <Card>
           <T v="bodyStrong">One row per game</T>
-          <T v="small">Columns: date, time, field, home, away, pool (optional). Dates as dd/mm/yyyy. The home team sets up the field. Export from Excel or Google Sheets as CSV, or copy the rows and paste below.</T>
+          <T v="small">
+            Columns: date, time, field, home, away, pool (optional). Dates as dd/mm/yyyy. The home team sets up the field. Export from Excel or Google Sheets as CSV, or copy the rows and paste below.
+          </T>
           <View style={{ backgroundColor: colors.neutralTint, borderRadius: 8, padding: space.sm }}>
             <T style={{ fontFamily: 'monospace', fontSize: 12, color: colors.ink }}>{SCHEDULE_TEMPLATE}</T>
           </View>

@@ -14,7 +14,6 @@ import { colors, font, space } from '@/ui/theme';
 type Key = (typeof SPIRIT_CATEGORIES)[number]['key'];
 const DEFAULTS: Record<Key, number> = { rules: 2, fouls: 2, fairness: 2, attitude: 2, communication: 2 };
 
-
 export default function Spirit() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const bundle = useData(
@@ -74,9 +73,7 @@ function SpiritForm({
 }) {
   const db = useSQLiteContext();
   const [scores, setScores] = useState<Record<Key, number>>(() =>
-    existing
-      ? { rules: existing.rules, fouls: existing.fouls, fairness: existing.fairness, attitude: existing.attitude, communication: existing.communication }
-      : DEFAULTS,
+    existing ? { rules: existing.rules, fouls: existing.fouls, fairness: existing.fairness, attitude: existing.attitude, communication: existing.communication } : DEFAULTS,
   );
   const [comments, setComments] = useState<Partial<Record<Key, string>>>(() => (existing?.comments_json ? JSON.parse(existing.comments_json) : {}));
   const [overall, setOverall] = useState(existing?.overall_comment ?? '');

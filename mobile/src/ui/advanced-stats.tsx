@@ -85,11 +85,13 @@ export function AdvancedStats({ t, players, name }: { t: TeamAdvanced; players: 
               <T v="small" numberOfLines={1} style={{ flex: 1, color: colors.ink, fontFamily: font.semibold }}>
                 {name(p.personId)}
               </T>
-              {[String(p.points), fmt(pp.goals), fmt(pp.assists), fmt(pp.ds), fmt(pp.turns), cr.throwing == null ? '–' : String(cr.throwing), cr.catching == null ? '–' : String(cr.catching)].map((v, i) => (
-                <T key={i} v="small" style={{ width: i >= 5 ? 46 : 36, textAlign: 'center', color: colors.ink }}>
-                  {v}
-                </T>
-              ))}
+              {[String(p.points), fmt(pp.goals), fmt(pp.assists), fmt(pp.ds), fmt(pp.turns), cr.throwing == null ? '–' : String(cr.throwing), cr.catching == null ? '–' : String(cr.catching)].map(
+                (v, i) => (
+                  <T key={i} v="small" style={{ width: i >= 5 ? 46 : 36, textAlign: 'center', color: colors.ink }}>
+                    {v}
+                  </T>
+                ),
+              )}
             </View>
           ))}
         </Card>

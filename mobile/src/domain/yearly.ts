@@ -31,8 +31,14 @@ export function yearlyInfoReminders(season: number) {
 
 export function yearlyInfoText(season: number, level: 'admin' | 'coordinator') {
   return level === 'admin'
-    ? { title: `Update the ${season} forms & payment links by ${deadlineLabel}`, body: `Coordinators send you their region’s registration form, fees and merch links. Update them in Me → Admin before fees open on ${feesLabel}.` }
-    : { title: `Send your ${season} registration info by ${deadlineLabel}`, body: `Email ${ADMIN_EMAIL} your region’s new registration form, fee amounts and merch links, so the app is ready before fees open on ${feesLabel}.` };
+    ? {
+        title: `Update the ${season} forms & payment links by ${deadlineLabel}`,
+        body: `Coordinators send you their region’s registration form, fees and merch links. Update them in Me → Admin before fees open on ${feesLabel}.`,
+      }
+    : {
+        title: `Send your ${season} registration info by ${deadlineLabel}`,
+        body: `Email ${ADMIN_EMAIL} your region’s new registration form, fee amounts and merch links, so the app is ready before fees open on ${feesLabel}.`,
+      };
 }
 
 /** A ready-to-fill email from a coordinator to the admins. */

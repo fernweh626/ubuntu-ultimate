@@ -155,7 +155,9 @@ export async function homeFeed(db: SQLiteDatabase, now = new Date()) {
       kind: 'game',
       title: isMine ? (multi ? `${myName} v ${opp}` : `v ${opp}`) : `${g.a_name} v ${g.b_name}`,
       subtitle: [
-        !isMine ? [...(playerTeams.get(g.team_a_id) ?? []), ...(playerTeams.get(g.team_b_id) ?? [])].join(' & ') + (playerTeams.has(g.team_a_id) || playerTeams.has(g.team_b_id) ? ' playing' : '') || null : null,
+        !isMine
+          ? [...(playerTeams.get(g.team_a_id) ?? []), ...(playerTeams.get(g.team_b_id) ?? [])].join(' & ') + (playerTeams.has(g.team_a_id) || playerTeams.has(g.team_b_id) ? ' playing' : '') || null
+          : null,
         g.venue_name,
         isMine && mine.has(g.home_team_id ?? g.team_a_id) ? 'you’re home: bring cones' : null,
       ]
@@ -193,7 +195,15 @@ export async function homeFeed(db: SQLiteDatabase, now = new Date()) {
       new Date(end).toISOString(),
     );
     for (const s of sessions) {
-      const answer = s.cancelled_at ? 'Cancelled' : s.my_status === 'going' ? 'You’re going' : s.my_status === 'late' ? 'You’ll be late' : s.my_status === 'not_going' ? 'Not going' : 'Are you coming? Tap to answer';
+      const answer = s.cancelled_at
+        ? 'Cancelled'
+        : s.my_status === 'going'
+          ? 'You’re going'
+          : s.my_status === 'late'
+            ? 'You’ll be late'
+            : s.my_status === 'not_going'
+              ? 'Not going'
+              : 'Are you coming? Tap to answer';
       items.push({
         key: `s:${s.id}`,
         at: s.started_at,
@@ -213,17 +223,39 @@ export async function homeFeed(db: SQLiteDatabase, now = new Date()) {
     const hats = await db.getAllAsync<{ id: string; name: string; start_date: string; start_time: string | null; location: string | null; attending: string }>(
       `SELECT e.id, e.name, e.start_date, e.start_time, e.location, h.attending FROM hat_signup h JOIN event e ON e.id = h.event_id
         WHERE h.person_id = ? AND h.attending IN ('yes','maybe') AND e.deleted_at IS NULL AND e.start_date >= ? AND e.start_date <= ?`,
-      meId, fromDay, toDay,
+      meId,
+      fromDay,
+      toDay,
     );
     for (const h of hats)
-      items.push({ key: `h:${h.id}`, at: new Date(`${h.start_date}T${h.start_time || '09:00'}:00`).toISOString(), kind: 'hat', title: h.name, subtitle: [h.attending === 'yes' ? 'You’re signed up' : 'Maybe', h.location].filter(Boolean).join(' · '), tag: null, following: false, url: `/hat/${h.id}` });
+      items.push({
+        key: `h:${h.id}`,
+        at: new Date(`${h.start_date}T${h.start_time || '09:00'}:00`).toISOString(),
+        kind: 'hat',
+        title: h.name,
+        subtitle: [h.attending === 'yes' ? 'You’re signed up' : 'Maybe', h.location].filter(Boolean).join(' · '),
+        tag: null,
+        following: false,
+        url: `/hat/${h.id}`,
+      });
     const meetings = await db.getAllAsync<{ id: string; name: string; start_date: string; start_time: string | null; meeting_url: string | null; location: string | null }>(
       `SELECT c.id, c.name, c.start_date, c.start_time, c.meeting_url, c.location FROM meeting_rsvp r JOIN calendar_entry c ON c.id = r.calendar_entry_id
         WHERE r.person_id = ? AND r.status IN ('going','late') AND c.deleted_at IS NULL AND c.start_date >= ? AND c.start_date <= ?`,
-      meId, fromDay, toDay,
+      meId,
+      fromDay,
+      toDay,
     );
     for (const m of meetings)
-      items.push({ key: `m:${m.id}`, at: new Date(`${m.start_date}T${m.start_time || '09:00'}:00`).toISOString(), kind: 'meeting', title: m.name, subtitle: ['You’re going', m.meeting_url ? 'Online' : m.location].filter(Boolean).join(' · '), tag: null, following: false, url: `/hub/meeting/${m.id}` });
+      items.push({
+        key: `m:${m.id}`,
+        at: new Date(`${m.start_date}T${m.start_time || '09:00'}:00`).toISOString(),
+        kind: 'meeting',
+        title: m.name,
+        subtitle: ['You’re going', m.meeting_url ? 'Online' : m.location].filter(Boolean).join(' · '),
+        tag: null,
+        following: false,
+        url: `/hub/meeting/${m.id}`,
+      });
   }
   items.sort((a, b) => a.at.localeCompare(b.at));
 

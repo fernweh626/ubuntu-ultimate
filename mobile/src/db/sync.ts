@@ -77,7 +77,10 @@ const columnsCache = new Map<string, string[]>();
 async function localColumns(db: SQLiteDatabase, table: string) {
   if (!columnsCache.has(table)) {
     const rows = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
-    columnsCache.set(table, rows.map((r) => r.name));
+    columnsCache.set(
+      table,
+      rows.map((r) => r.name),
+    );
   }
   return columnsCache.get(table)!;
 }
@@ -137,7 +140,10 @@ async function push(db: SQLiteDatabase): Promise<Pick<SyncResult, 'pushed' | 're
           if (error) return error;
           for (const r of subset) {
             const { id, ...rest } = r;
-            const { error: e2 } = await supabase.from('person').update(rest).eq('id', id as string);
+            const { error: e2 } = await supabase
+              .from('person')
+              .update(rest)
+              .eq('id', id as string);
             if (e2) return e2;
           }
         } else if (subset.length) {
@@ -342,8 +348,7 @@ export async function requeueMine(db: SQLiteDatabase) {
   // v2: players couldn't upload at all before the person-table fix, so everyone re-sends once more.
   if (!me || !user || (await meta(db, 'requeued_mine')) === `${user}:2`) return;
   const at = new Date().toISOString();
-  const q = (tbl: string, id: string) =>
-    db.runAsync(`INSERT INTO sync_outbox (tbl, pk, op, at) VALUES (?, ?, 'upsert', ?) ON CONFLICT(tbl, pk) DO NOTHING`, tbl, JSON.stringify({ id }), at);
+  const q = (tbl: string, id: string) => db.runAsync(`INSERT INTO sync_outbox (tbl, pk, op, at) VALUES (?, ?, 'upsert', ?) ON CONFLICT(tbl, pk) DO NOTHING`, tbl, JSON.stringify({ id }), at);
   await q('person', me);
   for (const [tbl, col] of MINE) for (const r of await db.getAllAsync<{ id: string }>(`SELECT id FROM ${tbl} WHERE ${col} = ?`, me)) await q(tbl, r.id);
   for (const r of await db.getAllAsync<{ id: string }>(`SELECT id FROM follow`)) await q('follow', r.id);
@@ -384,7 +389,8 @@ export async function prepareFirstSync(db: SQLiteDatabase) {
       await db.runAsync(`DELETE FROM game_availability WHERE team_id IN (${q})`, ...samples);
       if (drop.length) {
         const dq = drop.map(() => '?').join(',');
-        for (const t of ['practice_rsvp', 'practice_attendance', 'game_availability', 'accreditation', 'self_rating', 'fitness_test', 'registration', 'club_staff']) await db.runAsync(`DELETE FROM ${t} WHERE person_id IN (${dq})`, ...drop);
+        for (const t of ['practice_rsvp', 'practice_attendance', 'game_availability', 'accreditation', 'self_rating', 'fitness_test', 'registration', 'club_staff'])
+          await db.runAsync(`DELETE FROM ${t} WHERE person_id IN (${dq})`, ...drop);
       }
       for (const t of ['saved_line', 'membership', 'event_team', 'session']) await db.runAsync(`DELETE FROM ${t} WHERE team_id IN (${q})`, ...samples);
       await db.runAsync(`DELETE FROM follow WHERE kind = 'team' AND target_id IN (${q})`, ...samples);
@@ -397,9 +403,7 @@ export async function prepareFirstSync(db: SQLiteDatabase) {
   // 3. Queue everything made on this phone (not shared starting data or the demo season).
   const seedTeamIds = await Promise.all(SEED_CLUBS.map((c) => seedId('team', c.name)));
   const seedVenueIds = await Promise.all(['Plumstead 1', 'Plumstead 2', 'Wynberg 1'].map((n) => seedId('venue', n)));
-  const seedCal = new Set(
-    await Promise.all((await db.getAllAsync<{ name: string }>(`SELECT name FROM calendar_entry`)).map((c) => seedId('calendar', c.name))),
-  );
+  const seedCal = new Set(await Promise.all((await db.getAllAsync<{ name: string }>(`SELECT name FROM calendar_entry`)).map((c) => seedId('calendar', c.name))));
   const skip = new Set([...seedTeamIds, ...seedVenueIds, ...seedCal]);
   const shared = await sharedContent(db);
   const at = new Date().toISOString();
@@ -408,12 +412,7 @@ export async function prepareFirstSync(db: SQLiteDatabase) {
     for (const r of rows) {
       if (spec.pk.length === 1 && skip.has(r.id)) continue;
       if (shared.has(spec.name, r)) continue;
-      await db.runAsync(
-        `INSERT OR IGNORE INTO sync_outbox (tbl, pk, op, at) VALUES (?, ?, 'upsert', ?)`,
-        spec.name,
-        JSON.stringify(Object.fromEntries(spec.pk.map((c) => [c, r[c]]))),
-        at,
-      );
+      await db.runAsync(`INSERT OR IGNORE INTO sync_outbox (tbl, pk, op, at) VALUES (?, ?, 'upsert', ?)`, spec.name, JSON.stringify(Object.fromEntries(spec.pk.map((c) => [c, r[c]]))), at);
     }
   }
 }
@@ -450,10 +449,6 @@ export function syncNow(db: SQLiteDatabase): Promise<SyncResult> {
 }
 
 export async function syncStatus(db: SQLiteDatabase) {
-  const [last, pending, rejected] = await Promise.all([
-    meta(db, 'sync_last'),
-    db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM sync_outbox`),
-    meta(db, 'sync_rejected'),
-  ]);
+  const [last, pending, rejected] = await Promise.all([meta(db, 'sync_last'), db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM sync_outbox`), meta(db, 'sync_rejected')]);
   return { last, pending: pending?.n ?? 0, rejected: rejected ? (JSON.parse(rejected) as SyncResult['rejected']) : [] };
 }

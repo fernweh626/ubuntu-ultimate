@@ -68,9 +68,7 @@ export default function Meeting() {
           </Section>
         ) : null}
 
-        <Section title="About & agenda">
-          {e.notes ? <RichText style={{ lineHeight: 22 }}>{e.notes}</RichText> : <T v="small">No agenda yet.</T>}
-        </Section>
+        <Section title="About & agenda">{e.notes ? <RichText style={{ lineHeight: 22 }}>{e.notes}</RichText> : <T v="small">No agenda yet.</T>}</Section>
 
         {runs ? (
           <Section title={`RSVPs · ${going.length} attending · ${apologies.length} apologies`}>

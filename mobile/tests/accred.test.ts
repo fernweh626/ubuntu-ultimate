@@ -2,7 +2,10 @@ import { accreditationCheck, needsAdvanced } from '@/domain/development';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
 const now = new Date('2026-10-26T10:00:00');
 const valid = '2027-06-30';
-ok('captains, spirit captains, internationals need Advanced', needsAdvanced('captain', 'club') && needsAdvanced('spirit_captain', 'club') && needsAdvanced('player', 'national') && !needsAdvanced('player', 'club') && !needsAdvanced('coach', 'club'));
+ok(
+  'captains, spirit captains, internationals need Advanced',
+  needsAdvanced('captain', 'club') && needsAdvanced('spirit_captain', 'club') && needsAdvanced('player', 'national') && !needsAdvanced('player', 'club') && !needsAdvanced('coach', 'club'),
+);
 ok('nothing saved: missing', accreditationCheck({ level: null, expires_on: null }).check === 'missing');
 const v = accreditationCheck({ level: 'standard', expires_on: valid, status: 'verified', file: 'x.pdf' }, { role: 'player', teamKind: 'club' }, now);
 ok('standard, verified, player: ok', v.check === 'ok' && v.text.includes('checked'), v);

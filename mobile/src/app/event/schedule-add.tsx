@@ -36,9 +36,7 @@ export default function ScheduleAdd() {
       d.setHours(hh, mm, 0, 0);
       scheduledAt = d.toISOString();
     }
-    await createFixtures(db, [
-      { eventId, homeId: home, awayId: away, scheduledAt, venueId, rules: rulesFor(event!.kind === 'league' ? 'league' : 'wfdf', event!.division) },
-    ]);
+    await createFixtures(db, [{ eventId, homeId: home, awayId: away, scheduledAt, venueId, rules: rulesFor(event!.kind === 'league' ? 'league' : 'wfdf', event!.division) }]);
     if (more) {
       setHome(null);
       setAway(null);

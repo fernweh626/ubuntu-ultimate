@@ -13,19 +13,7 @@ import { space } from './theme';
  * Log a practice, pickup or other session, then go straight to its questionnaire.
  * `teams` = teams the person can log a practice for; `fixedTeamId` when started from a team page.
  */
-export function LogSessionSheet({
-  visible,
-  onClose,
-  meId,
-  teams,
-  fixedTeamId,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  meId: string;
-  teams: { id: string; name: string }[];
-  fixedTeamId?: string;
-}) {
+export function LogSessionSheet({ visible, onClose, meId, teams, fixedTeamId }: { visible: boolean; onClose: () => void; meId: string; teams: { id: string; name: string }[]; fixedTeamId?: string }) {
   return (
     <Sheet visible={visible} onClose={onClose} title="Log a session">
       {visible ? <LogForm onClose={onClose} meId={meId} teams={teams} fixedTeamId={fixedTeamId} /> : null}
@@ -101,7 +89,12 @@ function LogForm({ onClose, meId, teams, fixedTeamId }: { onClose: () => void; m
           <Field label="Minutes" value={minutes} onChangeText={(v) => setMinutes(v.replace(/\D/g, '').slice(0, 3))} keyboardType="number-pad" />
         </View>
       </View>
-      <Field label="Name (optional)" value={title} onChangeText={setTitle} placeholder={{ pickup: 'e.g. Green Point Tuesday', gym: 'e.g. Legs & plyos', physio: 'e.g. Ankle rehab', other: 'e.g. Throwing session', practice: 'e.g. Zone D practice' }[kind]} />
+      <Field
+        label="Name (optional)"
+        value={title}
+        onChangeText={setTitle}
+        placeholder={{ pickup: 'e.g. Green Point Tuesday', gym: 'e.g. Legs & plyos', physio: 'e.g. Ankle rehab', other: 'e.g. Throwing session', practice: 'e.g. Zone D practice' }[kind]}
+      />
       <Button label="Save and answer questions" kind="primary" big onPress={save} />
     </>
   );

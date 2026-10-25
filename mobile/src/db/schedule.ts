@@ -61,7 +61,21 @@ export async function mySchedule(db: SQLiteDatabase, now = new Date(), weeks = 4
   const to = new Date(now.getTime() + weeks * 7 * 86400_000).toISOString();
   const multi = teams.length > 1;
 
-  const practices = await db.getAllAsync<{ id: string; team_id: string; team: string; title: string | null; started_at: string; duration_min: number; venue: string | null; cancelled_at: string | null; status: string | null; coming: number; late: number; cant: number; checked: number }>(
+  const practices = await db.getAllAsync<{
+    id: string;
+    team_id: string;
+    team: string;
+    title: string | null;
+    started_at: string;
+    duration_min: number;
+    venue: string | null;
+    cancelled_at: string | null;
+    status: string | null;
+    coming: number;
+    late: number;
+    cant: number;
+    checked: number;
+  }>(
     `SELECT s.id, s.team_id, t.name AS team, s.title, s.started_at, s.duration_min, v.name AS venue, s.cancelled_at,
             (SELECT status FROM practice_rsvp r WHERE r.session_id = s.id AND r.person_id = ?) AS status,
             (SELECT COUNT(*) FROM practice_rsvp r WHERE r.session_id = s.id AND r.status IN ('going','late')) AS coming,
@@ -76,7 +90,18 @@ export async function mySchedule(db: SQLiteDatabase, now = new Date(), weeks = 4
     from,
     to,
   );
-  const games = await db.getAllAsync<{ id: string; status: string; team_a_id: string; team_b_id: string; a: string; b: string; scheduled_at: string | null; started_at: string | null; venue: string | null; event: string | null }>(
+  const games = await db.getAllAsync<{
+    id: string;
+    status: string;
+    team_a_id: string;
+    team_b_id: string;
+    a: string;
+    b: string;
+    scheduled_at: string | null;
+    started_at: string | null;
+    venue: string | null;
+    event: string | null;
+  }>(
     `SELECT g.id, g.status, g.team_a_id, g.team_b_id, ta.name AS a, tb.name AS b, g.scheduled_at, g.started_at, v.name AS venue, e.name AS event
        FROM game g JOIN team ta ON ta.id = g.team_a_id JOIN team tb ON tb.id = g.team_b_id
        LEFT JOIN venue v ON v.id = g.venue_id LEFT JOIN event e ON e.id = g.event_id
@@ -150,23 +175,59 @@ async function personalItems(db: SQLiteDatabase, meId: string, now: Date, from: 
             (SELECT COUNT(*) FROM hat_signup x WHERE x.event_id = e.id AND x.attending = 'yes') AS coming
        FROM hat_signup h JOIN event e ON e.id = h.event_id
       WHERE h.person_id = ? AND h.attending IN ('yes','maybe') AND e.deleted_at IS NULL AND e.start_date >= ? AND e.start_date <= ?`,
-    meId, fromDay, toDay,
+    meId,
+    fromDay,
+    toDay,
   );
   for (const h of hats) {
     const at = localIso(h.start_date, h.start_time);
-    out.push({ ...base, key: `h:${h.id}`, kind: 'hat', id: h.id, at, endAt: localIso(h.end_date ?? h.start_date, '18:00'), title: h.name, place: h.location, status: h.attending === 'yes' ? 'going' : 'maybe', coming: h.coming });
+    out.push({
+      ...base,
+      key: `h:${h.id}`,
+      kind: 'hat',
+      id: h.id,
+      at,
+      endAt: localIso(h.end_date ?? h.start_date, '18:00'),
+      title: h.name,
+      place: h.location,
+      status: h.attending === 'yes' ? 'going' : 'maybe',
+      coming: h.coming,
+    });
   }
 
-  const meetings = await db.getAllAsync<{ id: string; name: string; start_date: string; start_time: string | null; end_time: string | null; location: string | null; meeting_url: string | null; status: string; coming: number }>(
+  const meetings = await db.getAllAsync<{
+    id: string;
+    name: string;
+    start_date: string;
+    start_time: string | null;
+    end_time: string | null;
+    location: string | null;
+    meeting_url: string | null;
+    status: string;
+    coming: number;
+  }>(
     `SELECT c.id, c.name, c.start_date, c.start_time, c.end_time, c.location, c.meeting_url, r.status,
             (SELECT COUNT(*) FROM meeting_rsvp x WHERE x.calendar_entry_id = c.id AND x.status IN ('going','late')) AS coming
        FROM meeting_rsvp r JOIN calendar_entry c ON c.id = r.calendar_entry_id
       WHERE r.person_id = ? AND r.status IN ('going','late') AND c.deleted_at IS NULL AND c.start_date >= ? AND c.start_date <= ?`,
-    meId, fromDay, toDay,
+    meId,
+    fromDay,
+    toDay,
   );
   for (const m of meetings) {
     const at = localIso(m.start_date, m.start_time);
-    out.push({ ...base, key: `m:${m.id}`, kind: 'meeting', id: m.id, at, endAt: m.end_time ? localIso(m.start_date, m.end_time) : new Date(Date.parse(at) + 2 * 3600_000).toISOString(), title: m.name, place: m.meeting_url ? 'Online' : m.location, status: m.status, coming: m.coming });
+    out.push({
+      ...base,
+      key: `m:${m.id}`,
+      kind: 'meeting',
+      id: m.id,
+      at,
+      endAt: m.end_time ? localIso(m.start_date, m.end_time) : new Date(Date.parse(at) + 2 * 3600_000).toISOString(),
+      title: m.name,
+      place: m.meeting_url ? 'Online' : m.location,
+      status: m.status,
+      coming: m.coming,
+    });
   }
 
   // Pickups you go to ("I go here"), every week; plus any day you said you're going to one you don't follow.
@@ -174,9 +235,14 @@ async function personalItems(db: SQLiteDatabase, meId: string, now: Date, from: 
     `SELECT p.id, p.name, p.day_of_week, p.start_time, p.end_time, p.venue_text, p.city FROM pickup_spot p
       WHERE p.deleted_at IS NULL AND (p.id IN (SELECT target_id FROM follow WHERE kind = 'pickup')
          OR p.id IN (SELECT pickup_id FROM pickup_rsvp WHERE person_id = ? AND on_date >= ? AND status != 'not_going'))`,
-    meId, ymd(now),
+    meId,
+    ymd(now),
   );
-  const rsvps = await db.getAllAsync<{ pickup_id: string; on_date: string; person_id: string; status: string }>(`SELECT pickup_id, on_date, person_id, status FROM pickup_rsvp WHERE on_date >= ? AND on_date <= ?`, ymd(now), toDay);
+  const rsvps = await db.getAllAsync<{ pickup_id: string; on_date: string; person_id: string; status: string }>(
+    `SELECT pickup_id, on_date, person_id, status FROM pickup_rsvp WHERE on_date >= ? AND on_date <= ?`,
+    ymd(now),
+    toDay,
+  );
   const end = Date.parse(to);
   const followed = new Set((await db.getAllAsync<{ target_id: string }>(`SELECT target_id FROM follow WHERE kind = 'pickup'`)).map((f) => f.target_id));
   for (const p of spots) {
@@ -188,18 +254,45 @@ async function personalItems(db: SQLiteDatabase, meId: string, now: Date, from: 
       if (!followed.has(p.id) && (mine === null || mine === 'not_going')) continue;
       const at = d.toISOString();
       const endAt = p.end_time ? localIso(day, p.end_time) : new Date(d.getTime() + 2 * 3600_000).toISOString();
-      out.push({ ...base, key: `k:${p.id}:${day}`, kind: 'pickup', id: p.id, onDate: day, at, endAt, title: p.name, place: [p.venue_text, p.city].filter(Boolean).join(' · '), status: mine, coming: here.filter((r) => r.status !== 'not_going').length, late: here.filter((r) => r.status === 'late').length, cant: here.filter((r) => r.status === 'not_going').length });
+      out.push({
+        ...base,
+        key: `k:${p.id}:${day}`,
+        kind: 'pickup',
+        id: p.id,
+        onDate: day,
+        at,
+        endAt,
+        title: p.name,
+        place: [p.venue_text, p.city].filter(Boolean).join(' · '),
+        status: mine,
+        coming: here.filter((r) => r.status !== 'not_going').length,
+        late: here.filter((r) => r.status === 'late').length,
+        cant: here.filter((r) => r.status === 'not_going').length,
+      });
     }
   }
   // Pickups that are over: the days I said I'd come.
   const past = await db.getAllAsync<{ id: string; name: string; start_time: string; end_time: string | null; venue_text: string | null; city: string; on_date: string; status: string }>(
     `SELECT p.id, p.name, p.start_time, p.end_time, p.venue_text, p.city, r.on_date, r.status FROM pickup_rsvp r JOIN pickup_spot p ON p.id = r.pickup_id
       WHERE r.person_id = ? AND r.on_date >= ? AND r.on_date < ? AND p.deleted_at IS NULL`,
-    meId, fromDay, ymd(now),
+    meId,
+    fromDay,
+    ymd(now),
   );
   for (const p of past) {
     const at = localIso(p.on_date, p.start_time);
-    out.push({ ...base, key: `k:${p.id}:${p.on_date}`, kind: 'pickup', id: p.id, onDate: p.on_date, at, endAt: p.end_time ? localIso(p.on_date, p.end_time) : new Date(Date.parse(at) + 2 * 3600_000).toISOString(), title: p.name, place: [p.venue_text, p.city].filter(Boolean).join(' · '), status: p.status });
+    out.push({
+      ...base,
+      key: `k:${p.id}:${p.on_date}`,
+      kind: 'pickup',
+      id: p.id,
+      onDate: p.on_date,
+      at,
+      endAt: p.end_time ? localIso(p.on_date, p.end_time) : new Date(Date.parse(at) + 2 * 3600_000).toISOString(),
+      title: p.name,
+      place: [p.venue_text, p.city].filter(Boolean).join(' · '),
+      status: p.status,
+    });
   }
   return out;
 }

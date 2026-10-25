@@ -5,7 +5,25 @@ import { Alert, Linking, View, Pressable } from 'react-native';
 
 import { useData } from '@/db/live';
 import { peopleById } from '@/db/reports';
-import { END_REASONS, reflectionsFor, statusLog, confirmTeamRoster, deleteGame, type EndReason, getAccess, getEvent, setConfirmation, getTeam, getVenue, loadGameData, reopenGame, spiritForGame, updateGameMeta , SUB_REASONS, type SubReason } from '@/db/repo';
+import {
+  END_REASONS,
+  reflectionsFor,
+  statusLog,
+  confirmTeamRoster,
+  deleteGame,
+  type EndReason,
+  getAccess,
+  getEvent,
+  setConfirmation,
+  getTeam,
+  getVenue,
+  loadGameData,
+  reopenGame,
+  spiritForGame,
+  updateGameMeta,
+  SUB_REASONS,
+  type SubReason,
+} from '@/db/repo';
 import { clock, displayName, pct, round1, shortDate, shortName, signedSeconds, timeOfDay } from '@/domain/format';
 import { STATUS_REASONS } from '@/domain/fixtures';
 import { deriveState } from '@/domain/engine';
@@ -37,7 +55,10 @@ export default function GameReport() {
         data.game.venue_id ? getVenue(d, data.game.venue_id) : Promise.resolve(null),
         spiritForGame(d, id),
       ]);
-      const people = await peopleById(d, data.players.map((p) => p.person_id));
+      const people = await peopleById(
+        d,
+        data.players.map((p) => p.person_id),
+      );
       return { data, ta: ta!, tb: tb!, event, venue, spirit, people, access: await getAccess(d), log: await statusLog(d, id), reflections: await reflectionsFor(d, { gameId: id }) };
     },
     [id],
@@ -63,10 +84,9 @@ export default function GameReport() {
   const name = (pid: string | null) => (pid && people.get(pid) ? shortName(people.get(pid)!) : 'Unknown');
   const subs = data.events.filter((e) => e.type === 'injury_sub' && !e.voided_at).sort((a, b) => a.seq - b.seq);
   const final = game.status === 'final';
-  if (game.result_mode) return <LightResult gameId={id} a={ta} b={tb} mode={game.result_mode} finalA={game.final_a ?? 0} finalB={game.final_b ?? 0} winner={game.winner_team_id ?? null} eventName={event?.name ?? null} />;
-  const endReason = final
-    ? (data.events.find((e) => e.type === 'end' && !e.voided_at)?.value as EndReason | null | undefined)
-    : null;
+  if (game.result_mode)
+    return <LightResult gameId={id} a={ta} b={tb} mode={game.result_mode} finalA={game.final_a ?? 0} finalB={game.final_b ?? 0} winner={game.winner_team_id ?? null} eventName={event?.name ?? null} />;
+  const endReason = final ? (data.events.find((e) => e.type === 'end' && !e.voided_at)?.value as EndReason | null | undefined) : null;
 
   const rows: { label: string; a: string; b: string }[] = [
     { label: 'Holds', a: `${A.holds}/${A.oPoints}`, b: `${B.holds}/${B.oPoints}` },
@@ -100,9 +120,7 @@ export default function GameReport() {
         { label: 'Avg point', value: stats.avgPointSeconds ? clock(stats.avgPointSeconds) : '–' },
       ],
       highlights: [
-        top && top.goals + top.assists + top.intercepts > 0 && people.get(top.personId)
-          ? `Standout: ${shortName(people.get(top.personId)!)} · ${top.goals}G ${top.assists}A ${top.intercepts}I`
-          : null,
+        top && top.goals + top.assists + top.intercepts > 0 && people.get(top.personId) ? `Standout: ${shortName(people.get(top.personId)!)} · ${top.goals}G ${top.assists}A ${top.intercepts}I` : null,
         stats.connections[0] ? `Top connection: ${name(stats.connections[0].assistId)} → ${name(stats.connections[0].scorerId)} ×${stats.connections[0].count}` : null,
         winner.cleanHolds ? `${winner.teamId === ta.id ? ta.name : tb.name}: ${winner.cleanHolds} clean holds` : null,
       ].filter(Boolean) as string[],
@@ -135,9 +153,7 @@ export default function GameReport() {
               {endReason && endReason !== 'target' && END_REASONS[endReason] ? <Chip label={`Ended early · ${END_REASONS[endReason]}`} tone="warn" /> : null}
               {data.game.forfeit_team_id ? <Chip label="Forfeit" tone="warn" /> : null}
             </View>
-            <T style={{ fontFamily: font.medium, fontSize: 13, color: colors.nightMuted }}>
-              {[event?.name, shortDate(game.started_at ?? game.created_at)].filter(Boolean).join(' · ')}
-            </T>
+            <T style={{ fontFamily: font.medium, fontSize: 13, color: colors.nightMuted }}>{[event?.name, shortDate(game.started_at ?? game.created_at)].filter(Boolean).join(' · ')}</T>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm }}>
             <Pressable onPress={() => router.push(`/team/${ta.id}`)} accessibilityRole="link" accessibilityLabel={`${ta.name} team page`} style={{ flex: 1, gap: 6 }}>
@@ -187,9 +203,15 @@ export default function GameReport() {
           )}
         </View>
         {final ? <Button label="Full report · PDF & images" icon="file-document-multiple-outline" onPress={() => router.push({ pathname: '/report', params: { kind: 'game', gameId: id } })} /> : null}
-        {!final ? <Button label="Back to scoring" icon="whistle" onPress={() => router.replace(`/game/${id}`)} /> : <Button label="Done" icon="check" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />}
+        {!final ? (
+          <Button label="Back to scoring" icon="whistle" onPress={() => router.replace(`/game/${id}`)} />
+        ) : (
+          <Button label="Done" icon="check" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+        )}
         {final && myGame && !data.game.forfeit_team_id ? (
-          <Card onPress={() => router.push({ pathname: '/reflect', params: { gameId: id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, borderColor: myReflection ? colors.border : colors.brand, borderWidth: myReflection ? 1 : 2 }}>
+          <Card
+            onPress={() => router.push({ pathname: '/reflect', params: { gameId: id } })}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, borderColor: myReflection ? colors.border : colors.brand, borderWidth: myReflection ? 1 : 2 }}>
             <Icon name={myReflection ? 'check-circle' : 'comment-question-outline'} color={colors.brand} />
             <View style={{ flex: 1 }}>
               <T v="bodyStrong">{myReflection ? 'You answered — tap to change' : 'How was it for you?'}</T>
@@ -317,7 +339,9 @@ export default function GameReport() {
               .map((t, i) => {
                 const scorer = t.scoringTeamId === ta.id ? ta : tb;
                 return (
-                  <View key={t.point.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
+                  <View
+                    key={t.point.id}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
                     <View style={{ width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: scorer.primary_color ?? colors.faint }} />
                     <T style={{ fontFamily: font.display, fontSize: 22, width: 52 }}>
                       {t.scoreA}–{t.scoreB}
@@ -328,7 +352,11 @@ export default function GameReport() {
                         {t.callahan ? `Callahan · ${name(t.scorerId)}` : t.scorerId ? `${name(t.scorerId)}${t.assistId ? ` from ${name(t.assistId)}` : ''}` : scorer.name}
                       </T>
                       <T v="small">
-                        {[t.seconds ? clock(t.seconds) : null, t.turnovers ? `${t.turnovers} turnover${t.turnovers > 1 ? 's' : ''}` : null, t.point.half === 2 && i > 0 && stats.timeline[i - 1]?.point.half === 1 ? 'after half' : null]
+                        {[
+                          t.seconds ? clock(t.seconds) : null,
+                          t.turnovers ? `${t.turnovers} turnover${t.turnovers > 1 ? 's' : ''}` : null,
+                          t.point.half === 2 && i > 0 && stats.timeline[i - 1]?.point.half === 1 ? 'after half' : null,
+                        ]
                           .filter(Boolean)
                           .join(' · ')}
                       </T>
@@ -457,7 +485,17 @@ export default function GameReport() {
       </Sheet>
 
       <Sheet visible={menu} onClose={() => setMenu(false)} title="Game">
-        {game.video_url ? <Button label="Change video link" icon="link-variant" onPress={() => { setMenu(false); setVideo(game.video_url ?? ''); setVideoSheet(true); }} /> : null}
+        {game.video_url ? (
+          <Button
+            label="Change video link"
+            icon="link-variant"
+            onPress={() => {
+              setMenu(false);
+              setVideo(game.video_url ?? '');
+              setVideoSheet(true);
+            }}
+          />
+        ) : null}
         {final ? (
           <Button
             label="Reopen game for scoring"
@@ -499,9 +537,26 @@ function perPoint(s: TeamGameStats) {
 }
 
 /** A game recorded without point-by-point tracking: just the result, with a way to change it. */
-function LightResult({ gameId, a, b, mode, finalA, finalB, winner, eventName }: { gameId: string; a: Team; b: Team; mode: 'score' | 'winner' | 'none'; finalA: number; finalB: number; winner: string | null; eventName: string | null }) {
-  const headline =
-    mode === 'score' ? `${a.name} ${finalA} – ${finalB} ${b.name}` : mode === 'winner' ? `${winner === a.id ? a.name : b.name} won` : `${a.name} v ${b.name}`;
+function LightResult({
+  gameId,
+  a,
+  b,
+  mode,
+  finalA,
+  finalB,
+  winner,
+  eventName,
+}: {
+  gameId: string;
+  a: Team;
+  b: Team;
+  mode: 'score' | 'winner' | 'none';
+  finalA: number;
+  finalB: number;
+  winner: string | null;
+  eventName: string | null;
+}) {
+  const headline = mode === 'score' ? `${a.name} ${finalA} – ${finalB} ${b.name}` : mode === 'winner' ? `${winner === a.id ? a.name : b.name} won` : `${a.name} v ${b.name}`;
   return (
     <>
       <Stack.Screen options={{ title: 'Result' }} />

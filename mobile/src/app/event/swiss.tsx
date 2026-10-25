@@ -50,11 +50,18 @@ export default function Swiss() {
       <Stack.Screen options={{ title: 'Swiss draw' }} />
       <Screen edges={[]}>
         <T v="small">
-          Each round pairs teams with similar records who haven’t played each other yet. Pair one round at a time, after the previous round’s results are in. Odd numbers get a bye, never twice for the same team if it can be avoided.
+          Each round pairs teams with similar records who haven’t played each other yet. Pair one round at a time, after the previous round’s results are in. Odd numbers get a bye, never twice for the
+          same team if it can be avoided.
         </T>
         <Card>
           <T v="title">Round {next}</T>
-          {left ? <T v="small">Round {next - 1} has {left} game{left > 1 ? 's' : ''} still to finish.</T> : <T v="small">{teams.length} teams ready to pair.</T>}
+          {left ? (
+            <T v="small">
+              Round {next - 1} has {left} game{left > 1 ? 's' : ''} still to finish.
+            </T>
+          ) : (
+            <T v="small">{teams.length} teams ready to pair.</T>
+          )}
           <View style={{ flexDirection: 'row', gap: space.md }}>
             <View style={{ flex: 1.4 }}>
               <DateField label="Date (optional)" value={date} onChangeText={setDate} />

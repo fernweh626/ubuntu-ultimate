@@ -10,9 +10,7 @@ export type Weather = {
 
 /** Current conditions from Open-Meteo (free, no key). Returns null when offline; the game carries on regardless. */
 export async function fetchWeather(lat: number, lng: number): Promise<Weather | null> {
-  const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-    `&current=temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&wind_speed_unit=kmh`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` + `&current=temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation&wind_speed_unit=kmh`;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);

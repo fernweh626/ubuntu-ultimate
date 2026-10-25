@@ -6,7 +6,20 @@ import { Alert, Linking, Pressable, View } from 'react-native';
 import { regionName } from '@/content/hub';
 import { useData } from '@/db/live';
 import { loadFinishedGames, peopleById, teamAggregate } from '@/db/reports';
-import { deleteTeam, getAccess, getTeam, listGamesForTeam, roster, savedLines, sessionsForTeam, setMembershipKind, setMembershipRole, upcomingPractices, setTeamLogo, shoutoutsForTeam } from '@/db/repo';
+import {
+  deleteTeam,
+  getAccess,
+  getTeam,
+  listGamesForTeam,
+  roster,
+  savedLines,
+  sessionsForTeam,
+  setMembershipKind,
+  setMembershipRole,
+  upcomingPractices,
+  setTeamLogo,
+  shoutoutsForTeam,
+} from '@/db/repo';
 import { displayName, pct, round1, shortDate, timeOfDay } from '@/domain/format';
 import { canSetTeamRole, grantSummary, TEAM_ROLE_LABEL, type TeamRole } from '@/domain/permissions';
 import { Button, Card, Chip, Choice, EmptyState, Icon, IconButton, Row, Screen, Section, Sheet, StatTile, T, RichText } from '@/ui/components';
@@ -50,10 +63,19 @@ export default function TeamPage() {
   const upcoming = useData(async (d) => upcomingPractices(d, id, (await getAccess(d)).meId), [id]) ?? [];
   const [opened] = useState(() => Date.now());
   const past = practices.filter((p) => !p.cancelled_at && Date.parse(p.started_at) + p.duration_min * 60_000 < opened);
-  const shouts = useData(async (d) => {
-    const rows = await shoutoutsForTeam(d, id, 8);
-    return { rows, people: await peopleById(d, rows.flatMap((r) => [r.from_person_id, r.to_person_id])) };
-  }, [id]);
+  const shouts = useData(
+    async (d) => {
+      const rows = await shoutoutsForTeam(d, id, 8);
+      return {
+        rows,
+        people: await peopleById(
+          d,
+          rows.flatMap((r) => [r.from_person_id, r.to_person_id]),
+        ),
+      };
+    },
+    [id],
+  );
 
   if (!team) return <Screen edges={[]}>{null}</Screen>;
   const agg = loaded ? teamAggregate(id, loaded) : null;
@@ -82,12 +104,13 @@ export default function TeamPage() {
       <Stack.Screen
         options={{
           title: '',
-          headerRight: () => (canManage ? (
-            <View style={{ flexDirection: 'row' }}>
-              <IconButton icon="pencil" label="Edit team" onPress={() => router.push({ pathname: '/team/edit', params: { id } })} />
-              {canDelete ? <IconButton icon="delete-outline" label="Delete team" onPress={remove} color={colors.danger} /> : null}
-            </View>
-          ) : null),
+          headerRight: () =>
+            canManage ? (
+              <View style={{ flexDirection: 'row' }}>
+                <IconButton icon="pencil" label="Edit team" onPress={() => router.push({ pathname: '/team/edit', params: { id } })} />
+                {canDelete ? <IconButton icon="delete-outline" label="Delete team" onPress={remove} color={colors.danger} /> : null}
+              </View>
+            ) : null,
         }}
       />
       <Screen edges={[]}>
@@ -127,9 +150,24 @@ export default function TeamPage() {
         {canManage ? <JoinRequests teamId={id} /> : null}
         {isStaffHere ? (
           <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
-            <Row title="Attendance" subtitle="Who comes to practice, no-shows, games played" left={<Icon name="account-check-outline" color={colors.brand} />} onPress={() => router.push({ pathname: '/team/attendance', params: { teamId: id } })} />
-            <Row title="Ready to play & development" subtitle="Accreditation, SAFDA & region standing, fitness, self-ratings" left={<Icon name="chart-line" color={colors.brand} />} onPress={() => router.push({ pathname: '/team/development', params: { teamId: id } })} />
-            <Row title="Export data" subtitle="Games, stats, attendance, ratings, fitness, readiness (CSV)" left={<Icon name="file-delimited-outline" color={colors.brand} />} onPress={() => router.push({ pathname: '/export', params: { teamId: id } })} />
+            <Row
+              title="Attendance"
+              subtitle="Who comes to practice, no-shows, games played"
+              left={<Icon name="account-check-outline" color={colors.brand} />}
+              onPress={() => router.push({ pathname: '/team/attendance', params: { teamId: id } })}
+            />
+            <Row
+              title="Ready to play & development"
+              subtitle="Accreditation, SAFDA & region standing, fitness, self-ratings"
+              left={<Icon name="chart-line" color={colors.brand} />}
+              onPress={() => router.push({ pathname: '/team/development', params: { teamId: id } })}
+            />
+            <Row
+              title="Export data"
+              subtitle="Games, stats, attendance, ratings, fitness, readiness (CSV)"
+              left={<Icon name="file-delimited-outline" color={colors.brand} />}
+              onPress={() => router.push({ pathname: '/export', params: { teamId: id } })}
+            />
           </View>
         ) : null}
 
@@ -193,7 +231,13 @@ export default function TeamPage() {
             canManage ? (
               <View style={{ flexDirection: 'row', gap: space.md }}>
                 <Button label="Roles" icon="shield-account-outline" kind="ghost" onPress={() => setRolesSheet(true)} style={{ minHeight: 32, paddingHorizontal: 0 }} />
-                <Button label="Add" icon="account-plus" kind="ghost" onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+                <Button
+                  label="Add"
+                  icon="account-plus"
+                  kind="ghost"
+                  onPress={() => router.push({ pathname: '/player/edit', params: { teamId: id } })}
+                  style={{ minHeight: 32, paddingHorizontal: 0 }}
+                />
               </View>
             ) : undefined
           }>
@@ -230,7 +274,11 @@ export default function TeamPage() {
 
         <Section
           title="Saved lines"
-          action={canManage ? <Button label="New line" icon="plus" kind="ghost" onPress={() => router.push({ pathname: '/team/line-edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} /> : undefined}>
+          action={
+            canManage ? (
+              <Button label="New line" icon="plus" kind="ghost" onPress={() => router.push({ pathname: '/team/line-edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+            ) : undefined
+          }>
           {lines && lines.length ? (
             <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, gap: 1, backgroundColor: colors.divider }}>
               {lines.map((l) => (
@@ -254,7 +302,13 @@ export default function TeamPage() {
             title="Practices"
             action={
               isStaffHere ? (
-                <Button label="Schedule" icon="calendar-plus" kind="ghost" onPress={() => router.push({ pathname: '/practice/edit', params: { teamId: id } })} style={{ minHeight: 32, paddingHorizontal: 0 }} />
+                <Button
+                  label="Schedule"
+                  icon="calendar-plus"
+                  kind="ghost"
+                  onPress={() => router.push({ pathname: '/practice/edit', params: { teamId: id } })}
+                  style={{ minHeight: 32, paddingHorizontal: 0 }}
+                />
               ) : undefined
             }>
             {upcoming.slice(0, 4).map((pr) => (
@@ -276,7 +330,9 @@ export default function TeamPage() {
                   ) : null}
                 </View>
                 <T v="small">
-                  {[pr.title, pr.venue_name, pr.cancelled_at ? null : `${pr.going} going${pr.late ? ` (${pr.late} late)` : ''}${pr.going_f + pr.going_m ? ` · ${pr.going_f}F ${pr.going_m}M` : ''}`].filter(Boolean).join(' · ')}
+                  {[pr.title, pr.venue_name, pr.cancelled_at ? null : `${pr.going} going${pr.late ? ` (${pr.late} late)` : ''}${pr.going_f + pr.going_m ? ` · ${pr.going_f}F ${pr.going_m}M` : ''}`]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </T>
               </Card>
             ))}
@@ -299,9 +355,7 @@ export default function TeamPage() {
           <Section title="Shout-outs">
             {shouts.rows.map((so) => (
               <Card key={so.id}>
-                <T v="bodyStrong">
-                  🙌 {shouts.people.get(so.to_person_id) ? displayName(shouts.people.get(so.to_person_id)!) : 'Someone'}
-                </T>
+                <T v="bodyStrong">🙌 {shouts.people.get(so.to_person_id) ? displayName(shouts.people.get(so.to_person_id)!) : 'Someone'}</T>
                 {so.reason ? <T>“{so.reason}”</T> : null}
                 <T v="small">
                   from {shouts.people.get(so.from_person_id) ? displayName(shouts.people.get(so.from_person_id)!) : 'a teammate'} · {shortDate(so.created_at)}
@@ -314,7 +368,10 @@ export default function TeamPage() {
 
         <Section title="Results">
           {games && games.some((g) => g.status !== 'scheduled') ? (
-            games.filter((g) => g.status !== 'scheduled').slice(0, 10).map((g) => <GameCard key={g.id} g={g} />)
+            games
+              .filter((g) => g.status !== 'scheduled')
+              .slice(0, 10)
+              .map((g) => <GameCard key={g.id} g={g} />)
           ) : (
             <T v="small">No games played yet.</T>
           )}
@@ -363,9 +420,7 @@ export default function TeamPage() {
           </>
         )}
       </Sheet>
-      {access?.meId ? (
-        <LogSessionSheet visible={logging} onClose={() => setLogging(false)} meId={access.meId} teams={[{ id, name: team.name }]} fixedTeamId={id} />
-      ) : null}
+      {access?.meId ? <LogSessionSheet visible={logging} onClose={() => setLogging(false)} meId={access.meId} teams={[{ id, name: team.name }]} fixedTeamId={id} /> : null}
       <PhotoSheet
         visible={logoSheet}
         onClose={() => setLogoSheet(false)}
@@ -386,7 +441,15 @@ export default function TeamPage() {
 }
 
 /** Staff: label someone on the roster (core, guest or pick-up), open their page, or set their role. */
-function LabelSheet({ player, onClose, onRole }: { player: { id: string; membership_id: string; membership_kind: 'core' | 'guest' | 'mercenary'; first_name: string; last_name: string; birth_date: string | null } | null; onClose: () => void; onRole: (personId: string) => void }) {
+function LabelSheet({
+  player,
+  onClose,
+  onRole,
+}: {
+  player: { id: string; membership_id: string; membership_kind: 'core' | 'guest' | 'mercenary'; first_name: string; last_name: string; birth_date: string | null } | null;
+  onClose: () => void;
+  onRole: (personId: string) => void;
+}) {
   const db = useSQLiteContext();
   return (
     <Sheet visible={!!player} onClose={onClose} title={player ? displayName(player) : ''}>

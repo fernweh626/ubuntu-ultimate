@@ -38,7 +38,19 @@ async function load(db: SQLiteDatabase) {
 
 async function save(db: SQLiteDatabase, s: Seen) {
   const trim = (xs: string[]) => xs.slice(-500);
-  const v = { ...s, hats: trim(s.hats ?? []), pickups: trim(s.pickups ?? []), hatTeams: trim(s.hatTeams ?? []), announcements: trim(s.announcements ?? []), cancelled: trim(s.cancelled ?? []), shoutouts: trim(s.shoutouts), requests: trim(s.requests), decided: trim(s.decided), status: trim(s.status), results: trim(s.results) };
+  const v = {
+    ...s,
+    hats: trim(s.hats ?? []),
+    pickups: trim(s.pickups ?? []),
+    hatTeams: trim(s.hatTeams ?? []),
+    announcements: trim(s.announcements ?? []),
+    cancelled: trim(s.cancelled ?? []),
+    shoutouts: trim(s.shoutouts),
+    requests: trim(s.requests),
+    decided: trim(s.decided),
+    status: trim(s.status),
+    results: trim(s.results),
+  };
   await db.runAsync(`INSERT INTO app_meta (key, value) VALUES ('notify:seen', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, JSON.stringify(v));
 }
 
@@ -53,10 +65,7 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
   const out: Instant[] = [];
   const first = !prev;
 
-  const teams = await db.getAllAsync<{ team_id: string; role: string }>(
-    `SELECT team_id, role FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`,
-    me,
-  );
+  const teams = await db.getAllAsync<{ team_id: string; role: string }>(`SELECT team_id, role FROM membership WHERE person_id = ? AND end_date IS NULL AND deleted_at IS NULL`, me);
   const mine = teams.map((t) => t.team_id);
   const staffOf = teams.filter((t) => t.role !== 'player').map((t) => t.team_id);
   const followed = (await db.getAllAsync<{ target_id: string }>(`SELECT target_id FROM follow WHERE kind = 'team'`)).map((f) => f.target_id);
@@ -205,7 +214,12 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
       if (seen.hats.includes(h.id)) continue;
       seen.hats.push(h.id);
       if (!first && (!h.region || !home || home === 'all' || h.region === home)) {
-        out.push({ key: `hat:${h.id}`, title: `🎩 ${h.name}${h.start_date ? ` on ${shortDate(h.start_date)}` : ''}`, body: `${h.cost ? `${h.cost}. ` : ''}Tap for more and to sign up.`, url: `/hat/${h.id}` });
+        out.push({
+          key: `hat:${h.id}`,
+          title: `🎩 ${h.name}${h.start_date ? ` on ${shortDate(h.start_date)}` : ''}`,
+          body: `${h.cost ? `${h.cost}. ` : ''}Tap for more and to sign up.`,
+          url: `/hat/${h.id}`,
+        });
       }
     }
     const placed = await db.getAllAsync<{ id: string; team: string; event_id: string; hat: string; role: string }>(
@@ -217,7 +231,13 @@ export async function detectEvents(db: SQLiteDatabase): Promise<Instant[]> {
     for (const p of placed) {
       if (seen.hatTeams.includes(p.id)) continue;
       seen.hatTeams.push(p.id);
-      if (!first) out.push({ key: `hatteam:${p.id}`, title: `🎩 You’re on ${p.team} for ${p.hat}`, body: p.role === 'captain' ? 'You’re captain! Check your team and the schedule for the day.' : 'Go check out your team, your captain and the schedule for the day.', url: `/hat/${p.event_id}` });
+      if (!first)
+        out.push({
+          key: `hatteam:${p.id}`,
+          title: `🎩 You’re on ${p.team} for ${p.hat}`,
+          body: p.role === 'captain' ? 'You’re captain! Check your team and the schedule for the day.' : 'Go check out your team, your captain and the schedule for the day.',
+          url: `/hat/${p.event_id}`,
+        });
     }
   }
 

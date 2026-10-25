@@ -5,7 +5,11 @@ import * as repo from '@/db/repo';
 import { requeueMine } from '@/db/sync';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 300));
 (async () => {
-  const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
+  const db: any = open();
+  await migrate(db);
+  await seedIfEmpty(db);
+  await ensureStarterContent(db);
+  await ensureDemoContent(db);
   const me = await repo.savePerson(db, { first_name: 'Sam', last_name: 'Test', gender: 'W' });
   await repo.setMeId(db, me);
   const t = (await repo.listTeams(db)).find((x: any) => x.name === 'Chilli Legends');
@@ -20,6 +24,7 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
   const has = (t: string) => q.some((r: any) => r.tbl === t);
   ok('re-sends me, my team, my answer and my follow', has('person') && has('membership') && has('practice_rsvp') && has('follow'), q);
   ok('nothing else', q.reduce((a: number, r: any) => a + r.n, 0) <= 5, q);
-  await db.runAsync('DELETE FROM sync_outbox'); await requeueMine(db);
+  await db.runAsync('DELETE FROM sync_outbox');
+  await requeueMine(db);
   ok('only once per account', (await db.getFirstAsync('SELECT COUNT(*) n FROM sync_outbox')).n === 0);
 })();

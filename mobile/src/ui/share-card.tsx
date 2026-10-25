@@ -49,9 +49,7 @@ export function ShareCardSheet({ visible, onClose, data }: { visible: boolean; o
       {data ? (
         <View ref={ref} collapsable={false} style={{ backgroundColor: colors.night, borderRadius: 16, padding: space.xl, gap: space.lg }}>
           <View>
-            <T style={{ fontFamily: font.semibold, fontSize: 12, letterSpacing: 1, color: colors.nightMuted, textTransform: 'uppercase' }}>
-              {data.kicker}
-            </T>
+            <T style={{ fontFamily: font.semibold, fontSize: 12, letterSpacing: 1, color: colors.nightMuted, textTransform: 'uppercase' }}>{data.kicker}</T>
             <T style={{ fontFamily: font.bold, fontSize: 22, color: '#fff', marginTop: 2 }}>{data.title}</T>
           </View>
           {data.left && data.right ? (

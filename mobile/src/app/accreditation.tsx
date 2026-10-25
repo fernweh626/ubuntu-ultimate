@@ -107,7 +107,10 @@ function Form({ meId, acc, signedIn }: { meId: string; acc: Accreditation | null
           </Footer>
         }>
         <Button label="Do or renew your accreditation (WFDF, free)" icon="open-in-new" kind="secondary" onPress={() => Linking.openURL('https://rules.wfdf.org/accreditation')} />
-        <T v="small">You need a valid rules accreditation to play leagues, regionals and nationals. Captains, spirit captains and international teams need Advanced. Your team staff and coordinators check your certificate against the level and expiry you enter.</T>
+        <T v="small">
+          You need a valid rules accreditation to play leagues, regionals and nationals. Captains, spirit captains and international teams need Advanced. Your team staff and coordinators check your
+          certificate against the level and expiry you enter.
+        </T>
         {acc ? <CheckCard acc={acc} /> : null}
 
         {iso ? (
@@ -118,9 +121,7 @@ function Form({ meId, acc, signedIn }: { meId: string; acc: Accreditation | null
             }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
               <Icon name={state === 'valid' ? 'check-decagram' : 'alert-decagram'} color={state === 'expired' ? colors.danger : state === 'expiring' ? colors.warnInk : colors.brandDark} />
-              <T v="bodyStrong">
-                {state === 'expired' ? `Expired ${shortDate(iso)}` : state === 'expiring' ? `Expires in ${days} day${days === 1 ? '' : 's'}` : `Valid until ${shortDate(iso)}`}
-              </T>
+              <T v="bodyStrong">{state === 'expired' ? `Expired ${shortDate(iso)}` : state === 'expiring' ? `Expires in ${days} day${days === 1 ? '' : 's'}` : `Valid until ${shortDate(iso)}`}</T>
             </View>
             <T v="small">We’ll remind you 6 months, 1 month and 1 week before it runs out.</T>
           </Card>
@@ -167,11 +168,22 @@ function CheckCard({ acc }: { acc: Accreditation }) {
   return (
     <Card style={{ backgroundColor: tone, borderColor: 'transparent' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-        <Icon name={acc.status === 'verified' ? 'shield-check' : acc.status === 'rejected' ? 'shield-alert' : 'shield-outline'} color={acc.status === 'verified' ? colors.brandDark : acc.status === 'rejected' ? colors.danger : colors.muted} />
-        <T v="bodyStrong">{acc.status === 'verified' ? `Checked by your team staff${acc.checked_at ? ` · ${shortDate(acc.checked_at)}` : ''}` : acc.status === 'rejected' ? 'Your team staff found a problem' : 'Not checked yet'}</T>
+        <Icon
+          name={acc.status === 'verified' ? 'shield-check' : acc.status === 'rejected' ? 'shield-alert' : 'shield-outline'}
+          color={acc.status === 'verified' ? colors.brandDark : acc.status === 'rejected' ? colors.danger : colors.muted}
+        />
+        <T v="bodyStrong">
+          {acc.status === 'verified'
+            ? `Checked by your team staff${acc.checked_at ? ` · ${shortDate(acc.checked_at)}` : ''}`
+            : acc.status === 'rejected'
+              ? 'Your team staff found a problem'
+              : 'Not checked yet'}
+        </T>
       </View>
       {acc.status === 'rejected' && acc.check_note ? <T v="small">“{acc.check_note}”</T> : null}
-      {acc.status === 'unverified' ? <T v="small">{acc.file_path ? 'Your team staff will check it before the next CTFDA, regional or SAFDA event.' : 'Upload the PDF so your team staff can check it.'}</T> : null}
+      {acc.status === 'unverified' ? (
+        <T v="small">{acc.file_path ? 'Your team staff will check it before the next CTFDA, regional or SAFDA event.' : 'Upload the PDF so your team staff can check it.'}</T>
+      ) : null}
     </Card>
   );
 }

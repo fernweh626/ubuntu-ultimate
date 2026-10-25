@@ -42,7 +42,11 @@ export default function FeedbackAdmin() {
             { value: 'all', label: 'All' },
           ]}
         />
-        {error ? <T v="small" style={{ color: colors.danger }}>Couldn’t load: {error}. You need to be signed in as an admin.</T> : null}
+        {error ? (
+          <T v="small" style={{ color: colors.danger }}>
+            Couldn’t load: {error}. You need to be signed in as an admin.
+          </T>
+        ) : null}
         {!rows && !error ? <ActivityIndicator color={colors.brand} /> : null}
         {rows && shown.length === 0 ? <T v="small">Nothing here. 🎉</T> : null}
         {shown.map((f) => (
@@ -76,13 +80,7 @@ export default function FeedbackAdmin() {
             <T v="small">{[open.app_version, open.device, open.person_id && open.contact_ok ? `player ${open.person_id.slice(0, 8)}` : null].filter(Boolean).join(' · ')}</T>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
               {(Object.keys(STATUS) as ServerFeedback['status'][]).map((s) => (
-                <Choice
-                  key={s}
-                  label={STATUS[s]}
-                  selected={open.status === s}
-                  onPress={() => setOpen({ ...open, status: s })}
-                  style={{ minHeight: 40, paddingHorizontal: 12 }}
-                />
+                <Choice key={s} label={STATUS[s]} selected={open.status === s} onPress={() => setOpen({ ...open, status: s })} style={{ minHeight: 40, paddingHorizontal: 12 }} />
               ))}
             </View>
             <Field label="Note (only admins see it)" value={note} onChangeText={setNote} multiline />
@@ -111,7 +109,9 @@ function Screenshots({ images }: { images: string | null }) {
   const [urls, setUrls] = useState<string[] | null>(null);
   useEffect(() => {
     let live = true;
-    feedbackImageUrls(images).then((u) => live && setUrls(u)).catch(() => live && setUrls([]));
+    feedbackImageUrls(images)
+      .then((u) => live && setUrls(u))
+      .catch(() => live && setUrls([]));
     return () => {
       live = false;
     };

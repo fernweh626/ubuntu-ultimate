@@ -30,7 +30,14 @@ export default function Schedule() {
       <>
         <Stack.Screen options={{ title: 'My schedule' }} />
         <Screen edges={[]}>
-          <Segmented value={tab} onChange={setTab} options={[{ value: 'upcoming', label: 'Upcoming' }, { value: 'past', label: 'Past' }]} />
+          <Segmented
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'upcoming', label: 'Upcoming' },
+              { value: 'past', label: 'Past' },
+            ]}
+          />
           <PastSchedule />
         </Screen>
       </>
@@ -62,9 +69,22 @@ export default function Schedule() {
     <>
       <Stack.Screen options={{ title: 'My schedule' }} />
       <Screen edges={[]}>
-        {meId ? <Segmented value={tab} onChange={setTab} options={[{ value: 'upcoming', label: 'Upcoming' }, { value: 'past', label: 'Past' }]} /> : null}
+        {meId ? (
+          <Segmented
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'upcoming', label: 'Upcoming' },
+              { value: 'past', label: 'Past' },
+            ]}
+          />
+        ) : null}
         {!meId ? (
-          <EmptyState icon="calendar-account-outline" title="Nothing to show yet" body="Pick yourself in Me first. Then your team’s practices and games, hats you sign up for, meetings and the pickups you go to all show up here." />
+          <EmptyState
+            icon="calendar-account-outline"
+            title="Nothing to show yet"
+            body="Pick yourself in Me first. Then your team’s practices and games, hats you sign up for, meetings and the pickups you go to all show up here."
+          />
         ) : (
           <>
             {unanswered ? (
@@ -99,7 +119,11 @@ export default function Schedule() {
               <EmptyState
                 icon="calendar-blank"
                 title="Nothing coming up"
-                body={teams ? 'When your staff schedule practices or fixtures, they appear here. So do hats you sign up for and pickups you go to.' : 'Join a team, sign up for a hat, or tap “I go here” on a pickup, and it shows up here.'}
+                body={
+                  teams
+                    ? 'When your staff schedule practices or fixtures, they appear here. So do hats you sign up for and pickups you go to.'
+                    : 'Join a team, sign up for a hat, or tap “I go here” on a pickup, and it shows up here.'
+                }
                 action={<Button label="Find pickup" icon="map-marker-radius" onPress={() => router.push('/hub/pickups')} />}
               />
             ) : null}
@@ -109,12 +133,19 @@ export default function Schedule() {
                   const live = it.gameStatus === 'live';
                   const canAnswer = !it.cancelled && (it.kind === 'game' ? it.gameStatus === 'scheduled' : it.kind !== 'hat' && Date.parse(it.at) > opened);
                   const href =
-                    it.kind === 'practice' ? `/practice/${it.id}` : it.kind === 'hat' ? `/hat/${it.id}` : it.kind === 'meeting' ? `/hub/meeting/${it.id}` : it.kind === 'pickup' ? '/hub/pickups' : live ? `/game/${it.id}/report` : `/game/${it.id}/fixture`;
+                    it.kind === 'practice'
+                      ? `/practice/${it.id}`
+                      : it.kind === 'hat'
+                        ? `/hat/${it.id}`
+                        : it.kind === 'meeting'
+                          ? `/hub/meeting/${it.id}`
+                          : it.kind === 'pickup'
+                            ? '/hub/pickups'
+                            : live
+                              ? `/game/${it.id}/report`
+                              : `/game/${it.id}/fixture`;
                   return (
-                    <Card
-                      key={it.key}
-                      onPress={() => router.push(href as never)}
-                      style={live ? { borderColor: colors.brand, borderWidth: 2 } : undefined}>
+                    <Card key={it.key} onPress={() => router.push(href as never)} style={live ? { borderColor: colors.brand, borderWidth: 2 } : undefined}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
                         <KindIcon kind={it.kind} />
                         <T style={{ fontFamily: font.display, fontSize: 22, width: 56, textDecorationLine: it.cancelled ? 'line-through' : 'none' }}>{timeOfDay(it.at)}</T>
@@ -124,7 +155,13 @@ export default function Schedule() {
                           </T>
                           <T v="small">{it.place}</T>
                         </View>
-                        {it.cancelled ? <Chip label="Cancelled" tone="danger" /> : live ? <Chip label="LIVE" tone="danger" icon="circle" /> : it.kind === 'hat' ? <Chip label={it.status === 'going' ? 'Signed up' : 'Maybe'} tone={it.status === 'going' ? 'brand' : 'warn'} /> : null}
+                        {it.cancelled ? (
+                          <Chip label="Cancelled" tone="danger" />
+                        ) : live ? (
+                          <Chip label="LIVE" tone="danger" icon="circle" />
+                        ) : it.kind === 'hat' ? (
+                          <Chip label={it.status === 'going' ? 'Signed up' : 'Maybe'} tone={it.status === 'going' ? 'brand' : 'warn'} />
+                        ) : null}
                       </View>
                       {it.cancelled ? null : it.kind === 'hat' ? (
                         <T v="small">{it.coming} signed up · tap for your team, payment and schedule</T>
@@ -200,7 +237,17 @@ function PastSchedule() {
           {m.items.map((it) => {
             const w = WENT[attended(it)];
             const href =
-              it.kind === 'practice' ? `/practice/${it.id}` : it.kind === 'hat' ? `/hat/${it.id}` : it.kind === 'meeting' ? `/hub/meeting/${it.id}` : it.kind === 'pickup' ? '/hub/pickups' : it.gameStatus === 'final' ? `/game/${it.id}/report` : `/game/${it.id}/fixture`;
+              it.kind === 'practice'
+                ? `/practice/${it.id}`
+                : it.kind === 'hat'
+                  ? `/hat/${it.id}`
+                  : it.kind === 'meeting'
+                    ? `/hub/meeting/${it.id}`
+                    : it.kind === 'pickup'
+                      ? '/hub/pickups'
+                      : it.gameStatus === 'final'
+                        ? `/game/${it.id}/report`
+                        : `/game/${it.id}/fixture`;
             return (
               <Card key={it.key} onPress={() => router.push(href as never)}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>

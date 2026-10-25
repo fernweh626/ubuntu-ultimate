@@ -6,7 +6,11 @@ import { prepareFirstSync, pruneSharedOutbox, sharedContent } from '@/db/sync';
 import { rulesFor } from '@/domain/rules';
 const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : JSON.stringify(x).slice(0, 400));
 (async () => {
-  const db: any = open(); await migrate(db); await seedIfEmpty(db); await ensureStarterContent(db); await ensureDemoContent(db);
+  const db: any = open();
+  await migrate(db);
+  await seedIfEmpty(db);
+  await ensureStarterContent(db);
+  await ensureDemoContent(db);
   const me = await repo.savePerson(db, { first_name: 'Real', last_name: 'Me', gender: 'W' });
   await repo.setMeId(db, me);
   const [t] = (await repo.listTeams(db)).filter((x: any) => !x.is_sample && x.name === 'Chilli Legends');
@@ -27,14 +31,36 @@ const ok = (n: string, c: boolean, x: unknown = '') => console.log(c ? 'ok  ' : 
       AND NOT (o.tbl = 'person' AND json_extract(o.pk, '$.id') IN (SELECT m.person_id FROM membership m JOIN team t ON t.id = m.team_id WHERE t.is_sample = 1))
       AND NOT (o.tbl = 'team' AND json_extract(o.pk, '$.id') IN (SELECT id FROM team WHERE is_sample = 1))
       AND NOT (o.tbl IN ('game', 'point', 'game_event') AND 1 = 0)`);
-  ok(`old queue ${before} → ${left.length} after clean-up`, before > 5000 && left.length <= 4, left.map((l: any) => l.tbl));
-  ok('kept my person, membership and AGM rsvp', ['person', 'membership', 'meeting_rsvp'].every((tb) => left.some((l: any) => l.tbl === tb)), left);
+  ok(
+    `old queue ${before} → ${left.length} after clean-up`,
+    before > 5000 && left.length <= 4,
+    left.map((l: any) => l.tbl),
+  );
+  ok(
+    'kept my person, membership and AGM rsvp',
+    ['person', 'membership', 'meeting_rsvp'].every((tb) => left.some((l: any) => l.tbl === tb)),
+    left,
+  );
   ok('clean-up runs once', (await pruneSharedOutbox(db)) === 0 && dropped > 0);
   // New first sync on a fresh phone with the same content.
-  const db2: any = open(); await migrate(db2); await seedIfEmpty(db2); await ensureStarterContent(db2); await ensureDemoContent(db2);
+  const db2: any = open();
+  await migrate(db2);
+  await seedIfEmpty(db2);
+  await ensureStarterContent(db2);
+  await ensureDemoContent(db2);
   const me2 = await repo.savePerson(db2, { first_name: 'New', last_name: 'Phone', gender: 'M' });
   await repo.setMeId(db2, me2);
-  const gid = await repo.createGame(db2, { eventId: null, venueId: null, teamAId: t.id, teamBId: (await repo.listTeams(db2)).find((x: any) => x.name === 'Nomad').id, trackingMode: 'lite', rules: rulesFor('wfdf', 'mixed'), firstPullTeamId: t.id, ratioPoint1: 'M', squads: [] } as any);
+  const gid = await repo.createGame(db2, {
+    eventId: null,
+    venueId: null,
+    teamAId: t.id,
+    teamBId: (await repo.listTeams(db2)).find((x: any) => x.name === 'Nomad').id,
+    trackingMode: 'lite',
+    rules: rulesFor('wfdf', 'mixed'),
+    firstPullTeamId: t.id,
+    ratioPoint1: 'M',
+    squads: [],
+  } as any);
   await db2.runAsync('DELETE FROM sync_outbox');
   await prepareFirstSync(db2);
   const q = await db2.getAllAsync('SELECT tbl, COUNT(*) n FROM sync_outbox GROUP BY tbl');

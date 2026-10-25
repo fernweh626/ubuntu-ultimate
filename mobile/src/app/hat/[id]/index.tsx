@@ -66,7 +66,14 @@ export default function HatPage() {
           </View>
           <T style={{ fontFamily: font.display, fontSize: 30, lineHeight: 32, color: '#fff' }}>{hat.name}</T>
           <T style={{ fontFamily: font.semibold, fontSize: 16, color: colors.nightMuted }}>
-            {[hat.start_date ? shortDate(hat.start_date) : null, hat.end_date && hat.end_date !== hat.start_date ? `to ${shortDate(hat.end_date)}` : null, hat.start_time, hat.venue_name ?? hat.location].filter(Boolean).join(' · ')}
+            {[
+              hat.start_date ? shortDate(hat.start_date) : null,
+              hat.end_date && hat.end_date !== hat.start_date ? `to ${shortDate(hat.end_date)}` : null,
+              hat.start_time,
+              hat.venue_name ?? hat.location,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </T>
           {hat.cost ? <T style={{ fontFamily: font.bold, fontSize: 18, color: '#fff' }}>{hat.cost}</T> : null}
           <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -98,7 +105,9 @@ export default function HatPage() {
               onPress={() => {
                 const me = signups.find((s) => s.person_id === access.meId);
                 const text = `Hi! Proof of payment for ${hat.name}${me ? ` from ${displayName(me)}` : ''}. (Attached.)`;
-                const url = hat.pop_contact!.includes('@') ? `mailto:${hat.pop_contact}?subject=${encodeURIComponent(`PoP: ${hat.name}`)}&body=${encodeURIComponent(text)}` : whatsappLink(hat.pop_contact, text);
+                const url = hat.pop_contact!.includes('@')
+                  ? `mailto:${hat.pop_contact}?subject=${encodeURIComponent(`PoP: ${hat.name}`)}&body=${encodeURIComponent(text)}`
+                  : whatsappLink(hat.pop_contact, text);
                 if (url) Linking.openURL(url);
               }}
             />
@@ -109,7 +118,16 @@ export default function HatPage() {
         {myTeamId ? <MyTeam teamId={myTeamId} rows={teams} meId={access.meId} /> : null}
 
         {access.meId ? (
-          <SignupForm key={mine?.id ?? 'new'} eventId={id} meId={access.meId} mine={mine} drawn={drawn} ratingFresh={ratingFresh} hasPayment={!!hat.payment_url || !!hat.eft_details} placed={!!myTeamId} />
+          <SignupForm
+            key={mine?.id ?? 'new'}
+            eventId={id}
+            meId={access.meId}
+            mine={mine}
+            drawn={drawn}
+            ratingFresh={ratingFresh}
+            hasPayment={!!hat.payment_url || !!hat.eft_details}
+            placed={!!myTeamId}
+          />
         ) : (
           <Card>
             <T v="small">Pick yourself in Me to sign up.</T>
@@ -131,9 +149,7 @@ export default function HatPage() {
                       {rows.filter((r) => r.gender === 'W').length}F · {rows.filter((r) => r.gender === 'M').length}M
                     </T>
                   </View>
-                  <T v="small">
-                    {rows.map((r) => `${displayName(r)}${r.role === 'captain' ? ' (C)' : ''}`).join(', ')}
-                  </T>
+                  <T v="small">{rows.map((r) => `${displayName(r)}${r.role === 'captain' ? ' (C)' : ''}`).join(', ')}</T>
                 </Card>
               );
             })}
@@ -154,8 +170,9 @@ export default function HatPage() {
         {runs ? (
           <Section title={`Sign-ups · ${coming.length} coming`}>
             <T v="small">
-              {coming.filter((s) => s.gender === 'W').length} female matching · {coming.filter((s) => s.gender === 'M').length} male matching · {coming.filter((s) => s.paid || s.paid_confirmed).length} paid ·{' '}
-              {coming.filter((s) => s.wants_captain).length} willing to captain · {signups.filter((s) => s.attending === 'maybe').length} maybe
+              {coming.filter((s) => s.gender === 'W').length} female matching · {coming.filter((s) => s.gender === 'M').length} male matching ·{' '}
+              {coming.filter((s) => s.paid || s.paid_confirmed).length} paid · {coming.filter((s) => s.wants_captain).length} willing to captain ·{' '}
+              {signups.filter((s) => s.attending === 'maybe').length} maybe
             </T>
             {!drawn ? <Button label="Draw teams" icon="shuffle-variant" kind="primary" onPress={() => router.push(`/hat/${id}/draw`)} /> : null}
             <Button label="Add an on-the-day player" icon="account-plus-outline" onPress={() => setLate(true)} />
@@ -177,7 +194,13 @@ export default function HatPage() {
                     {displayName(s)}
                   </T>
                   <T v="small">
-                    {[s.attending === 'yes' ? 'Coming' : s.attending === 'maybe' ? 'Maybe' : 'Not coming', `skill ${drawSkill(s).toFixed(1)}`, s.wants_captain ? 'would captain' : null, s.on_the_day ? 'on the day' : null, s.paid && !s.paid_confirmed ? 'says paid' : null]
+                    {[
+                      s.attending === 'yes' ? 'Coming' : s.attending === 'maybe' ? 'Maybe' : 'Not coming',
+                      `skill ${drawSkill(s).toFixed(1)}`,
+                      s.wants_captain ? 'would captain' : null,
+                      s.on_the_day ? 'on the day' : null,
+                      s.paid && !s.paid_confirmed ? 'says paid' : null,
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </T>
@@ -218,12 +241,34 @@ function MyTeam({ teamId, rows, meId }: { teamId: string; rows: Awaited<ReturnTy
         <T style={{ fontFamily: font.display, fontSize: 26 }}>{mine[0]?.name}</T>
       </View>
       {captain ? <T>Captain: {captain.person_id === meId ? 'you!' : displayName(captain)}</T> : null}
-      <T v="small">Wear a {mine[0]?.name.toLowerCase()} shirt if you have one. Team-mates: {mine.filter((r) => r.person_id !== meId).map((r) => displayName(r)).join(', ')}</T>
+      <T v="small">
+        Wear a {mine[0]?.name.toLowerCase()} shirt if you have one. Team-mates:{' '}
+        {mine
+          .filter((r) => r.person_id !== meId)
+          .map((r) => displayName(r))
+          .join(', ')}
+      </T>
     </Card>
   );
 }
 
-function SignupForm({ eventId, meId, mine, drawn, ratingFresh, hasPayment, placed }: { eventId: string; meId: string; mine: Signup | null; drawn: boolean; ratingFresh: boolean; hasPayment: boolean; placed: boolean }) {
+function SignupForm({
+  eventId,
+  meId,
+  mine,
+  drawn,
+  ratingFresh,
+  hasPayment,
+  placed,
+}: {
+  eventId: string;
+  meId: string;
+  mine: Signup | null;
+  drawn: boolean;
+  ratingFresh: boolean;
+  hasPayment: boolean;
+  placed: boolean;
+}) {
   const db = useSQLiteContext();
   const [attending, setAttending] = useState<Signup['attending']>(mine?.attending ?? 'yes');
   const [captain, setCaptain] = useState(!!mine?.wants_captain);
@@ -231,10 +276,17 @@ function SignupForm({ eventId, meId, mine, drawn, ratingFresh, hasPayment, place
   const needsSkill = !ratingFresh;
 
   async function save() {
-    if (attending !== 'no' && needsSkill) return Alert.alert('Rate yourself first', 'The draw uses your self-rating from your profile, so the teams come out even. It takes two minutes.', [{ text: 'Not now', style: 'cancel' }, { text: 'Rate myself', onPress: () => router.push('/rate') }]);
+    if (attending !== 'no' && needsSkill)
+      return Alert.alert('Rate yourself first', 'The draw uses your self-rating from your profile, so the teams come out even. It takes two minutes.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Rate myself', onPress: () => router.push('/rate') },
+      ]);
     // Skill comes from the player's self-rating (Me → My development); nothing to store here.
     await saveSignup(db, eventId, meId, { attending, wantsCaptain: captain, skill: mine?.skill ?? null, paid, onTheDay: drawn && !mine });
-    Alert.alert(mine ? 'Updated' : 'You’re signed up! 🎩', drawn && !placed ? 'Teams are already drawn: the organiser will put you in a team on the day.' : 'Teams are drawn 48 hours before. You’ll get a notification with your team.');
+    Alert.alert(
+      mine ? 'Updated' : 'You’re signed up! 🎩',
+      drawn && !placed ? 'Teams are already drawn: the organiser will put you in a team on the day.' : 'Teams are drawn 48 hours before. You’ll get a notification with your team.',
+    );
   }
 
   return (
@@ -297,10 +349,17 @@ function LatePlayerSheet({ visible, onClose, eventId, drawn }: { visible: boolea
   const [last, setLast] = useState('');
   const [gender, setGender] = useState<'W' | 'M'>('W');
   const [skill, setSkill] = useState(3);
-  const people = useData(
-    async (d) => (q.trim().length < 2 ? [] : d.getAllAsync<{ id: string; first_name: string; last_name: string; birth_date: string | null }>(`SELECT id, first_name, last_name, birth_date FROM person WHERE deleted_at IS NULL AND (first_name || ' ' || last_name) LIKE ? ORDER BY first_name LIMIT 8`, `%${q.trim()}%`)),
-    [q],
-  ) ?? [];
+  const people =
+    useData(
+      async (d) =>
+        q.trim().length < 2
+          ? []
+          : d.getAllAsync<{ id: string; first_name: string; last_name: string; birth_date: string | null }>(
+              `SELECT id, first_name, last_name, birth_date FROM person WHERE deleted_at IS NULL AND (first_name || ' ' || last_name) LIKE ? ORDER BY first_name LIMIT 8`,
+              `%${q.trim()}%`,
+            ),
+      [q],
+    ) ?? [];
 
   async function add(personId: string) {
     const team = await addLatePlayer(db, eventId, personId, { paid: true, skill });
@@ -311,7 +370,23 @@ function LatePlayerSheet({ visible, onClose, eventId, drawn }: { visible: boolea
   return (
     <Sheet visible={visible} onClose={onClose} title="On-the-day player">
       <T v="small">{drawn ? 'They go into the team they balance best (by ratio and skill); the teams already drawn stay as they are.' : 'They’ll be included when you draw the teams.'}</T>
-      <TextInput value={q} onChangeText={setQ} placeholder="Search players by name" placeholderTextColor={colors.faint} style={{ minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, fontFamily: font.regular, fontSize: 16, color: colors.ink, backgroundColor: colors.surface }} />
+      <TextInput
+        value={q}
+        onChangeText={setQ}
+        placeholder="Search players by name"
+        placeholderTextColor={colors.faint}
+        style={{
+          minHeight: 48,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 10,
+          paddingHorizontal: 12,
+          fontFamily: font.regular,
+          fontSize: 16,
+          color: colors.ink,
+          backgroundColor: colors.surface,
+        }}
+      />
       {people.map((p) => (
         <Choice key={p.id} label={displayName(p)} onPress={() => add(p.id)} style={{ minHeight: 40 }} />
       ))}

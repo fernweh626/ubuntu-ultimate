@@ -1,10 +1,4 @@
-import {
-  Barlow_400Regular,
-  Barlow_500Medium,
-  Barlow_600SemiBold,
-  Barlow_700Bold,
-  useFonts,
-} from '@expo-google-fonts/barlow';
+import { Barlow_400Regular, Barlow_500Medium, Barlow_600SemiBold, Barlow_700Bold, useFonts } from '@expo-google-fonts/barlow';
 import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -55,27 +49,27 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <ThemeProvider value={theme}>
-      <StatusBar style="dark" />
-      {/* File name kept from the app's working name so existing phones keep their data. */}
-      <SQLiteProvider databaseName="sa-ultimate.db" onInit={init}>
-        <SyncManager />
-        <NotificationManager />
-        <WebFrame>
-        <Stack
-          screenOptions={{
-            headerTitleStyle: { fontFamily: font.bold, fontSize: 18 },
-            headerShadowVisible: false,
-            headerStyle: { backgroundColor: colors.bg },
-            headerTintColor: colors.ink,
-            contentStyle: { backgroundColor: colors.bg },
-          }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="game/[id]/index" options={{ headerShown: false, gestureEnabled: false }} />
-        </Stack>
-        </WebFrame>
-      </SQLiteProvider>
-    </ThemeProvider>
+      <ThemeProvider value={theme}>
+        <StatusBar style="dark" />
+        {/* File name kept from the app's working name so existing phones keep their data. */}
+        <SQLiteProvider databaseName="sa-ultimate.db" onInit={init}>
+          <SyncManager />
+          <NotificationManager />
+          <WebFrame>
+            <Stack
+              screenOptions={{
+                headerTitleStyle: { fontFamily: font.bold, fontSize: 18 },
+                headerShadowVisible: false,
+                headerStyle: { backgroundColor: colors.bg },
+                headerTintColor: colors.ink,
+                contentStyle: { backgroundColor: colors.bg },
+              }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="game/[id]/index" options={{ headerShown: false, gestureEnabled: false }} />
+            </Stack>
+          </WebFrame>
+        </SQLiteProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

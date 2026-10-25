@@ -29,7 +29,23 @@ export default function Calendar() {
   // Hats live as events, so they're added here alongside the calendar entries.
   const all: CalendarEntry[] = [
     ...entries0,
-    ...hats.map((h) => ({ id: `hat:${h.id}`, name: `🎩 ${h.name}`, kind: 'hat', level: 'social', region: h.region, location: h.venue_name ?? h.location, start_date: h.start_date, end_date: h.end_date, month_hint: null, status: 'confirmed' as const, url: null, notes: h.cost ? `Hat · ${h.cost} · sign up in the app` : 'Hat · sign up in the app', start_time: h.start_time, end_time: null, meeting_url: null })),
+    ...hats.map((h) => ({
+      id: `hat:${h.id}`,
+      name: `🎩 ${h.name}`,
+      kind: 'hat',
+      level: 'social',
+      region: h.region,
+      location: h.venue_name ?? h.location,
+      start_date: h.start_date,
+      end_date: h.end_date,
+      month_hint: null,
+      status: 'confirmed' as const,
+      url: null,
+      notes: h.cost ? `Hat · ${h.cost} · sign up in the app` : 'Hat · sign up in the app',
+      start_time: h.start_time,
+      end_time: null,
+      meeting_url: null,
+    })),
   ].sort((a, b) => (a.start_date ?? '9999').localeCompare(b.start_date ?? '9999'));
   const access = useData(getAccess);
   const runs = access?.level === 'admin' || access?.level === 'coordinator';
@@ -83,33 +99,29 @@ export default function Calendar() {
                     e.id.startsWith('hat:')
                       ? () => router.push(`/hat/${e.id.slice(4)}`)
                       : isMeeting(e.kind)
-                      ? () => router.push(`/hub/meeting/${e.id}`)
-                      : runs
-                        ? () => router.push({ pathname: '/hub/calendar-edit', params: { id: e.id } })
-                        : e.url
-                          ? () => Linking.openURL(e.url!)
-                          : undefined
+                        ? () => router.push(`/hub/meeting/${e.id}`)
+                        : runs
+                          ? () => router.push({ pathname: '/hub/calendar-edit', params: { id: e.id } })
+                          : e.url
+                            ? () => Linking.openURL(e.url!)
+                            : undefined
                   }>
                   <View style={{ flexDirection: 'row', gap: space.md }}>
                     {e.start_date ? (
                       <View style={{ width: 52, alignItems: 'center', borderRadius: 10, backgroundColor: colors.brandTint, paddingVertical: 6 }}>
-                        <T style={{ fontFamily: font.display, fontSize: 26, lineHeight: 28, color: colors.brandDark }}>
-                          {Number(e.start_date.slice(8, 10))}
-                        </T>
-                        <T style={{ fontFamily: font.semibold, fontSize: 11, color: colors.brandDark }}>
-                          {MONTHS[Number(e.start_date.slice(5, 7)) - 1].slice(0, 3).toUpperCase()}
-                        </T>
+                        <T style={{ fontFamily: font.display, fontSize: 26, lineHeight: 28, color: colors.brandDark }}>{Number(e.start_date.slice(8, 10))}</T>
+                        <T style={{ fontFamily: font.semibold, fontSize: 11, color: colors.brandDark }}>{MONTHS[Number(e.start_date.slice(5, 7)) - 1].slice(0, 3).toUpperCase()}</T>
                       </View>
                     ) : null}
                     <View style={{ flex: 1, gap: 4 }}>
                       <T v="bodyStrong">{e.name}</T>
-                      <T v="small">
-                        {[e.start_date ? dateRange(e.start_date, e.end_date) : e.month_hint, e.location ?? (e.region ? regionName(e.region) : null)]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </T>
+                      <T v="small">{[e.start_date ? dateRange(e.start_date, e.end_date) : e.month_hint, e.location ?? (e.region ? regionName(e.region) : null)].filter(Boolean).join(' · ')}</T>
                       <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
-                        {isMeeting(e.kind) ? <Chip label={KIND_LABEL[e.kind]} icon="account-group-outline" tone="dark" /> : e.level ? <Chip label={e.level} tone={LEVEL_TONE[e.level] ?? 'neutral'} /> : null}
+                        {isMeeting(e.kind) ? (
+                          <Chip label={KIND_LABEL[e.kind]} icon="account-group-outline" tone="dark" />
+                        ) : e.level ? (
+                          <Chip label={e.level} tone={LEVEL_TONE[e.level] ?? 'neutral'} />
+                        ) : null}
                         {isMeeting(e.kind) && e.start_time ? <Chip label={`${e.start_time}${e.end_time ? `–${e.end_time}` : ''}`} icon="clock-outline" tone="neutral" /> : null}
                         {e.status === 'tbc' ? <Chip label="Dates TBC" tone="warn" /> : null}
                       </View>

@@ -35,9 +35,7 @@ export default function Playoffs() {
     const made = await createBracket(db, eventId, buildBracket(n, mode, full));
     Alert.alert(
       'Bracket created',
-      made
-        ? `${made} game${made > 1 ? 's are' : ' is'} ready. Tap any game to set its time and field.`
-        : 'Games appear as soon as results decide who plays. You can set times and fields now.',
+      made ? `${made} game${made > 1 ? 's are' : ' is'} ready. Tap any game to set its time and field.` : 'Games appear as soon as results decide who plays. You can set times and fields now.',
     );
   }
 
@@ -69,7 +67,10 @@ export default function Playoffs() {
                   icon="refresh"
                   onPress={async () => {
                     const made = await fillBracketNow(db, eventId);
-                    Alert.alert(made ? `${made} new game${made > 1 ? 's' : ''} added` : 'Nothing new yet', made ? undefined : openPoolGames ? `${openPoolGames} pool game${openPoolGames > 1 ? 's' : ''} still to finish.` : undefined);
+                    Alert.alert(
+                      made ? `${made} new game${made > 1 ? 's' : ''} added` : 'Nothing new yet',
+                      made ? undefined : openPoolGames ? `${openPoolGames} pool game${openPoolGames > 1 ? 's' : ''} still to finish.` : undefined,
+                    );
                   }}
                   style={{ flex: 1 }}
                 />
@@ -95,7 +96,8 @@ export default function Playoffs() {
         ) : (
           <>
             <T v="small">
-              Teams are seeded from the round robin / Swiss / pool games{openPoolGames ? ` — ${openPoolGames} still to play, so the first games appear once those finish` : ''}. Odd numbers get byes for the top seeds.
+              Teams are seeded from the round robin / Swiss / pool games{openPoolGames ? ` — ${openPoolGames} still to play, so the first games appear once those finish` : ''}. Odd numbers get byes
+              for the top seeds.
             </T>
             <Section title="Who’s in">
               <Segmented
@@ -109,11 +111,32 @@ export default function Playoffs() {
               />
             </Section>
             <Section title="Seeded by">
-              <Choice label="Standings" sublabel="1 v 4, 2 v 3 … from the overall table" selected={mode === 'standings'} onPress={() => setMode('standings')} tall style={{ alignItems: 'flex-start' }} />
+              <Choice
+                label="Standings"
+                sublabel="1 v 4, 2 v 3 … from the overall table"
+                selected={mode === 'standings'}
+                onPress={() => setMode('standings')}
+                tall
+                style={{ alignItems: 'flex-start' }}
+              />
               {pools.length > 1 ? (
-                <Choice label="Pool positions (crossovers)" sublabel="A1, B1, A2, B2 … so pool winners meet runners-up" selected={mode === 'pools'} onPress={() => setMode('pools')} tall style={{ alignItems: 'flex-start' }} />
+                <Choice
+                  label="Pool positions (crossovers)"
+                  sublabel="A1, B1, A2, B2 … so pool winners meet runners-up"
+                  selected={mode === 'pools'}
+                  onPress={() => setMode('pools')}
+                  tall
+                  style={{ alignItems: 'flex-start' }}
+                />
               ) : null}
-              <Choice label="Seeds (straight knockout)" sublabel="Your seeding order from Edit event — no pool play needed" selected={mode === 'seed'} onPress={() => setMode('seed')} tall style={{ alignItems: 'flex-start' }} />
+              <Choice
+                label="Seeds (straight knockout)"
+                sublabel="Your seeding order from Edit event — no pool play needed"
+                selected={mode === 'seed'}
+                onPress={() => setMode('seed')}
+                tall
+                style={{ alignItems: 'flex-start' }}
+              />
             </Section>
             <Section title="Placings">
               <Segmented
@@ -124,7 +147,9 @@ export default function Playoffs() {
                   { value: 'full', label: 'Every team placed' },
                 ]}
               />
-              <T v="small">{full ? 'Losing teams keep playing for 5th–8th, 9th–16th … so everyone finishes with a place.' : 'Only the top places are played for; everyone else is ranked by the standings.'}</T>
+              <T v="small">
+                {full ? 'Losing teams keep playing for 5th–8th, 9th–16th … so everyone finishes with a place.' : 'Only the top places are played for; everyone else is ranked by the standings.'}
+              </T>
             </Section>
             {preview.length ? (
               <Card style={{ backgroundColor: colors.brandTint, borderColor: colors.brandTint }}>

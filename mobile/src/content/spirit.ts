@@ -39,17 +39,32 @@ export const SPIRIT_EXAMPLES: Record<Cat, { about: string; levels: [string[], st
   fairness: {
     about: 'Justifiable calls. They owned their mistakes and told teammates when their calls were wrong or unfair.',
     levels: [
-      ['Always insisted their calls were right', 'Never gave an honest opinion when it might go against them', 'Many unjustifiable calls, gaming the rules (e.g. drawing fouls to reset the stall)', 'Unduly delayed the game'],
+      [
+        'Always insisted their calls were right',
+        'Never gave an honest opinion when it might go against them',
+        'Many unjustifiable calls, gaming the rules (e.g. drawing fouls to reset the stall)',
+        'Unduly delayed the game',
+      ],
       ['Sometimes only saw things in their own favour', 'Inconsistent calls', 'Called lots of tiny breaches that didn’t affect play'],
       ['Only called things that affected the play', 'Acknowledged our view even when they disagreed', 'Owned up or apologised when appropriate, e.g. an uncontested foul'],
       ['At least once told a teammate their call was wrong or unnecessary', 'Adjusted their play after our feedback', 'Skipped trivial calls, like a tiny travel on an unmarked thrower'],
-      ['Their first reaction to calls invited discussion', 'Several clear times they sought the truth even when it didn’t help them', 'Stayed fair and consistent in crunch moments like double game point'],
+      [
+        'Their first reaction to calls invited discussion',
+        'Several clear times they sought the truth even when it didn’t help them',
+        'Stayed fair and consistent in crunch moments like double game point',
+      ],
     ],
   },
   attitude: {
     about: 'Respectful and considerate whatever the score. Players and sideline worked towards a resolution in tense moments.',
     levels: [
-      ['Players or sideline often used offensive language or slurs (racist, sexist, homophobic…) or gestures', 'Taunted opponents, confrontations on or off the field', 'Celebrations aimed at us, e.g. pointing after scoring on someone', 'Damaged or misused equipment', 'Rubbed in a skill gap, e.g. trick-play-only points'],
+      [
+        'Players or sideline often used offensive language or slurs (racist, sexist, homophobic…) or gestures',
+        'Taunted opponents, confrontations on or off the field',
+        'Celebrations aimed at us, e.g. pointing after scoring on someone',
+        'Damaged or misused equipment',
+        'Rubbed in a skill gap, e.g. trick-play-only points',
+      ],
       ['Offensive language or gestures once or twice', 'Sometimes no restraint in tense moments', 'Sometimes taunted us after errors', 'One or two celebrations aimed at us, or misused equipment'],
       ['Generally showed restraint', 'Players and sideline listened in tense moments', 'Played with the right intensity whatever the score'],
       ['Left a good impression before, during or after the game', 'Several times clearly kept their cool', 'Complimented good plays by either team', 'Shared with us'],
@@ -62,7 +77,12 @@ export const SPIRIT_EXAMPLES: Record<Cat, { about: string; levels: [string[], st
       ['Often refused to discuss calls or issues', 'Often directed offensive language at others'],
       ['Players not involved in a play weighed in without being asked', 'Offensive language at others once or twice', 'Discussions about calls often dragged on'],
       ['Conflicts were sorted out without incident', 'Explained their view, and listened', 'Calls were settled quickly', 'Sometimes used official hand signals'],
-      ['Communicated calls clearly to everyone, including sidelines', 'Used hand signals throughout', 'Introduced themselves and knew our team name', 'Raised spirit issues early, through their captains'],
+      [
+        'Communicated calls clearly to everyone, including sidelines',
+        'Used hand signals throughout',
+        'Introduced themselves and knew our team name',
+        'Raised spirit issues early, through their captains',
+      ],
       ['Clear, factual explanations for their calls', 'Listened, then asked follow-up questions', 'Pointed out specific examples of our good spirit'],
     ],
   },
