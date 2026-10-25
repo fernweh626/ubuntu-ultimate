@@ -8,6 +8,8 @@ import { getTeam, listGamesForTeam } from '@/db/repo';
 import { displayName, pct, round1, shortName } from '@/domain/format';
 import { Button, Card, Choice, EmptyState, Screen, Section, StatTile, T } from '@/ui/components';
 import { FormDots, GameCard } from '@/ui/game-bits';
+import { addAdvanced, computeAdvanced } from '@/domain/advanced-stats';
+import { AdvancedStats } from '@/ui/advanced-stats';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
 import { space } from '@/ui/theme';
@@ -31,6 +33,10 @@ export default function TeamReport() {
   const games = loaded.games.filter((g) => filter === 'all' || g.item.event_id === filter);
   const agg = teamAggregate(id, games);
   const totals = [...playerTotals(games, id).values()];
+  // Full-mode games only: every pass recorded, so possessions, chains and pairs add up across them.
+  const full = games.filter((g) => g.data.game.tracking_mode === 'full');
+  const advanced = full.length ? addAdvanced(full.map((g) => computeAdvanced(g.data)[id]).filter(Boolean), id) : null;
+  const personName = (pid: string | null) => (pid && loaded.people.get(pid) ? shortName(loaded.people.get(pid)!) : 'Unknown');
   const top = (k: 'goals' | 'assists' | 'intercepts') => [...totals].sort((a, b) => b[k] - a[k])[0];
   const scopeLabel = filter === 'all' ? 'All games' : events.find(([eid]) => eid === filter)?.[1] ?? 'Event';
 
@@ -115,6 +121,11 @@ export default function TeamReport() {
                 })}
               </Card>
             </Section>
+            {advanced ? (
+              <Section title={`Full stats · ${full.length} game${full.length > 1 ? 's' : ''} with every pass`}>
+                <AdvancedStats t={advanced} players={[...playerTotals(full, id).values()]} name={personName} />
+              </Section>
+            ) : null}
             <Section title="Players">
               <PlayerTable rows={totals} people={loaded.people} extra={(s) => `${(s as { games?: number }).games ?? 0} games`} />
             </Section>

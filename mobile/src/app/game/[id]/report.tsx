@@ -16,6 +16,8 @@ import { Bars, ScoreProgression } from '@/ui/charts';
 import { shareLiveLink } from '@/lib/live';
 import { BreakClock } from '@/ui/break-clock';
 import { Button, Card, Chip, Field, Icon, IconButton, RatioBadge, Screen, Section, Segmented, Sheet, T, TeamSwatch } from '@/ui/components';
+import { computeAdvanced } from '@/domain/advanced-stats';
+import { AdvancedStats } from '@/ui/advanced-stats';
 import { PlayerTable } from '@/ui/player-table';
 import { ShareCardSheet, type ShareCardData } from '@/ui/share-card';
 import { PlayerLink, TeamLink } from '@/ui/links';
@@ -54,6 +56,7 @@ export default function GameReport() {
   const forfeit = data.game.forfeit_team_id ? log.find((l) => l.action === 'forfeit') : null;
   const { game } = data;
   const stats = computeGameStats(data);
+  const advanced = computeAdvanced(data);
   const A = stats.teams[ta.id];
   const B = stats.teams[tb.id];
   const weather: Weather | null = game.weather_json ? JSON.parse(game.weather_json) : null;
@@ -278,6 +281,20 @@ export default function GameReport() {
                 </View>
               ))}
             </Card>
+          </Section>
+        ) : null}
+
+        {data.game.tracking_mode === 'full' ? (
+          <Section title={`Full stats · ${side === 'A' ? ta.name : tb.name}`}>
+            <Segmented
+              value={side}
+              onChange={setSide}
+              options={[
+                { value: 'A', label: ta.name },
+                { value: 'B', label: tb.name },
+              ]}
+            />
+            <AdvancedStats t={advanced[side === 'A' ? ta.id : tb.id]} players={Object.values(stats.players).filter((p) => p.teamId === (side === 'A' ? ta.id : tb.id))} name={name} />
           </Section>
         ) : null}
 

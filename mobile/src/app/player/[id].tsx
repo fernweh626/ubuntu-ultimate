@@ -9,6 +9,7 @@ import { useData } from '@/db/live';
 import { loadFinishedGames, playerTotals } from '@/db/reports';
 import { getMeId, getPerson, joinOrRequest, leaveTeam, listGamesForPerson, listTeams, personHistory } from '@/db/repo';
 import { displayName, shortDate } from '@/domain/format';
+import { completionRates, perPoint } from '@/domain/advanced-stats';
 import { playerSeasons } from '@/domain/player-seasons';
 import { Button, Card, Chip, Choice, IconButton, Screen, Section, Segmented, Sheet, StatTile, T, TeamSwatch } from '@/ui/components';
 import { FollowButton } from '@/ui/follow-button';
@@ -72,6 +73,9 @@ export default function PlayerProfile() {
   const team = f.team && teamsPlayed.some(([t]) => t === f.team) ? f.team : null;
   const filtered = inComp.filter((g) => !team || g.stats.players[id].teamId === team);
   const ft = playerTotals(filtered).get(id);
+  // Throwing and catching % only mean something where every pass was recorded.
+  const fullTotals = playerTotals(filtered.filter((g) => g.data.game.tracking_mode === 'full')).get(id);
+  const fullRates = fullTotals ? completionRates(fullTotals) : { throwing: null, catching: null };
   const seasons = playerSeasons(
     filtered.map((g) => {
       const s = g.stats.players[id];
@@ -201,6 +205,13 @@ export default function PlayerProfile() {
                 <StatTile value={ft ? ft.drops + ft.throwaways + ft.stalls : 0} label="Turnovers" />
                 <StatTile value={ft?.callahans ?? 0} label="Callahans" />
               </View>
+              {ft?.points ? (
+                <T v="small">
+                  Per point played: {perPoint(ft).goals ?? 0} goals · {perPoint(ft).assists ?? 0} assists · {perPoint(ft).ds ?? 0} Ds · {perPoint(ft).turns ?? 0} turns
+                  {fullRates.throwing != null ? ` · throwing ${fullRates.throwing}%` : ''}
+                  {fullRates.catching != null ? ` · catching ${fullRates.catching}%` : ''}
+                </T>
+              ) : null}
               {ft?.games ? (
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   <Button label="Share image" icon="image-outline" kind="primary" onPress={shareReport} style={{ flex: 1 }} />
