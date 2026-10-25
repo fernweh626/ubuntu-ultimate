@@ -424,8 +424,3 @@ export function addPlayerStats(into: PlayerGameStats, s: PlayerGameStats) {
   ];
   for (const k of keys) (into[k] as number) += s[k] as number;
 }
-
-/** Standings order: wins, fewest losses, point difference, points scored. Head-to-head comes with brackets. */
-export function rankStandings(rows: TeamAggregate[]) {
-  return [...rows].sort((a, b) => b.wins - a.wins || a.losses - b.losses || b.pointsFor - b.pointsAgainst - (a.pointsFor - a.pointsAgainst) || b.pointsFor - a.pointsFor);
-}

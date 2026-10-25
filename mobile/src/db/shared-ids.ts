@@ -6,7 +6,7 @@ import { seedId } from './seed-ids';
 
 /* Starting data (clubs, fields, calendar) shares ids with the server; these helpers bring older phones in line. */
 
-export const TEAM_REFS: [string, string][] = [
+const TEAM_REFS: [string, string][] = [
   ['membership', 'team_id'],
   ['event_team', 'team_id'],
   ['game', 'team_a_id'],
@@ -29,7 +29,7 @@ export const TEAM_REFS: [string, string][] = [
   ['join_request', 'team_id'],
   ['game_availability', 'team_id'],
 ];
-export const VENUE_REFS: [string, string][] = [
+const VENUE_REFS: [string, string][] = [
   ['game', 'venue_id'],
   ['session', 'venue_id'],
   ['bracket_slot', 'venue_id'],

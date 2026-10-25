@@ -13,7 +13,7 @@ import { colors, DEFAULT_TEAM_COLOR, font } from './theme';
  * Let someone take or choose a square photo, then copy it into the app's own storage (the picker's
  * copy lives in a cache that Android may clear). Returns the stored file's uri, or null if cancelled.
  */
-export async function pickPhoto(source: 'camera' | 'library', name: string): Promise<string | null> {
+async function pickPhoto(source: 'camera' | 'library', name: string): Promise<string | null> {
   const permission = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     Alert.alert('Permission needed', source === 'camera' ? 'Allow camera access to take a photo.' : 'Allow photo access to choose a picture.');

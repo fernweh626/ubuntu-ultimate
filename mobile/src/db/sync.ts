@@ -27,7 +27,7 @@ type TableSpec = {
 };
 
 // Parents before children so pushes and pulls apply cleanly.
-export const TABLES: TableSpec[] = [
+const TABLES: TableSpec[] = [
   { name: 'person', pk: ['id'], pullFrom: 'person_public', localOnly: ['email', 'birth_date'] },
   { name: 'club', pk: ['id'] },
   { name: 'team', pk: ['id'] },

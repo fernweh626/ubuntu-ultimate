@@ -111,9 +111,3 @@ export function ratioCode(ratio: string | null, pointNumber: number) {
   if (ratio !== 'W' && ratio !== 'M') return '';
   return `${ratio === 'W' ? 'F' : 'M'}${ratioSlot(pointNumber)}`;
 }
-
-export function ratioLabel(ratio: 'M' | 'W' | null) {
-  if (ratio === 'W') return '4 female matching · 3 male matching';
-  if (ratio === 'M') return '4 male matching · 3 female matching';
-  return '';
-}

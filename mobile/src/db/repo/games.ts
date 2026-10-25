@@ -818,7 +818,7 @@ export async function resolveBracket(db: SQLiteDatabase, eventId: string) {
  * Create the playoff games whose two teams are now known. Runs after every finished or forfeited game
  * in the event, so teams advance on their own. Returns how many games were created.
  */
-export async function fillBracket(db: SQLiteDatabase, eventId: string) {
+async function fillBracket(db: SQLiteDatabase, eventId: string) {
   const { slots, state } = await resolveBracket(db, eventId);
   if (!slots.length) return 0;
   const event = await getEvent(db, eventId);

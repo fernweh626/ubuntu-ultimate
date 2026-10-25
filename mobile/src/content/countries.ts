@@ -54,7 +54,7 @@ const ZA_REGIONS: Region[] = [
   },
 ];
 
-export const COUNTRIES: Record<string, Country> = {
+const COUNTRIES: Record<string, Country> = {
   ZA: {
     code: 'ZA',
     name: 'South Africa',

@@ -14,7 +14,7 @@ export const STATUS_REASONS = {
 export type StatusReason = keyof typeof STATUS_REASONS;
 
 /** League games may be postponed twice; after that, and at any tournament, the only option is to forfeit. */
-export const MAX_POSTPONEMENTS = 2;
+const MAX_POSTPONEMENTS = 2;
 
 export function canPostpone(eventKind: EventKind | null | undefined, postponements: number) {
   return eventKind === 'league' && postponements < MAX_POSTPONEMENTS;

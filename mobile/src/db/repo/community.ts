@@ -150,19 +150,6 @@ export function setPickupRsvp(db: SQLiteDatabase, pickupId: string, onDate: stri
   });
 }
 
-/** Head count and my answer for each pickup on one day. */
-export async function pickupDay(db: SQLiteDatabase, onDate: string, personId: string | null) {
-  const rows = await db.getAllAsync<{ pickup_id: string; person_id: string; status: RsvpStatus }>(`SELECT pickup_id, person_id, status FROM pickup_rsvp WHERE on_date = ?`, onDate);
-  const out = new Map<string, { going: number; mine: RsvpStatus | null }>();
-  for (const r of rows) {
-    const e = out.get(r.pickup_id) ?? { going: 0, mine: null };
-    if (r.status !== 'not_going') e.going += 1;
-    if (r.person_id === personId) e.mine = r.status;
-    out.set(r.pickup_id, e);
-  }
-  return out;
-}
-
 export function meetingRsvps(db: SQLiteDatabase, entryId: string) {
   return db.getAllAsync<{ person_id: string; status: RsvpStatus; note: string | null; first_name: string; last_name: string; birth_date: string | null }>(
     `SELECT r.person_id, r.status, r.note, p.first_name, p.last_name, p.birth_date FROM meeting_rsvp r JOIN person p ON p.id = r.person_id

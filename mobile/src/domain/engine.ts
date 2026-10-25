@@ -32,8 +32,6 @@ export type LiveState = {
   lastScore: GameEvent | null;
 };
 
-export const TURNOVER_TYPES = ['drop', 'throwaway', 'stall'] as const;
-
 export function live(events: GameEvent[]) {
   return events.filter((e) => !e.voided_at).sort((a, b) => a.seq - b.seq);
 }
@@ -129,15 +127,6 @@ export function deriveState(data: GameData): LiveState {
     lastEvent,
     lastScore,
   };
-}
-
-/** Which team receives the next point, given who just scored. */
-export function nextOffense(game: Game, scoringTeamId: string, startsSecondHalf: boolean) {
-  if (startsSecondHalf && game.first_pull_team_id) {
-    // Teams swap for the second half: whoever pulled to start the game now receives.
-    return game.first_pull_team_id;
-  }
-  return otherTeam(game, scoringTeamId);
 }
 
 /** Line on the field for a point, per team. */

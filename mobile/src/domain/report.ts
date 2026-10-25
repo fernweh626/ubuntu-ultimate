@@ -23,7 +23,7 @@ export type GameLine = {
 
 export type PacePoint = { gameIndex: number; seconds: number; ours: boolean; scorerId: string | null; scoreText: string };
 
-export function median(xs: number[]) {
+function median(xs: number[]) {
   if (!xs.length) return 0;
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);

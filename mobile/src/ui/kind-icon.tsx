@@ -14,8 +14,6 @@ const KIND: Record<ItemKind, { icon: IconName; fg: string; bg: string; label: st
   meeting: { icon: 'account-voice', fg: '#0E5E6F', bg: '#E1F1F4', label: 'Meeting' },
 };
 
-export const kindLabel = (k: ItemKind) => KIND[k].label;
-
 export function KindIcon({ kind, size = 36 }: { kind: ItemKind; size?: number }) {
   const k = KIND[kind];
   return (

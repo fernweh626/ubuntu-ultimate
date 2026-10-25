@@ -40,7 +40,7 @@ function friendly(m: string) {
 }
 
 /** The player this account is linked to on the server, if any. */
-export async function linkedPersonId() {
+async function linkedPersonId() {
   const user = await currentUser();
   if (!user) return null;
   const { data, error } = await supabase.from('account').select('person_id').eq('user_id', user.id).maybeSingle();
@@ -103,21 +103,9 @@ export async function resumeAccount(db: SQLiteDatabase) {
   return true;
 }
 
-export async function grantLevel(db: SQLiteDatabase, personId: string, level: 'admin' | 'coordinator' | 'scorekeeper', give: boolean) {
-  const { error } = await supabase.rpc('grant_level', { target: personId, lvl: level, give });
-  if (error) throw new Error(friendly(error.message));
-  await syncNow(db);
-}
-
 /** Several at once (staff's "Approve selected"), optionally labelling them core / guest / mercenary. */
 export async function decideJoinRequests(db: SQLiteDatabase, requestIds: string[], approve: boolean, kind?: 'core' | 'guest' | 'mercenary' | null) {
   const { error } = await supabase.rpc('decide_join_requests', { reqs: requestIds, approve, as_kind: kind ?? null });
-  if (error) throw new Error(friendly(error.message));
-  await syncNow(db);
-}
-
-export async function decideJoinRequest(db: SQLiteDatabase, requestId: string, approve: boolean) {
-  const { error } = await supabase.rpc('decide_join_request', { req: requestId, approve });
   if (error) throw new Error(friendly(error.message));
   await syncNow(db);
 }

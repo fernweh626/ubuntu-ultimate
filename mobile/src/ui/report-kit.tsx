@@ -2,9 +2,9 @@ import { forwardRef, type ComponentRef, type ReactNode } from 'react';
 import { Text, View, type TextStyle } from 'react-native';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 
-import { mmss, type PacePoint } from '@/domain/report';
+import type { PacePoint } from '@/domain/report';
 
-import { DEFAULT_TEAM_COLOR, font } from './theme';
+import { font } from './theme';
 
 /*
  * Building blocks for report pages. Pages are a fixed 380 × ≥475 design (4:5, Instagram-friendly) so the
@@ -230,5 +230,3 @@ export function ResultChip({ result }: { result: 'W' | 'L' | 'D' }) {
     </View>
   );
 }
-
-export { DEFAULT_TEAM_COLOR, mmss };

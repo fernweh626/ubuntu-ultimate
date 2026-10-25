@@ -63,11 +63,6 @@ export function parseAnswers(json: string | null | undefined): Answers {
   }
 }
 
-/** Session-RPE training load: effort (1–10) × minutes. A common, simple way to track how hard someone is working. */
-export function load(r: Pick<ReflectionRow, 'rpe' | 'minutes'>) {
-  return r.rpe && r.minutes ? r.rpe * r.minutes : 0;
-}
-
 const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
 
 export type StaffSummary = {

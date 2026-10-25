@@ -75,7 +75,7 @@ export const RATING_SCALE = ['Beginner', 'Developing', 'Solid club player', 'Str
 export const RATING_MAX = RATING_SCALE.length;
 
 /** Re-rate every six months. */
-export const RATING_EVERY_DAYS = 182;
+const RATING_EVERY_DAYS = 182;
 
 export function ratingDue(lastRatedOn: string | null | undefined, now = new Date()) {
   if (!lastRatedOn) return true;

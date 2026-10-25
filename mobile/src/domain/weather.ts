@@ -35,7 +35,7 @@ export async function fetchWeather(lat: number, lng: number): Promise<Weather | 
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
-export function compass(deg: number) {
+function compass(deg: number) {
   return COMPASS[Math.round(deg / 45) % 8];
 }
 

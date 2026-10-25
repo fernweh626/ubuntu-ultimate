@@ -42,7 +42,7 @@ export type Demographic = {
 };
 
 const now = () => new Date().toISOString();
-export const membershipId = (assoc: string, season: number, personId: string) => `${assoc}:${season}:${personId}`;
+const membershipId = (assoc: string, season: number, personId: string) => `${assoc}:${season}:${personId}`;
 
 export function getMembership(db: SQLiteDatabase, personId: string, assoc: string, season: number) {
   return db.getFirstAsync<Membership>(`SELECT * FROM association_membership WHERE id = ?`, membershipId(assoc, season, personId));
@@ -146,7 +146,7 @@ export async function claimMemberNumber(assoc: AssociationForm, num: string): Pr
 }
 
 /** My own row on the pre-loaded list (matched on my sign-in email), to fill in the form. */
-export async function myRosterRow(assoc: AssociationForm): Promise<RosterRow | null> {
+async function myRosterRow(assoc: AssociationForm): Promise<RosterRow | null> {
   const { data, error } = await supabase.rpc('my_roster_row', { assoc: assoc.code });
   if (error || !data) return null;
   const row = (Array.isArray(data) ? data[0] : data) as RosterRow & { id?: string | null };

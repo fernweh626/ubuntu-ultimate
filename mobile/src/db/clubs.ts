@@ -54,10 +54,6 @@ export function saveClub(db: SQLiteDatabase, c: ClubInput, creatorId: string | n
   });
 }
 
-export function setClubLogo(db: SQLiteDatabase, id: string, uri: string | null) {
-  return write(db, () => db.runAsync(`UPDATE club SET logo_uri = ?, updated_at = ? WHERE id = ?`, uri, now(), id));
-}
-
 export function clubTeams(db: SQLiteDatabase, clubId: string) {
   return db.getAllAsync<Team & { players: number }>(
     `SELECT t.*, (SELECT COUNT(DISTINCT m.person_id) FROM membership m WHERE m.team_id = t.id AND m.end_date IS NULL AND m.deleted_at IS NULL) AS players
@@ -120,9 +116,4 @@ export function addClubStaff(db: SQLiteDatabase, clubId: string, personId: strin
 
 export function removeClubStaff(db: SQLiteDatabase, id: string) {
   return write(db, () => db.runAsync(`DELETE FROM club_staff WHERE id = ?`, id));
-}
-
-export async function isClubAdmin(db: SQLiteDatabase, clubId: string, personId: string | null) {
-  if (!personId) return false;
-  return !!(await db.getFirstAsync(`SELECT 1 FROM club_staff WHERE club_id = ? AND person_id = ?`, clubId, personId));
 }

@@ -63,7 +63,7 @@ export function GameCard({ g }: { g: GameListItem }) {
 }
 
 /** A game that hasn't started: when, where, who's home (sets up the field). */
-export function FixtureCard({ g }: { g: GameListItem }) {
+function FixtureCard({ g }: { g: GameListItem }) {
   const home = g.home_team_id ?? g.team_a_id;
   const homeName = home === g.team_a_id ? g.a_name : g.b_name;
   const awayName = home === g.team_a_id ? g.b_name : g.a_name;

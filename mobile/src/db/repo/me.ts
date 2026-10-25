@@ -58,7 +58,7 @@ export async function getMe(db: SQLiteDatabase) {
 }
 
 /** Level set on this phone for testing (player, scorekeeper, coordinator or admin). Accounts replace it. */
-export async function getTestLevel(db: SQLiteDatabase): Promise<Level> {
+async function getTestLevel(db: SQLiteDatabase): Promise<Level> {
   const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM app_meta WHERE key = 'me_level'`);
   const v = row?.value as Level | undefined;
   return v && v in LEVEL_RANK && v !== 'staff' ? v : 'player';

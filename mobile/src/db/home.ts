@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { regionName } from '@/content/hub';
-import { DAYS_LONG, shortDate, timeOfDay, weekdayIndex } from '@/domain/format';
+import { DAYS_LONG, shortDate, weekdayIndex } from '@/domain/format';
 
 import { getMeId, listGames, listPickups, type GameListItem } from './repo';
 import type { PickupSpot } from './types';
@@ -38,7 +38,7 @@ export type TimelineItem = {
 // Distinct from the raspberry/teal used for female/male matching, and readable as text on white.
 const TAG_COLORS = ['#C2410C', '#1E40AF', '#B45309', '#6D28D9', '#4D7C0F', '#334155', '#854D0E', '#15803D', '#7C2D12', '#3730A3'];
 
-export function tagColor(id: string) {
+function tagColor(id: string) {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return TAG_COLORS[h % TAG_COLORS.length];
@@ -285,5 +285,3 @@ export function dayLabel(iso: string, now = new Date()) {
   if (diff === 1) return 'Tomorrow';
   return shortDate(iso);
 }
-
-export { timeOfDay };

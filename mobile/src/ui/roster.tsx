@@ -6,7 +6,7 @@ import { byMatching, posShort, type Matchable, type MatchingGroup } from '@/doma
 
 import { colors, font, space } from './theme';
 
-export { byMatching, posShort };
+export { byMatching };
 
 /** Small position pill: C, H or Hy. */
 export function PosTag({ position }: { position: string | null | undefined }) {

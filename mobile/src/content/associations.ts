@@ -78,9 +78,6 @@ export const CTFDA: AssociationForm = {
 
 export const ASSOCIATIONS: Record<string, AssociationForm> = { ctfda: CTFDA };
 
-/** The association that runs a region (e.g. western → CTFDA), if it has a form in the app yet. */
-export const associationForRegion = (region: string | null | undefined) => Object.values(ASSOCIATIONS).find((a) => a.regionCode === region) ?? null;
-
 export const formatRand = (cents: number) => (cents ? `R${(cents / 100).toFixed(cents % 100 ? 2 : 0)}` : 'Free');
 
 /** Payment reference: your member number, or the association's fallback until you have one. */

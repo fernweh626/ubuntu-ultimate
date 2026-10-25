@@ -7,7 +7,7 @@ export type HatPlayer = { id: string; gender: 'W' | 'M' | 'X' | null; skill: num
 export type HatTeam = { name: string; color: string; captainId: string | null; playerIds: string[] };
 
 /** Shirt colours hats usually go with; the organiser can rename them. */
-export const HAT_COLOURS: { name: string; color: string }[] = [
+const HAT_COLOURS: { name: string; color: string }[] = [
   { name: 'Light', color: '#E9ECEF' },
   { name: 'Dark', color: '#293750' },
   { name: 'Red', color: '#C62828' },

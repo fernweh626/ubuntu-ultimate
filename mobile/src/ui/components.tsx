@@ -276,31 +276,6 @@ export function Segmented<V extends string>({ options, value, onChange }: { opti
   );
 }
 
-/** Equal-width cells laid out in rows of `columns`. */
-export function Grid({ children, columns = 2, gap = space.sm }: { children: ReactNode[]; columns?: number; gap?: number }) {
-  const rows: ReactNode[][] = [];
-  children.forEach((child, i) => {
-    if (i % columns === 0) rows.push([]);
-    rows[rows.length - 1].push(child);
-  });
-  return (
-    <View style={{ gap }}>
-      {rows.map((cells, r) => (
-        <View key={r} style={{ flexDirection: 'row', gap }}>
-          {cells.map((cell, c) => (
-            <View key={c} style={{ flex: 1 }}>
-              {cell}
-            </View>
-          ))}
-          {Array.from({ length: columns - cells.length }, (_, k) => (
-            <View key={`pad-${k}`} style={{ flex: 1 }} />
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export function Row({
   title,
   subtitle,
@@ -500,10 +475,6 @@ export function Sheet({ visible, onClose, title, children }: { visible: boolean;
       </KeyboardAvoidingView>
     </Modal>
   );
-}
-
-export function Divider() {
-  return <View style={{ height: 1, backgroundColor: colors.divider }} />;
 }
 
 const styles = StyleSheet.create({

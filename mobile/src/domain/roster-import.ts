@@ -56,7 +56,7 @@ export function parseCsv(text: string): string[][] {
 const has = (h: string, ...words: string[]) => words.some((w) => h.includes(w));
 
 /** Which column holds what, from the header wording. */
-export function mapColumns(header: string[]) {
+function mapColumns(header: string[]) {
   const h = header.map((x) => x.toLowerCase().trim());
   const find = (test: (x: string) => boolean) => h.findIndex(test);
   return {
