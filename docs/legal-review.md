@@ -34,4 +34,4 @@ This is a plain-language summary, not legal advice.
 6. **Under-18s:** the Code of Conduct binds parents of minor members, and the form must be completed by a parent or guardian. The app shows the guardian note but can't verify it. **Ask CTFDA** whether that's enough, or whether a guardian's name and number are needed.
 7. **Who decides fees and approves leagues** is the CTFDA committee (6a). In the app that maps to admins (fees, links, lists) and coordinators (leagues). **Agree with CTFDA who gets which level.**
 8. **SAFDA documents:** SAFDA's site has no constitution, code of conduct or privacy policy. The Inclusion Guidelines note SAFDA has no transgender policy. **Ask SAFDA** for whatever exists before national sign-up goes through the app.
-9. **Data agreement:** before importing past CTFDA forms, CTFDA should agree in writing that the app processes members' data on its behalf (POPIA "operator" agreement). See `MUST-DO.md`.
+9. **Data agreement:** before importing past CTFDA forms, CTFDA should agree in writing that the app processes members' data on its behalf (POPIA "operator" agreement).
