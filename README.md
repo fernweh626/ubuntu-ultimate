@@ -126,7 +126,7 @@ In the app: More → **Report a bug or suggest an idea**. It goes straight to th
 <details>
 <summary>Maintainers: database, backups and data rules</summary>
 
-- **Supabase project** `sa-ultimate` (ref `fcsdtbvcvlmspjcfnfto`, London). The app only holds the **publishable** key, which is safe because row-level security decides access. New database changes go in a new file in `supabase/migrations/`, applied with `npx supabase db push -p "$SUPABASE_DB_PASSWORD"`.
+- **Supabase project** `sa-ultimate` (ref `fcsdtbvcvlmspjcfnfto`, London). The app only holds the **publishable** key, which is safe because row-level security decides access. New database changes go in a new file in `supabase/migrations/`, applied with `npx supabase db push --remote -p "$SUPABASE_DB_PASSWORD"`.
 - **The database password** lives only in the git-ignored `.env.local` at the repo root. Never commit it or put any secret key in the app.
 - **Backups:** a nightly encrypted copy to the private repo `ubuntu-ultimate-backups`, kept separate so code collaborators can't reach the backup login. Opening a backup needs the private key, kept outside git.
 - **Personal data (POPIA):** Stall Count exports and CSVs are git-ignored. Never commit real names. Demo content uses invented names only.
